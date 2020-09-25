@@ -55,12 +55,11 @@ def Regrid_Array(Array_In, Out_Shape):
 def ROC(work_dir='', running_default = 'Not_Set'):
     #First ask for the directory to work in
     if work_dir == '':
-        #work_dir = input("Please provide the directory where to create the database :")
-        work_dir = '/home/peter/Database/Test_New' #
+        work_dir = input("Please provide the directory where to create the database :")
+
     while not os.path.isdir(work_dir):
         print("That is not a valid directory please try again :")
         work_dir = input("Please provide the directory where to create the database :")
-        #work_dir = '/home/peter/Database/Test_New'
 
     # Then do we want to set all values indivdually or not
     if work_dir[-1] != '/':
@@ -323,7 +322,7 @@ def ROC(work_dir='', running_default = 'Not_Set'):
             ypos2=ypos
             #Rotcur values should be converted to degrees with
             # xpos = Template_Header["CRVAL1"]  +(xpospix[:])*(Template_Header["CDELT1"])
-        
+
             dispersion[:] = 0.
             dispersion2[:] = 0.
         elif Galaxies_In['Original_Model'][i] == 'Tir':
@@ -347,7 +346,7 @@ def ROC(work_dir='', running_default = 'Not_Set'):
         scaleheight2 = cf.convertskyangle(scaleheight2, distance=Galaxies_In['DHIDistance'][i])
         #Everything that is constant can be written to the Template def file
         Template_in['INCL'] = 'INCL = '+" ".join(str(e) for e in incli)
-        Template_in['INCL_2'] = 'INCL_2 = =' + " ".join(str(e) for e in incli2)
+        Template_in['INCL_2'] = 'INCL_2 = ' + " ".join(str(e) for e in incli2)
         Template_in['PA'] = 'PA = ' + " ".join(str(e) for e in pa)
         Template_in['PA_2'] = 'PA_2 = ' + " ".join(str(e) for e in pa2)
         Template_in['VROT'] = 'VROT = ' + " ".join(str(e) for e in rotation)
