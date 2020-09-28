@@ -331,8 +331,6 @@ def ROC(work_dir='', running_default = 'Not_Set'):
             radius, rotation, pa,incli,xpos,ypos,systemic,rotation2, pa2,incli2,xpos2,ypos2,systemic2 ,scaleheight, dispersion, scaleheight2, dispersion2,condisp,sbr,sbr2 = cf.load_tirific(
                 'Galaxies_In/Known_Models/' + name + '/' + name + '.def', unpack=True,Variables=['RADI','VROT','PA','INCL','XPOS','YPOS','VSYS','VROT_2','PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0','SDIS','Z0_2','SDIS_2','CONDISP', 'SBR', 'SBR_2'])
 
-            print('From File')
-            print(rotation,rotation2)
             short = np.where(rotation == 0. )[0]
             if len(short) > 0.:
                 for ind in short:
@@ -343,13 +341,8 @@ def ROC(work_dir='', running_default = 'Not_Set'):
                 for ind in short:
                     if radius[ind] != 0.:
                         rotation2[ind] = rotation[ind]
-
-            print('Equal length')
-            print(rotation,rotation2)
             rotation = (rotation[:]+rotation2[:])/2.
             rotation2 = rotation
-            print('Averaged')
-            print(rotation,rotation2)
             if np.sum(dispersion) == 0.:
                 dispersion[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
                 dispersion2[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)

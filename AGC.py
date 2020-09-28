@@ -295,7 +295,6 @@ def build_sbr_prof(Current_Galaxy):
             gamma_tmpagain=-0.2*(np.arctan((v_c-300)/30.)-0.5)
             gamma=gamma_tmp+gamma_tmpagain
             break
-    print(counter)
     DynMass=HIrad*10**3*v_c**2/G
     print("The input Mass = {:.2e}  and the retrieved NFW Dynamical mass = {:.2e} and Dynamical Mass based on v_c = {:.2e}".format(Current_Galaxy.Mass,DynMassNFW,DynMass))
     print("The current fractional difference = {:.5f} and the baryon fraction = {:.5f}".format(diff,bary_frac))
@@ -344,7 +343,6 @@ def build_sbr_prof(Current_Galaxy):
     # std deviation or dispersion of gaussian
     s1 = np.zeros(2)
     s1 = 0.36 * Rhi_p
-    print(s1)
     # s2 = 0.36 * Rhi_p2
     # We assume that at 120 km/s v_max the H_2 disk imprint on the HI disk is adequately described by the prescription of Martinsson.
     # Lower some of the disk is added back to the HI higher the central hole is more pronounced
@@ -473,7 +471,6 @@ def create_flare(Radii,velocity,dispersion,flare,Max_Rad,sub_ring,distance=1.):
         flare =disp/((4.*np.pi*G2*Density/1000.**3)**0.5*3.086e+16) # in kpc
         flare[:halfint-10] = flare[halfint-10]
         fact=np.arange(1/21,1,1./21)
-        print(flare,fact)
         flare[halfint-10:halfint+10] = (1-fact)*flare[halfint-10]+fact*flare[halfint-10:halfint+10]
     elif flare.lower() == 'no_flare':
         flare = np.full(len(Radii),disp[halfint]/((4.*np.pi*G2*Density[halfint]/1000.**3)**0.5*3.086e+16))
@@ -828,7 +825,7 @@ def create_inhomogeneity(mass,SNR,disks=1.):
         Template["CFLUX_{:d}".format(ndisk)]="CFLUX_{:d} = {}" .format(ndisk,req_flux)
         ndisk=ndisk+1
         last_add = copy_disk(disks[i],ndisk)
-        Template["SBR_{:d}".format(ndisk)]="SBR_{:d} = ".format(ndisk)+" ".join(str(e) for e in nextprof)
+        Template["SBR_{:d}".forprint(mat(ndisk)]="SBR_{:d} = ".format(ndisk)+" ".join(str(e) for e in nextprof)
         Template["CFLUX_{:d}".format(ndisk)]="CFLUX_{:d} = {}" .format(ndisk,req_flux)
     print("We will create inhomogeneities on top of disk(s) ="+" ".join(str(e) for e in [disks]))
 
@@ -912,7 +909,6 @@ def corrupt_casa(work_dir,beam,Template_Casa,SNR):
     for n in range(1, len(dummy[0].data[:, 0, 0]), 3):
         tmp_cube[int((n - 1) / 3), :, :] = np.mean(dummy[0].data[n - 1:n + 2, :, :], axis=0)
     dummy[0].data = tmp_cube
-    print(dummy[0].data.shape)
     # reset the header
     dummy[0].header['CDELT3'] = dummy[0].header['CDELT3'] * 3.
     dummy[0].header['CRPIX3'] = dummy[0].header['CRPIX3'] / 3.
@@ -1726,7 +1722,7 @@ def AGC(work_dir='',running_default = 'Not_Set'):
     plt.figure(59)
     ax.set_ylim(ymin=0)
     ax.set_xlim(xmin=0, xmax=max_rad)
-    plt.legend(loc='bottom right',fontsize=12)
+    plt.legend(loc='lower right',fontsize=12)
     plt.savefig('Rotation_Curves.ps', bbox_inches='tight')
     plt.close()
 if __name__ == '__main__':
