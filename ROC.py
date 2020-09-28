@@ -11,7 +11,13 @@ import scipy.ndimage
 import os
 import re
 from astropy.io import fits
-import matplotlib.pyplot as plt
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import matplotlib
+    matplotlib.use('pdf')
+    import matplotlib.pyplot as plt
+
 
 
 # function to properly regrid the cube after smoothing

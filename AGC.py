@@ -17,8 +17,13 @@ import re
 from scipy import interpolate
 from scipy import integrate
 from astropy.io import fits
-import matplotlib.pyplot as plt
-from matplotlib.ticker import AutoMinorLocator
+import warnings
+with warnings.catch_warnings():
+     warnings.simplefilter("ignore")
+     import matplotlib
+     matplotlib.use('pdf')
+     import matplotlib.pyplot as plt
+     from matplotlib.ticker import AutoMinorLocator
 
 #This class defines a set of Base galaxy parameters
 class Base_Galaxy:
