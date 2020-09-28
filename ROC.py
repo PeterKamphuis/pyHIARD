@@ -72,7 +72,7 @@ def ROC(work_dir='', running_default = 'Not_Set'):
     if not run_default:
        #sets = 5  # This is the amount of base galaxies we want, i.e. the number of rotation curves
         sets = str(input("Do you want to shift inclined galaxies (IG), edge-on galaxies (EO) or both (Both) (Default = Both): ") or 'Both')
-        if sets.lower == 'ig' or sets.lower() == 'eo' or sets.lower() == 'both':
+        if sets.lower() == 'ig' or sets.lower() == 'eo' or sets.lower() == 'both':
             print('We will use {} as template.'.format(sets))
         else:
             print("{} is not a valid set".format(sets))
@@ -320,16 +320,36 @@ def ROC(work_dir='', running_default = 'Not_Set'):
             condisp = (Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))
             xpos2=xpos
             ypos2=ypos
+            sbr = [0.]
+            sbr2 = [0.]
             #Rotcur values should be converted to degrees with
             # xpos = Template_Header["CRVAL1"]  +(xpospix[:])*(Template_Header["CDELT1"])
 
             dispersion[:] = 0.
             dispersion2[:] = 0.
         elif Galaxies_In['Original_Model'][i] == 'Tir':
-            radius, rotation, pa,incli,xpos,ypos,systemic,rotation2, pa2,incli2,xpos2,ypos2,systemic2 ,scaleheight, dispersion, scaleheight2, dispersion2,condisp = cf.load_tirific(
-                'Galaxies_In/Known_Models/' + name + '/' + name + '.def', unpack=True,Variables=['RADI','VROT','PA','INCL','XPOS','YPOS','VSYS','VROT_2','PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0','SDIS','Z0_2','SDIS_2','CONDISP'])
+            radius, rotation, pa,incli,xpos,ypos,systemic,rotation2, pa2,incli2,xpos2,ypos2,systemic2 ,scaleheight, dispersion, scaleheight2, dispersion2,condisp,sbr,sbr2 = cf.load_tirific(
+                'Galaxies_In/Known_Models/' + name + '/' + name + '.def', unpack=True,Variables=['RADI','VROT','PA','INCL','XPOS','YPOS','VSYS','VROT_2','PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0','SDIS','Z0_2','SDIS_2','CONDISP', 'SBR', 'SBR_2'])
 
+            print('From File')
+            print(rotation,rotation2)
+            short = np.where(rotation == 0. )[0]
+            if len(short) > 0.:
+                for ind in short:
+                    if radius[ind] != 0.:
+                        rotation[ind] = rotation2[ind]
+            short = np.where(rotation2 == 0. )[0]
+            if len(short) > 0.:
+                for ind in short:
+                    if radius[ind] != 0.:
+                        rotation2[ind] = rotation[ind]
+
+            print('Equal length')
+            print(rotation,rotation2)
             rotation = (rotation[:]+rotation2[:])/2.
+            rotation2 = rotation
+            print('Averaged')
+            print(rotation,rotation2)
             if np.sum(dispersion) == 0.:
                 dispersion[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
                 dispersion2[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
@@ -338,6 +358,12 @@ def ROC(work_dir='', running_default = 'Not_Set'):
         else:
             print("This type of model is not supported")
             continue
+        if xpos[0] < 0.:
+            xpos = [e+360. for e in xpos]
+        if xpos2[0] < 0.:
+            xpos2 = [e+360. for e in xpos2]
+
+
         RAdeg = xpos[0]
         DECdeg = ypos[0]
         #All values that are in arcsec need to be converted to kpc
@@ -345,20 +371,29 @@ def ROC(work_dir='', running_default = 'Not_Set'):
         scaleheight = cf.convertskyangle(scaleheight,distance=Galaxies_In['DHIDistance'][i])
         scaleheight2 = cf.convertskyangle(scaleheight2, distance=Galaxies_In['DHIDistance'][i])
         #Everything that is constant can be written to the Template def file
-        Template_in['INCL'] = 'INCL = '+" ".join(str(e) for e in incli)
-        Template_in['INCL_2'] = 'INCL_2 = ' + " ".join(str(e) for e in incli2)
-        Template_in['PA'] = 'PA = ' + " ".join(str(e) for e in pa)
-        Template_in['PA_2'] = 'PA_2 = ' + " ".join(str(e) for e in pa2)
+        Template_in['NUR'] = f'NUR = {len(radius)}'
+        Template_in['INCL'] = 'INCL = '+" ".join(str(e) for e in incli if e != 0.)
+        Template_in['INCL_2'] = 'INCL_2 = ' + " ".join(str(e) for e in incli2 if e != 0.)
+        Template_in['PA'] = 'PA = ' + " ".join(str(e) for e in pa if e != 0.)
+        Template_in['PA_2'] = 'PA_2 = ' + " ".join(str(e) for e in pa2 if e != 0.)
         Template_in['VROT'] = 'VROT = ' + " ".join(str(e) for e in rotation)
         Template_in['VROT_2'] = 'VROT_2 = ' + " ".join(str(e) for e in rotation2)
-        Template_in['XPOS'] = 'XPOS = ' + " ".join(str(e) for e in xpos)
-        Template_in['XPOS_2'] = 'XPOS_2 = ' + " ".join(str(e) for e in xpos2)
-        Template_in['YPOS'] = 'YPOS = ' + " ".join(str(e) for e in ypos)
-        Template_in['YPOS_2'] = 'YPOS_2 = ' + " ".join(str(e) for e in ypos2)
-        Template_in['SDIS'] = 'SDIS = ' + " ".join(str(e) for e in dispersion2)
-        Template_in['SDIS_2'] = 'SDIS_2 = ' + " ".join(str(e) for e in dispersion2)
-        Template_in['SBR'] = 'SBR =  0.'
-        Template_in['SBR_2'] = 'SBR_2 = 0.'
+        Template_in['XPOS'] = 'XPOS = ' + " ".join(str(e) for e in xpos if e != 0.)
+        Template_in['XPOS_2'] = 'XPOS_2 = ' + " ".join(str(e) for e in xpos2 if e != 0.)
+        Template_in['YPOS'] = 'YPOS = ' + " ".join(str(e) for e in ypos if e != 0.)
+        Template_in['YPOS_2'] = 'YPOS_2 = ' + " ".join(str(e) for e in ypos2 if e != 0.)
+        if np.sum(dispersion) != 0.:
+            Template_in['SDIS'] = 'SDIS = ' + " ".join(str(e) for e in dispersion if e != 0.)
+            Template_in['SDIS_2'] = 'SDIS_2 = ' + " ".join(str(e) for e in dispersion2 if e != 0.)
+        else:
+            Template_in['SDIS'] = 'SDIS =  0.'
+            Template_in['SDIS_2'] = 'SDIS_2 = 0. '
+        if np.sum(sbr) == 0:
+            Template_in['SBR'] = 'SBR = 0.'
+            Template_in['SBR_2'] = 'SBR_2 = 0.'
+        if np.sum(scaleheight) == 0.:
+            Template_in['Z0'] = 'Z0 = 0.'
+            Template_in['Z0_2'] = 'Z0_2 = 0.'
         try:
             Template_Header.set("BMAJ", Template_Header["BMMAJ"] / 3600.,before="BMMAJ")
             Template_Header.set("BMIN", Template_Header["BMMIN"] / 3600., before="BMMIN")
@@ -505,6 +540,7 @@ def ROC(work_dir='', running_default = 'Not_Set'):
             pixsizenew = (newbmin / 5.) / abs(Template_Header['CDELT1'] * 3600.)
             # Our new distance is
             Distance = fact * Galaxies_In['DHIDistance'][i]
+
             Def_Template['DISTANCE'] = 'DISTANCE = '+str(Distance)
             # And we need to adjust the header for our new cube
             hednew = copy.deepcopy(Template_Header)
@@ -528,12 +564,16 @@ def ROC(work_dir='', running_default = 'Not_Set'):
             conv_radi = cf.convertskyangle(radius,distance=Distance,physical= True)
             Def_Template['RADI']='RADI = '+' '.join([str(e) for e in conv_radi])
             con_hz = cf.convertskyangle(scaleheight,distance=Distance,physical= True)
-            Def_Template['Z0'] = 'Z0 = ' + " ".join(str(e) for e in con_hz)
             con_hz2 = cf.convertskyangle(scaleheight2, distance=Distance, physical=True)
-            Def_Template['Z0_2'] = 'Z0_2 = ' + " ".join(str(e) for e in con_hz2)
+            if np.sum(scaleheight) != 0.:
+                Def_Template['Z0'] = 'Z0 = ' + " ".join(str(e) for e in con_hz if e != 0.)
+                Def_Template['Z0_2'] = 'Z0_2 = ' + " ".join(str(e) for e in con_hz2 if e != 0.)
             Def_Template['VSYS'] = 'VSYS = ' + str(New_Systemic)
             Def_Template['VSYS_2'] = 'VSYS_2 = ' + str(New_Systemic)
-
+            if np.sum(sbr) != 0.:
+                # our surface brightness is constant except for the tolman dimming
+                Def_Template['SBR'] = 'SBR = ' + " ".join(str(e*((Original_z**4)/(New_z**4))) for e in sbr if e != 0.)
+                Def_Template['SBR_2'] = 'SBR_2 = ' + " ".join(str(e*((Original_z**4)/(New_z**4))) for e in sbr2 if e != 0.)
             # To obtain our new values we need to smooth the original with the squared difference between the old beam and the new beam
             FWHM_conv_maj = np.sqrt(newbmaj ** 2 - bmaj ** 2)
             FWHM_conv_min = np.sqrt(newbmin ** 2 - bmin ** 2)
@@ -657,6 +697,10 @@ def ROC(work_dir='', running_default = 'Not_Set'):
                 regrid = Regrid_Array(final, Out_Shape=(
                     int(Template_Header['NAXIS3']), int(Template_Header['NAXIS2'] / pixsizenew),
                     int(Template_Header['NAXIS1'] / pixsizenew)))
+                #also the mask Used
+                regrid_mask = Regrid_Array(Final_Mask, Out_Shape=(
+                    int(Template_Header['NAXIS3']), int(Template_Header['NAXIS2'] / pixsizenew),
+                    int(Template_Header['NAXIS1'] / pixsizenew)))
                 # We have to update the header
                 achieved = final.shape[1] / regrid.shape[1]
                 hednew["CDELT1"] = Template_Header['CDELT1'] * achieved/fact
@@ -679,6 +723,8 @@ def ROC(work_dir='', running_default = 'Not_Set'):
                         print("Reproducing the galaxy. Be aware of Double Table entries")
                 #ANd write to our directory
                 fits.writeto(work_dir+ '/' + dirstring+'/Convolved_Cube.fits', regrid, hednew,
+                             overwrite=True)#ANd write to our directory
+                fits.writeto(work_dir+ '/' + dirstring+'/mask.fits', regrid_mask, hednew,
                              overwrite=True)
                 # Then we also want to write some info about the galaxy
                 overview = open(work_dir + '/' + dirstring + '/' + dirstring + '-Info.txt', 'w')
@@ -791,7 +837,7 @@ def ROC(work_dir='', running_default = 'Not_Set'):
                 overview = open(work_dir + '/'+dirstring+ '/Initial_Estimates.txt', 'w')
                 overview.write("#This file contains the initial estimates \n")
 
-                SBRprof = [0.,0.]
+                SBRprof = [sbr,sbr2]
                 overview.write(
                     "#{:<15} {:<15} {:<15} {:<15} {:<15} {:<15} {:<15} {:<15} {:<15}  {:<15}\n ".format('VROT', 'INCL',
                                                                                                         'PA', 'Z0', 'SBR',

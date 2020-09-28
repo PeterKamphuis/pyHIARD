@@ -55,7 +55,7 @@ class Base_Galaxy:
             self.Arms = "Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
-            # RA and DEC in degrees, Only used in casa sim 
+            # RA and DEC in degrees, Only used in casa sim
             self.Coord = [50.81166937467079,57.76644335595375]
             self.Mass = 2.5e10 #5e11 # in km/s
             self.RC_Radii= [0.]
@@ -110,7 +110,7 @@ class Base_Galaxy:
             self.Radial_Motions= 0.
             self.Mass= 5e10
             self.RC_Radii= [0.]
-            self.RC_Vrot= [0.]   
+            self.RC_Vrot= [0.]
         else :
             print("There are not {} bases".format(num))
             sys.exit()
@@ -128,7 +128,7 @@ def copy_disk(olddisk,newdisk):
             if copkeys == "Empty":
                 copkeys = [key]
             else:
-                copkeys.append(key)         
+                copkeys.append(key)
         if key == 'RADI':
             start += 1
             if olddisk == 1:
@@ -161,7 +161,7 @@ def copy_disk(olddisk,newdisk):
         return copkeys[-1].split('_')[0]+"_{:d}".format(newdisk)
     else:
         return copkeys[-1]+"_{:d}".format(newdisk)
- 
+
 # Obtaining the derivative at any give point of a function
 def derivative(x,func):
     h=x/1000.
@@ -176,7 +176,7 @@ def derivative(x,func):
 
 
 
-# function to get the surface brightness profile based on the last element in the rotation curve            
+# function to get the surface brightness profile based on the last element in the rotation curve
 def build_sbr_prof(Current_Galaxy):
     # First we use the mass to build a rotation curve and sbr profile
     # Avanti used 	V_Ropt = (200*(l**0.41))/(0.80 +0.49*np.log10(l) +(0.75*np.exp(-0.4*l))/(0.47 + 2.25*(l**0.4)))**0.5 (Persic & Sallucci)
@@ -420,7 +420,7 @@ def build_sbr_prof(Current_Galaxy):
     labelfont= {'family':'Times New Roman',
                 'weight':'normal',
                 'size':18}
-    plt.rc('font',**labelfont)    
+    plt.rc('font',**labelfont)
     plt.plot([HIrad,HIrad],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'b')
     plt.plot([Rhi_p[0] / 10 ** 3, Rhi_p[0] / 10 ** 3], [ymin - (ymax - ymin) * 0.1, ymax + (ymax - ymin) * 0.1], 'b--')
     plt.plot([Rhi_p[1] / 10 ** 3, Rhi_p[1] / 10 ** 3], [ymin - (ymax - ymin) * 0.1, ymax + (ymax - ymin) * 0.1], 'b--')
@@ -439,33 +439,33 @@ def build_sbr_prof(Current_Galaxy):
     for i in range(len(sbr_prof)):
         tmp[i] = np.mean(sbr_prof[i, :])
     return tmp,Rad,h_r/1000.,OutHIMass, HIrad,vrot,sub_ring
-   
 
-# Thi function creates the flarin g which is based on the rotation curve and dispersion according Puche et al. 1992 
+
+# Thi function creates the flarin g which is based on the rotation curve and dispersion according Puche et al. 1992
 def create_flare(Radii,velocity,dispersion,flare,Max_Rad,sub_ring,distance=1.):
     #make sure we have arrays so we can do numerical operations
     Radii = np.array(Radii)
     velocity = np.array(velocity)
     # first we need the dispersion
-    # if there is no change from inside to outside it is easy 
+    # if there is no change from inside to outside it is easy
     if dispersion[0] == dispersion[1]:
        disp=np.full(len(Radii),dispersion[0])
     else:
-        # else we use a tangent change with the center at halfway 
+        # else we use a tangent change with the center at halfway
        disp=-1*np.arctan((Radii-np.mean(Max_Rad/2.))/(Radii[-1]/10.))/np.pi*np.absolute(dispersion[0]-dispersion[1])+np.mean(dispersion)
     # We recalculate the Dynamical Mass and densities
-    # G=6.674×10−20 #km^3⋅kg^−1⋅s^−2 pc=3.086e+13 km solarmass=1.98855e30 kg 
+    # G=6.674×10−20 #km^3⋅kg^−1⋅s^−2 pc=3.086e+13 km solarmass=1.98855e30 kg
     # let's transform pc M_sol^-1 km^2 s^-2
     G= 4.30058*10**-3 # radii are in kpc
 
     # Dynamical Mass
-    
+
     Dynmass=(Radii*10**3)*velocity**2/G
     # This is in a Volume of
     Volume=(4./3.)*np.pi*Radii**3
     Dynmass[0]=1.
     Volume[0]=1.
-    Density=Dynmass/Volume*2.  #  In M_solar/kpc^3 the two comes from Puche 1992 but seems random    
+    Density=Dynmass/Volume*2.  #  In M_solar/kpc^3 the two comes from Puche 1992 but seems random
     # Then we check wether we want a flare or not
     G2=G/(3.086e+13**2) #pc^3 M_sol^-1 s^-2
     halfint=int((len(Radii[Radii < Max_Rad])+10)/2.)
@@ -475,19 +475,19 @@ def create_flare(Radii,velocity,dispersion,flare,Max_Rad,sub_ring,distance=1.):
         fact=np.arange(1/21,1,1./21)
         print(flare,fact)
         flare[halfint-10:halfint+10] = (1-fact)*flare[halfint-10]+fact*flare[halfint-10:halfint+10]
-    elif flare.lower() == 'no_flare':       
+    elif flare.lower() == 'no_flare':
         flare = np.full(len(Radii),disp[halfint]/((4.*np.pi*G2*Density[halfint]/1000.**3)**0.5*3.086e+16))
     else:
         print("{} is not an option for the flare. Choose Flared or No_Flare".format(flare))
         sys.exit()
-    
-    flare[0]=flare[1]    
+
+    flare[0]=flare[1]
     plt.figure(2)
     plt.subplot(6,1,2)
     labelfont= {'family':'Times New Roman',
                 'weight':'normal',
                 'size':18}
-    plt.rc('font',**labelfont)   
+    plt.rc('font',**labelfont)
     plt.plot(Radii,disp,'k')
     plt.plot(Radii[0::sub_ring],disp[0::sub_ring],'ko')
     ymin,ymax=plt.ylim()
@@ -551,7 +551,7 @@ def create_warp(Radii,
             inPA = 0.001
         if inclination < 0.001 :
             inclination = 0.001
-        # define the angular momentum vector of the plane and the outer most ring    
+        # define the angular momentum vector of the plane and the outer most ring
         theta=np.arctan(np.tan(inclination*(np.pi/180.))*np.tan(inPA*(np.pi/180.)))
         phi=np.arctan(np.tan(inPA*(np.pi/180.))/np.sin(theta))
         # and the maximum values at Rad_HI
@@ -578,13 +578,13 @@ def create_warp(Radii,
         phirings = np.array(np.full(len(Radii),phi))
         phirings[start_index:] = phi+0.5*index_array*(index_array+1)*increasephi
         # return to PA
-      
+
         if (phirings[0] < np.pi/2.) and (phirings[-1] > np.pi/2) and (inclination < 5.):
             PA= np.arctan(np.sin(thetarings)*np.tan(phirings-np.pi/2.))*(360./(2*np.pi))+mult*90+np.arctan(np.sin(theta)*np.tan(phi))*(360./(2*np.pi))
         else:
             PA= np.arctan(np.sin(thetarings)*np.tan(phirings))*(360./(2*np.pi))+mult*90
-            PA[phirings > 0.5*np.pi]=PA[phirings > 0.5*np.pi]+180.    
-            
+            PA[phirings > 0.5*np.pi]=PA[phirings > 0.5*np.pi]+180.
+
         # return inclination
         inc=90-np.arctan(1./(np.cos(thetarings)*np.tan(phirings)))*(360./(2*np.pi))
         # return inclination boundary adjustements
@@ -608,7 +608,7 @@ def create_warp(Radii,
     labelfont= {'family':'Times New Roman',
                 'weight':'normal',
                 'size':18}
-    plt.rc('font',**labelfont)   
+    plt.rc('font',**labelfont)
     plt.plot(Radii,PA,c)
     plt.plot(Radii[0::sub_ring],PA[0::sub_ring],c+'o')
     ymin,ymax=plt.ylim()
@@ -636,9 +636,9 @@ def create_warp(Radii,
         top=False,         # ticks along the top edge are off
         labelbottom=False) # labels along the bottom edge are off
     plt.ylabel('Inc. ($^{\circ}$)',**labelfont)
-      
+
     #write to our template file
-    # let's see if we can retrace intrinsic phi with the formula's from Peters    
+    # let's see if we can retrace intrinsic phi with the formula's from Peters
     #theta_test = np.arctan((np.sin(PA*np.pi/180.)*np.sin(inc*np.pi/180.)-np.cos(PA*np.pi/180.)*np.sin(inc*np.pi/180.))/(np.cos(PA*np.pi/180.)*np.cos(inc*np.pi/180.)-np.sin(PA*np.pi/180.)*np.cos(inc*np.pi/180.)))*180./np.pi
     phirings=phirings*180./np.pi
     # thetarings=thetarings*180./np.pi
@@ -660,11 +660,11 @@ def create_warp(Radii,
             phase =  float(Template["AZ1P_{:d}".format(disk)].split('=')[1])
         except KeyError:
             phase =  0.
-        Template.insert("AZ1W_{:d}".format(disk),"AZ1P_{:d}".format(disk),"AZ1P_{:d} = 180.".format(disk)) 
+        Template.insert("AZ1W_{:d}".format(disk),"AZ1P_{:d}".format(disk),"AZ1P_{:d} = 180.".format(disk))
         Template.insert("AZ1W_{:d}".format(disk),"AZ1P_{:d}".format(disk),"AZ1P_{:d} =".format(disk)+" ".join(str(phase+(e)) for e in angle_adjust))
     return PA,inc,phirings
 
-    
+
 def create_arms(velocity,Radii,disk_brightness, disk=1,WarpStart=-1,Bar="No_Bar"):
     if WarpStart == -1: WarpStart = Radii[-1]
     max_vrot=np.max(velocity)
@@ -683,13 +683,13 @@ def create_arms(velocity,Radii,disk_brightness, disk=1,WarpStart=-1,Bar="No_Bar"
     if Bar == "Barred":
         num_arms=2
     else:
-        #other wise 2 arms when a bulge is present and 4 arms when not        
+        #other wise 2 arms when a bulge is present and 4 arms when not
         if Radii[np.where(max_vrot == velocity)[0]] < np.mean(Radii):
             num_arms=2
         else:
-            num_arms=4   
+            num_arms=4
 
-    
+
     LLR = Omega_CR-k_CR/num_arms
     ULR = Omega_CR+k_CR/num_arms
     Radii[0]=0.1
@@ -703,12 +703,12 @@ def create_arms(velocity,Radii,disk_brightness, disk=1,WarpStart=-1,Bar="No_Bar"
     while om(r_cur) > LLR and r_cur < max_rad:
         r_cur += 0.1
     OLR = 0.75*r_cur
-    
-    
-  
-    # From Seigar et al. 2006 we get the relation between shear (S) and pitch angle 
+
+
+
+    # From Seigar et al. 2006 we get the relation between shear (S) and pitch angle
     S = 0.5*(1-Radii/velocity*derivative(Radii,V_Rot))
-    pitch2= 64.25-73.24*S 
+    pitch2= 64.25-73.24*S
     #As we assume a constant pitch angle we will take the average between ILR and OLR as the pitch angle
     tmp = np.where((Radii > ILR) & (Radii < OLR))[0]
     pitch = np.sum(pitch2[tmp])/len(tmp)
@@ -719,7 +719,7 @@ def create_arms(velocity,Radii,disk_brightness, disk=1,WarpStart=-1,Bar="No_Bar"
     phase[0]=phase[1]
     #How many arms do we make
     # with bar it is always a grand design
-  
+
     # we take a brightness in the arms 1/no_arms the brightness of the disk
     brightness=1./np.sqrt(num_arms)*disk_brightness
     # and only between the resonances
@@ -731,13 +731,13 @@ def create_arms(velocity,Radii,disk_brightness, disk=1,WarpStart=-1,Bar="No_Bar"
     # For the width we take 15% of the full circle but scaled to the total galaxy size a good description would be swell.
     width=0.15*2.*np.pi*Radii
     if WarpStart < 10.:
-        width= width*10./WarpStart    
+        width= width*10./WarpStart
     ndisk=int(Template["NDISKS"].split('=',1)[1])
     ndisk+=1
     last_add = copy_disk(disk,ndisk)
     Template["SBR_{:d}".format(ndisk)] = "SBR_{:d} = 0.".format(ndisk)
     # To simulate strems towrds the arms we spin this up by 10 km/s
-    Template["VROT_{:d}".format(ndisk)] = "VROT_{:d} = ".format(ndisk)+" ".join(str(e+20.) for e in velocity) 
+    Template["VROT_{:d}".format(ndisk)] = "VROT_{:d} = ".format(ndisk)+" ".join(str(e+20.) for e in velocity)
     phaseshift=360./num_arms
     #we offset the phase by 37 degrees
     for i in range(num_arms):
@@ -752,7 +752,7 @@ def create_arms(velocity,Radii,disk_brightness, disk=1,WarpStart=-1,Bar="No_Bar"
 def create_bar(velocity,Radii,disk_brightness,Template, disk=1,WarpStart=-1):
     if WarpStart == -1: WarpStart = Radii[-1]
     max_rad = Radii[-1]
-    bar_width = 1+0.05*WarpStart # kpc + 5% of the total optical disk    
+    bar_width = 1+0.05*WarpStart # kpc + 5% of the total optical disk
     max_vrot=np.max(velocity)
     #The pattern speed at a given radius is vrot/radii
     V_Rot = interpolate.interpolate.interp1d(Radii,velocity,fill_value="extrapolate")
@@ -795,19 +795,19 @@ def create_bar(velocity,Radii,disk_brightness,Template, disk=1,WarpStart=-1):
     last_add = copy_disk(disk,ndisk)
     #We offset by 37 deg.
     Template.insert("VSYS_{:d}".format(ndisk), "AZ1P_{:d}".format(ndisk), "AZ1P_{:d} = 37.".format(ndisk))
-    Template.insert("AZ1P_{:d}".format(ndisk), "AZ1W_{:d}".format(ndisk), "AZ1W_{:d} = ".format(ndisk)+" ".join(str(e) for e in width))   
+    Template.insert("AZ1P_{:d}".format(ndisk), "AZ1W_{:d}".format(ndisk), "AZ1W_{:d} = ".format(ndisk)+" ".join(str(e) for e in width))
     Template.insert("AZ1W_{:d}".format(ndisk), "AZ2P_{:d}".format(ndisk), "AZ2P_{:d} = 217.".format(ndisk))
     Template.insert("AZ2P_{:d}".format(ndisk), "AZ2W_{:d}".format(ndisk), "AZ2W_{:d} = ".format(ndisk)+" ".join(str(e) for e in width))
     # And we add streaming motions to the bar km/s
     Template.insert("VROT_{:d}".format(ndisk), "VRAD_{:d}".format(ndisk), "VRAD_{:d} = ".format(ndisk)+" ".join(str(e) for e in vrad_bar))
     Template["SBR_{:d}".format(ndisk)]="SBR_{:d} =".format(ndisk)+" ".join(str(e) for e in brightness)
     return ILR
-  
+
 # afunction for creating inhomogeneities acros the disk intrinsicially
 def create_inhomogeneity(mass,SNR,disks=1.):
     if len(disks) == 0:
         disks=[disks]
-  
+
     for i in range(len(disks)):
         ndisk=int(Template["NDISKS"].split('=',1)[1])
         ndisk+=1
@@ -820,7 +820,7 @@ def create_inhomogeneity(mass,SNR,disks=1.):
         newprof=np.sin(rad)*sbr*np.log10(mass)/11.*8./SNR*0.9
         print("We are modifying by factor {} for mass {} and SNR {}".format(np.log10(mass)/11.*8./SNR, np.log10(mass),SNR))
         nextprof=-1*newprof
-       
+
         req_flux=abs(np.sum(newprof*np.pi*rad*2)/200.)
         if req_flux == 0:
             req_flux = 1e-5
@@ -829,11 +829,11 @@ def create_inhomogeneity(mass,SNR,disks=1.):
         ndisk=ndisk+1
         last_add = copy_disk(disks[i],ndisk)
         Template["SBR_{:d}".format(ndisk)]="SBR_{:d} = ".format(ndisk)+" ".join(str(e) for e in nextprof)
-        Template["CFLUX_{:d}".format(ndisk)]="CFLUX_{:d} = {}" .format(ndisk,req_flux)                                                                             
+        Template["CFLUX_{:d}".format(ndisk)]="CFLUX_{:d} = {}" .format(ndisk,req_flux)
     print("We will create inhomogeneities on top of disk(s) ="+" ".join(str(e) for e in [disks]))
-    
 
-# This is a routine to corrupt the cube with some standard gaussian noise    
+
+# This is a routine to corrupt the cube with some standard gaussian noise
 def corrupt_gauss(work_dir,beam,SNR):
     # First open the model cube
     dummy = fits.open(work_dir+'/unconvolved_cube.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
@@ -855,7 +855,7 @@ def corrupt_gauss(work_dir,beam,SNR):
     sigma=[(beam[0]/abs(dummy[0].header['CDELT1']*3600.))/(2*np.sqrt(2*np.log(2))),(beam[1]/abs(dummy[0].header['CDELT2']*3600.))/(2*np.sqrt(2*np.log(2)))]
     #
     reals = dummy[0].data[dummy[0].data > 1e-5]
-    # Remember that python is a piece of shiit so z,y,x 
+    # Remember that python is a piece of shiit so z,y,x
     cutoff = (np.mean(reals)/2.)
     # correct the cutoff for the smoothing
     cutoff=cutoff/(0.5*(2*np.sqrt(np.pi)*sigma[0]+sigma[1]*np.sqrt(np.pi)*2.))
@@ -877,7 +877,7 @@ def corrupt_gauss(work_dir,beam,SNR):
     fits.writeto(work_dir+'/mask.fits',smooth,dummy[0].header, overwrite = True)
     # Calculate the area of the beam in arcsec
     beamarea=(np.pi*abs(beam[0]*beam[1]))/(4.*np.log(2.))
-    # Convert arcsec to pixels            
+    # Convert arcsec to pixels
     pixperbeam=beamarea/(abs(dummy[0].header['CDELT1']*3600.)*abs(dummy[0].header['CDELT2']*3600.))
     # Make an the size of the model with random values distributed as the noise
     # The noise we want is the mean signal divided by the signal to noise ratio
@@ -886,20 +886,20 @@ def corrupt_gauss(work_dir,beam,SNR):
     noisescl=(mean_signal/SNR*sigma[0]*2*np.sqrt(np.pi))
     print("This our mean signal {} and noise {} in Jy/pixel. ".format(mean_signal,noisescl))
     cuberms = np.random.normal(scale=noisescl,size=np.shape(dummy[0].data))
-    # combine the two cubes    
+    # combine the two cubes
     noisedcube=dummy[0].data+cuberms
     # Smooth to the requred resolution
     print("The beam in pixels {} x {}".format(sigma[0]*(2.*np.sqrt(2*np.log(2))),sigma[1]*(2.*np.sqrt(2*np.log(2)))))
     final = ndimage.gaussian_filter(noisedcube, sigma=(0,sigma[1], sigma[0]), order=0)
     # to preserve brightness temperature this should be multiplied with the increase in beam area
-    # which is the same as the amount of pixels in the beam as we go from 1 pixel area to an area the size of the beam which is assuming two gaussians so we need to correct with a difference factor of the area of the. Last factor is to correct for the fact that the unconvolved cube hassquare pixels not a circular beam. 
+    # which is the same as the amount of pixels in the beam as we go from 1 pixel area to an area the size of the beam which is assuming two gaussians so we need to correct with a difference factor of the area of the. Last factor is to correct for the fact that the unconvolved cube hassquare pixels not a circular beam.
     final=final*pixperbeam
     # And write this final cube to the directory
     dummy[0].header['BMAJ']=beam[0]/3600.
     dummy[0].header['BMIN']=beam[1]/3600.
     fits.writeto(work_dir+'/Convolved_Cube.fits',final,dummy[0].header, overwrite = True)
-  
-# this is a routine to use the casa task simobserve to corrupt the observations.    
+
+# this is a routine to use the casa task simobserve to corrupt the observations.
 def corrupt_casa(work_dir,beam,Template_Casa,SNR):
     #!!!!!!!!!This needs better testing
     #casa takes issue with the tirific header.
@@ -922,7 +922,7 @@ def corrupt_casa(work_dir,beam,Template_Casa,SNR):
     sigma=[(beam[0]/abs(dummy[0].header['CDELT1']*3600.))/(2*np.sqrt(2*np.log(2))),(beam[1]/abs(dummy[0].header['CDELT2']*3600.))/(2*np.sqrt(2*np.log(2)))]
     #
     reals = dummy[0].data[dummy[0].data > 1e-5]
-    # Remember that python is a piece of shiit so z,y,x 
+    # Remember that python is a piece of shiit so z,y,x
     cutoff = (np.mean(reals)/2.)
     # correct the cutoff for the smoothing
     cutoff=cutoff/(0.5*(2*np.sqrt(np.pi)*sigma[0]+sigma[1]*np.sqrt(np.pi)*2.))
@@ -935,17 +935,17 @@ def corrupt_casa(work_dir,beam,Template_Casa,SNR):
     smooth[smooth < cutoff]=0
     smooth[smooth > cutoff]=1
     # Write mask
-    fits.writeto(work_dir+'/mask.fits',smooth,dummy[0].header, overwrite = True)            
-    
+    fits.writeto(work_dir+'/mask.fits',smooth,dummy[0].header, overwrite = True)
+
     # In order to corrupt we need to know the average signal.
     # we do this taking the mean in each chaneel above a tenth of the max and then take the mean of that profile
     # This is the noise in the final cube
     noise=mean_signal/SNR
     #*(abs(dummy[0].header['CDELT1']*3600.)*abs(dummy[0].header['CDELT2']*3600.))/1.1330900354567984
-    
-    
+
+
     # We need to know the location in the sky dec > 30 we use WSRT 30 > dec > -30 --> VLA -30 > dec  --> Atca
-    
+
     # Full synthesis 12 hrs leads to noise levels 12: 0.000701111 ,24:  0.00065377   ,48:0.000499886 ,96:0.000436001 ,300:0.000213708 ,600:0.000178363   ,900:0.000149931 1200:0.000119707 2400:9.85791e-05 , 4800: 8.18873e-05 # Based on a simulation with no taper
     noisin = [0.000701111,0.00065377 ,0.000499886,0.000436001,0.000213708,0.000178363,0.000149931,0.000119707 ,9.85791e-05 , 8.18873e-05]
     timein = [12.,24,48,96,300,600,900,1200,2400,4800]
@@ -954,12 +954,12 @@ def corrupt_casa(work_dir,beam,Template_Casa,SNR):
     if totaltime < 12:
         totaltime = 12.
     RA,DEC =cf.convertRADEC(dummy[0].header['CRVAL1'],dummy[0].header['CRVAL2'])
-    tri = open(work_dir+'/pntings.txt', 'w') 
+    tri = open(work_dir+'/pntings.txt', 'w')
     tri.writelines("#Epoch     RA          DEC      TIME(optional) \n ")
     tri.writelines("J2000     {}          {}      {} ".format(RA,DEC,str(int(12*3600.))))
-    
+
     tri.close()
-    
+
     if  dummy[0].header['CRVAL2'] > 90:
         Template_Casa['simobserve_antennalist']="antennalist = 'WSRT.cfg'  #  interferometer antenna position file"
         Template_Casa['imhead_hdvalue'] = "hdvalue = 'WSRT'"
@@ -975,19 +975,19 @@ def corrupt_casa(work_dir,beam,Template_Casa,SNR):
     #let's assure the same cube size
     # We want 2000 integrations
     Template_Casa['simobserve_integration'] = "integration    = '{:d}s'".format(int(totaltime*3600/2000.))
-    Template_Casa['simobserve_totaltime'] = "totaltime    = '{:d}'".format(int(totaltime/12.))  
+    Template_Casa['simobserve_totaltime'] = "totaltime    = '{:d}'".format(int(totaltime/12.))
     Template_Casa['tclean_cell']= "cell = ['{}arcsec','{}arcsec']".format(abs(dummy[0].header['CDELT1']*3600.),abs(dummy[0].header['CDELT2']*3600.))
     Template_Casa['tclean_imsize'] = "imsize=[{:d},{:d}]".format(int(abs(dummy[0].header['NAXIS1'])),int(abs(dummy[0].header['NAXIS2'])))
     Template_Casa['tclean_scales'] = "scales=[0,{:d},{:d}]".format(int(2.*beam[0]/abs(dummy[0].header['CDELT1']*3600.)),int(5.*beam[1]/abs(dummy[0].header['CDELT1']*3600.)))
     Template_Casa['tclean_threshold'] = "threshold = '{}Jy/beam'".format(noise/2.)
     Template_Casa['tclean_uvtaper'] = "uvtaper = ['{}arcsec','{}arcsec']".format(beam[0],beam[1])
-     
+
     # In order to create a cleaning mask we smooth to twice the beam size and cut at 1e-5 Jy/beam
-        
-    tri = open(work_dir+'/run_casa.py', 'w') 
+
+    tri = open(work_dir+'/run_casa.py', 'w')
     tri.writelines([Template_Casa[key]+"\n" for key in Template_Casa])
     tri.close()
-    
+
     os.chdir(work_dir)
     bla = subprocess.call(['casa','--nologger','--nogui','-c','run_casa.py'])
     dummy = fits.open(work_dir+'/Convolved_Cube.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
@@ -997,7 +997,7 @@ def corrupt_casa(work_dir,beam,Template_Casa,SNR):
     newdummy[:,:,:]=dummy[0].data[:,int(np.floor(dummy[0].header['CRPIX2']-newsize/2.)):int(np.floor(dummy[0].header['CRPIX2']+newsize/2.)),int(np.floor(dummy[0].header['CRPIX1']-newsize/2.)):int(np.floor(dummy[0].header['CRPIX1']+newsize/2.))]
     dummy[0].header['NAXIS1']=newsize+1
     dummy[0].header['NAXIS2']=newsize+1
-              
+
     dummy[0].header['CRPIX1']=dummy[0].header['CRPIX1']-np.floor(dummy[0].header['CRPIX1']-newsize/2.)
     dummy[0].header['CRPIX2']=dummy[0].header['CRPIX2']-np.floor(dummy[0].header['CRPIX2']-newsize/2.)
     fits.writeto(work_dir+'/Convolved_Cube.fits',newdummy,dummy[0].header, overwrite = True)
@@ -1009,14 +1009,14 @@ def corrupt_casa(work_dir,beam,Template_Casa,SNR):
     newdummy[:,:,:]=dummy[0].data[:,int(np.floor(dummy[0].header['CRPIX2']-newsize/2.)):int(np.floor(dummy[0].header['CRPIX2']+newsize/2.)),int(np.floor(dummy[0].header['CRPIX1']-newsize/2.)):int(np.floor(dummy[0].header['CRPIX1']+newsize/2.))]
     dummy[0].header['NAXIS1']=newsize+1
     dummy[0].header['NAXIS2']=newsize+1
-              
+
     dummy[0].header['CRPIX1']=dummy[0].header['CRPIX1']-np.floor(dummy[0].header['CRPIX1']-newsize/2.)
     dummy[0].header['CRPIX2']=dummy[0].header['CRPIX2']-np.floor(dummy[0].header['CRPIX2']-newsize/2.)
     fits.writeto(work_dir+'/mask.fits',newdummy,dummy[0].header, overwrite = True)
 
 
 
-#------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Start of the main program!!!!!!!!!!!!!!!!!!!!!----------------------              
+#------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Start of the main program!!!!!!!!!!!!!!!!!!!!!----------------------
 def AGC(work_dir='',running_default = 'Not_Set'):
 
     Mass = []
@@ -1579,6 +1579,7 @@ def AGC(work_dir='',running_default = 'Not_Set'):
                 tri = open(work_dir+'/'+name+'/tirific.def', 'w')
                 tri.writelines([Template[key]+"\n" for key in Template])
                 tri.close()
+
                 # So we need to  modify the input file to the correct coordinates else we'll get an empty cube
                 dummy = fits.open(work_dir+'/Input.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
                 #first we do a check wether the BMAJ
@@ -1619,8 +1620,8 @@ def AGC(work_dir='',running_default = 'Not_Set'):
                 dummy.close()
                 os.chdir(work_dir+'/'+name)
                 os.system("tirific deffile=tirific.def")
-
                 plt.savefig('Overview_Input.png', bbox_inches='tight')
+
                 plt.close()
                 os.chdir(work_dir)
                 Template.clear()
@@ -1718,7 +1719,8 @@ def AGC(work_dir='',running_default = 'Not_Set'):
                 overview.close()
 
                 # and cleanup
-                os.system("rm -f "+work_dir+name+'/tirific.def')
+                os.system("rm -f "+work_dir+name+'/ModelInput.def')
+                os.system("mv "+work_dir+name+'/tirific.def '+work_dir+name+'/ModelInput.def')
 
     print("We created {} models".format(number_models))
     plt.figure(59)

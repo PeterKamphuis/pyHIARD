@@ -112,7 +112,7 @@ BIGTILT=
 INCLINO=
 IN_REFINE= 5
 
-GR_DEVICE= Model_Input.ps/vcps
+GR_DEVICE= Model_Input.pdf/pdf
 GR_MR= 3
 GR_ML= 4.5
 GR_TXHT= 1.0

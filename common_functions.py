@@ -32,7 +32,8 @@ class Proper_Dictionary(OrderedDict):
             print("----!!!!!!!!We were unable to add your key!!!!!!---------")
 #Function to convert column densities
 
-def columndensity(levels,systemic = 100.,beam=[1.,1.],channel_width=1.,column= False,arcsquare=False,solar_mass_input =False):
+def columndensity(levels,systemic = 100.,beam=[1.,1.],channel_width=1.,column= False,arcsquare=False,solar_mass =False):
+    #set solar_mass to indicate the output should be M_solar/pc**2 or if column = True the input is
     f0 = 1.420405751786E9 #Hz rest freq
     c = 299792.458 # light speed in km / s
     pc = 3.086e+18 #parsec in cm
@@ -46,25 +47,28 @@ def columndensity(levels,systemic = 100.,beam=[1.,1.],channel_width=1.,column= F
         HIconv = 605.7383 * 1.823E18 * (2. *np.pi / (np.log(256.)))
         if column:
             # If the input is in solarmass we want to convert back to column densities
-            if solar_mass_input:
+            if solar_mass:
                 levels=levels*solarmass/(mHI*pc**2)
             #levels=levels/(HIconv*channel_width)
             levels = levels/(HIconv*channel_width)
         else:
+
             levels = HIconv*levels*channel_width
+            if solar_mass:
+                levels = levels/solarmass*(mHI*pc**2)
     else:
         if beam.size <2:
             beam= [beam,beam]
         b=beam[0]*beam[1]
         if column:
-            if solar_mass_input:
+            if solar_mass:
                 levels=levels*solarmass/(mHI*pc**2)
             TK = levels/(1.823e18*channel_width)
             levels = TK/(((605.7383)/(b))*(f0/f)**2)
         else:
             TK=((605.7383)/(b))*(f0/f)**2*levels
             levels = TK*(1.823e18*channel_width)
-    if ~column and solar_mass_input:
+    if ~column and solar_mass:
         levels = levels*mHI*pc**2/solarmass
     return levels
         # a Function to convert the RA and DEC into hour angle (invert = False) and vice versa (default)
