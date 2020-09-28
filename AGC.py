@@ -830,7 +830,7 @@ def create_inhomogeneity(mass,SNR,disks=1.):
         Template["CFLUX_{:d}".format(ndisk)]="CFLUX_{:d} = {}" .format(ndisk,req_flux)
         ndisk=ndisk+1
         last_add = copy_disk(disks[i],ndisk)
-        Template["SBR_{:d}".forprint(mat(ndisk)]="SBR_{:d} = ".format(ndisk)+" ".join(str(e) for e in nextprof)
+        Template["SBR_{:d}".format(ndisk)]="SBR_{:d} = ".format(ndisk)+" ".join(str(e) for e in nextprof)
         Template["CFLUX_{:d}".format(ndisk)]="CFLUX_{:d} = {}" .format(ndisk,req_flux)
     print("We will create inhomogeneities on top of disk(s) ="+" ".join(str(e) for e in [disks]))
 
