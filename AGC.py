@@ -44,8 +44,6 @@ class Base_Galaxy:
             self.Arms = "Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
-            self.RC_Radii= [0.]
-            self.RC_Vrot= [0.]
         elif num == 1:
              # options are inclination, PA, flare, warp, beams, SNR, Channelwidth, Res_Beam, Arms, Bar, Radial_Motions
             self.Inclination = 55.
@@ -63,14 +61,12 @@ class Base_Galaxy:
             # RA and DEC in degrees, Only used in casa sim
             self.Coord = [50.81166937467079,57.76644335595375]
             self.Mass = 2.5e10 #5e11 # in km/s
-            self.RC_Radii= [0.]
-            self.RC_Vrot= [0.]
         elif num == 2:
             self.Inclination = 65.
             self.Dispersion = [8., 8.]
             self.PA = 145
             self.Warp = [0.05, 0.025] # in radians.
-            self.Flare = "Flared"
+            self.Flare = "Flare"
             self.Beams= 16 #16
             self.SNR= 8.
             self.Channelwidth = 4.
@@ -80,8 +76,6 @@ class Base_Galaxy:
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
             self.Mass= 5e11
-            self.RC_Radii= [0.]
-            self.RC_Vrot= [0.]
         elif num == 3:
             self.Inclination = 48.
             self.Dispersion = [13., 7.5]
@@ -97,14 +91,12 @@ class Base_Galaxy:
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
             self.Mass= 2.5e11
-            self.RC_Radii= [0.]
-            self.RC_Vrot= [0.]
         elif num == 4:
             self.Inclination = 42.
             self.Dispersion = [15., 12.]
             self.PA = 115
             self.Warp = [0.1, 0.07] # in radians.
-            self.Flare = "Flared"
+            self.Flare = "Flare"
             self.Beams= 14
             self.SNR= 8.
             self.Channelwidth = 4.
@@ -114,11 +106,34 @@ class Base_Galaxy:
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
             self.Mass= 5e10
-            self.RC_Radii= [0.]
-            self.RC_Vrot= [0.]
-        else :
-            print("There are not {} bases".format(num))
-            sys.exit()
+        else:
+            #Self construct a base by asking
+            single = ['Inclination', 'PA', 'Beams','SNR','Channelwidth','Radial_Motions','Mass']
+            double = ['Warp','Coord','Res_Beam','Dispersion']
+            bool = ['Flare','Arms','Bar']
+            for parameter in single:
+                val = ''
+                while not isinstance(val,float):
+                    val = float(input(f"please provide value for {parameter} : "))
+                self.__dict__[parameter] = val
+            for parameter in double:
+                val = ''
+                while len(val) != 2:
+                    vals = input(f"Please provide two and only two values for {parameter}: ")
+                    tmp = re.split("\s+|\s*,\s*|\s+$",vals.strip())
+                    try:
+                        val = [float(tmp[0]),float(tmp[1])]
+                    except:
+                        val = ''
+                self.__dict__[parameter] = val
+            for parameter in bool:
+                add = cf.get_bool(f"Do you want to add {parameter}? (Yes/No, default=No): ",default=False)
+                if add:
+                    self.__dict__[parameter] = f"{parameter}"
+                else:
+                    self.__dict__[parameter] = f"No_{parameter}"
+
+
 # First we define some useful routines for converting and copying
 # A routine to copy disks
 def copy_disk(olddisk,newdisk):
@@ -472,7 +487,7 @@ def create_flare(Radii,velocity,dispersion,flare,Max_Rad,sub_ring,distance=1.):
     # Then we check wether we want a flare or not
     G2=G/(3.086e+13**2) #pc^3 M_sol^-1 s^-2
     halfint=int((len(Radii[Radii < Max_Rad])+10)/2.)
-    if flare.lower() == 'flared':
+    if flare.lower() == 'flare':
         flare =disp/((4.*np.pi*G2*Density/1000.**3)**0.5*3.086e+16) # in kpc
         flare[:halfint-10] = flare[halfint-10]
         fact=np.arange(1/21,1,1./21)
@@ -480,7 +495,7 @@ def create_flare(Radii,velocity,dispersion,flare,Max_Rad,sub_ring,distance=1.):
     elif flare.lower() == 'no_flare':
         flare = np.full(len(Radii),disp[halfint]/((4.*np.pi*G2*Density[halfint]/1000.**3)**0.5*3.086e+16))
     else:
-        print("{} is not an option for the flare. Choose Flared or No_Flare".format(flare))
+        print("{} is not an option for the flare. Choose Flare or No_Flare".format(flare))
         sys.exit()
 
     flare[0]=flare[1]
@@ -1037,10 +1052,26 @@ def AGC(work_dir='',running_default = 'Not_Set'):
 
     if not run_default:
        #sets = 5  # This is the amount of base galaxies we want, i.e. the number of rotation curves
-        sets = int(input("How many base galaxies do you want to use? (1-5, default= 5): ") or 5)
-        if sets > 5 or sets < 1:
-            print("{} is not a valid number of sets".format(sets))
-            exit()
+        print(f'''Please select the base types you would like to use''')
+        for i in range(5):
+            Galaxy = Base_Galaxy(i)
+            print(f'''{i}) Galaxy {i} has the following Base parameters to vary on.
+{'Inclination':15s} = {Galaxy.Inclination:<10.1f}, {'Dispersion':15s} = {Galaxy.Dispersion}
+{'Mass':15s} = {Galaxy.Mass:<10.2e}, {'PA':15s} = {Galaxy.PA}
+{'Flare':15s} = {Galaxy.Flare:10s}, {'Warp':15s} = {Galaxy.Warp}
+{'Beams':15s} = {Galaxy.Beams:<10.1f}, {'SNR':15s} = {Galaxy.SNR}
+{'Channelwidth':15s} = {Galaxy.Channelwidth:<10.1f}, {'Coord':15s} = {Galaxy.Coord}
+{'Arms':15s} = {Galaxy.Arms:10s}, {'Res_Beam':15s} = {Galaxy.Res_Beam}
+{'Bar':15s} = {Galaxy.Bar:10s}, {'Radial_Motions':15s} = {Galaxy.Radial_Motions}
+''')
+        vals = input(f"Or you can constuct you own by selecting 5, default = 5: ")
+        if vals == '':
+            base_types = [5]
+        else:
+            base_types = [int(x)  for x in re.split("\s+|\s*,\s*|\s+$",vals.strip()) if 0<  int(x) < 5]
+            if len(base_types) == 0:
+                base_types = [5]
+
         # do we wanr inhomogeneities
         #inhomogeneity = True
         inhomogeneity = cf.get_bool("Do you want the galaxies to have inhomogeneities? (True/False, default = True) : ")
@@ -1078,7 +1109,7 @@ def AGC(work_dir='',running_default = 'Not_Set'):
                 elif opts == 'Flare':
                     Flare = []
                     do_flare = cf.get_bool("Do you want to add a Flare when not present in the Base? (Yes/No, default = yes): ")
-                    if do_flare: Flare.append('Flared')
+                    if do_flare: Flare.append('Flare')
                     do_not_flare = cf.get_bool("Do you want to remove the Flare when  present in the Base? (Yes/No, default = yes): ")
                     if do_not_flare: Flare.append('No_Flare')
                 elif opts == 'Warp':
@@ -1145,19 +1176,17 @@ def AGC(work_dir='',running_default = 'Not_Set'):
                 else:
                     print("This is not a supported parameter")
     else:
-
-
         #work_dir='/home/peter/Database/Test/'
         while work_dir == '':
             print("There is no default")
             work_dir = input("Please provide the directory where to create the database :")
-        sets = 5
+        base_types = [0,1,2,3,4]
         inhomogeneity = True
         corruption = 'Gaussian'
         changes = ['Base','Inclination','Beams','Radial_Motions','Flare','Arms','Bar','Mass','Channelwidth','SNR','Warp','Mass','Res_Beam']
         Inclination= [15,20,30,50,70,80,88,90]
         Warp=[[0.15,0.05],[0.05,0.2]]
-        Flare=["Flared","No_Flare"] # Flared, No_Flare
+        Flare=["Flare","No_Flare"] # Flared, No_Flare
         Beams=[2,4,6,7,8,10,12] # Beam across the major axis. This also set the distance as the size in kpc will be determined by Wang 2016 from the SBR profile
         SNR=[1,3,5] # These  are average signal to noise ratios
         Channelwidth=[2.,8.]
@@ -1174,7 +1203,7 @@ def AGC(work_dir='',running_default = 'Not_Set'):
         # do we want symmetric models or not?
         symmetric = False
     # Let's give an over view of the database that will be created
-    print("We will create a database with {} basic sets in the directory {}.\n".format(sets,work_dir))
+    print("We will create a database with {} basic sets in the directory {}.\n".format(len(base_types),work_dir))
     if makenewmodels:
         print("All previous models will be removed prior to the build. \n")
     else:
@@ -1205,8 +1234,9 @@ def AGC(work_dir='',running_default = 'Not_Set'):
     if 'SNR' in changes:
         print("Varying the signal to noise ratio with: {}.\n".format(" ".join([str(e) for e in SNR])))
     if 'Warp' in changes:
-        print("Varying the theta angle of the angular momentum vector with: {}.\n".format(" ".join([str(e) for e in Warp[0][:]])))
-        print("Varying the phi angle of the angular momentum vector with: {}.\n".format(" ".join([str(e) for e in Warp[1][:]])))
+        Warp =np.array(Warp,dtype=float)
+        print("Varying the theta angle of the angular momentum vector with: {}.\n".format(" ".join([str(e) for e in Warp[:,0]])))
+        print("Varying the phi angle of the angular momentum vector with: {}.\n".format(" ".join([str(e) for e in Warp[:,1]])))
     if 'Res_Beam' in changes:
         print("Varying the beam size with: {}.\n".format(" ".join([str(e) for e in Res_Beam])))
 
@@ -1338,10 +1368,24 @@ def AGC(work_dir='',running_default = 'Not_Set'):
     # start a loop over the various base galaxies
     number_models = 0.
     set_done= [1024]
+    if 5 in base_types:
+        print(f''' Please define your personal base galaxy now. \n''')
+        User_Defined = Base_Galaxy(5)
+        print(f'''You have defined the following Base Galaxy
+{'Inclination':15s} = {User_Defined.Inclination:<10.1f}, {'Dispersion':15s} = {User_Defined.Dispersion}
+{'Mass':15s} = {User_Defined.Mass:<10.2e}, {'PA':15s} = {User_Defined.PA}
+{'Flare':15s} = {User_Defined.Flare:10s}, {'Warp':15s} = {User_Defined.Warp}
+{'Beams':15s} = {User_Defined.Beams:<10.1f}, {'SNR':15s} = {User_Defined.SNR}
+{'Channelwidth':15s} = {User_Defined.Channelwidth:<10.1f}, {'Coord':15s} = {User_Defined.Coord}
+{'Arms':15s} = {User_Defined.Arms:10s}, {'Res_Beam':15s} = {User_Defined.Res_Beam}
+{'Bar':15s} = {User_Defined.Bar:10s}, {'Radial_Motions':15s} = {User_Defined.Radial_Motions}
+''')
 
+    print(len(base_types))
 
-    colors=iter(plt.cm.rainbow(np.linspace(0,1,sets-1+len(Mass))))
-    for base in range(sets):
+    vals = input(f"please provide the input parameters to vary {len(base_types)+len(Mass)} over: ")
+    colors=iter(plt.cm.rainbow(np.linspace(0,1,len(base_types)+len(Mass))))
+    for base in range(len(base_types)):
         # From here we go into a loop to adjust variables over the bases
         for ix in range(len(changes)):
             if changes[ix] == 'Inclination':numloops=len(Inclination)
@@ -1361,12 +1405,14 @@ def AGC(work_dir='',running_default = 'Not_Set'):
                 print("This is not a supported parameter")
                 exit()
             for jx in range (numloops):
-                Current_Galaxy = Base_Galaxy(base)
-
+                if base_types[base] < 5:
+                    Current_Galaxy = Base_Galaxy(base_types[base])
+                else:
+                    Current_Galaxy = copy.deepcopy(User_Defined)
                 if changes[ix] == 'Inclination':Current_Galaxy.Inclination = Inclination[jx]
                 elif changes[ix] == 'PA': Current_Galaxy.PA = PA[jx]
                 elif changes[ix] == 'Flare': Current_Galaxy.Flare = Flare[jx]
-                elif changes[ix] == 'Warp': Current_Galaxy.Warp = [Warp[jx][0],Warp[jx][1]]
+                elif changes[ix] == 'Warp': Current_Galaxy.Warp = [Warp[jx,0],Warp[jx,1]]
                 elif changes[ix] == 'Beams':Current_Galaxy.Beams = Beams[jx]
                 elif changes[ix] == 'SNR': Current_Galaxy.SNR = SNR[jx]
                 elif changes[ix] == 'Channelwidth': Current_Galaxy.Channelwidth = Channelwidth[jx]
@@ -1375,7 +1421,7 @@ def AGC(work_dir='',running_default = 'Not_Set'):
                 elif changes[ix] == 'Bar': Current_Galaxy.Bar = Bar[jx]
                 elif changes[ix] == 'Radial_Motions': Current_Galaxy.Radial_Motions = Radial_Motions[jx]
                 elif changes[ix] == 'Mass': Current_Galaxy.Mass = Mass[jx]
-                elif changes[ix] == 'Base': Current_Galaxy = Base_Galaxy(base)
+                elif changes[ix] == 'Base': pass
                 else:print("This is not a supported parameter")
                 Current_Galaxy.Res_Beam[0:1] = np.sort(Current_Galaxy.Res_Beam[0:1])
                 if len(Current_Galaxy.Res_Beam) == 2: Current_Galaxy.Res_Beam.append(0)
