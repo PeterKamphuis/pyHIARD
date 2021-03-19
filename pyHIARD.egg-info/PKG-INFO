@@ -1,0 +1,25 @@
+Metadata-Version: 2.1
+Name: pyHIARD
+Version: 0.0.0
+Summary: Development Status :: 1 - Beta
+Home-page: https://github.com/PeterKamphuis/pyROTMOD
+Author: P. Kamphuis
+Author-email: peterkamphuisastronomy@gmail.com
+License: ['GNU GPL v3']
+Description: # HI_TRM_Test_Database
+        A project to create a comprehensive database of Artificial and real galaxies that can be used for testing the various tilted ring fitting software that is available.
+        
+        
+        Requires working versions of tirific and sofia2
+        
+        Please see the wiki pages for discussion and set up.
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python 3
+Classifier: Topic :: Scientific/Engineering :: Astronomy
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
