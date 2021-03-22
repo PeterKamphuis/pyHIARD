@@ -1,8 +1,8 @@
-These galaxies are publicly available and distribution with the AGC is in agreement with the PIs of the various surveys.
-If you use these cubes for anything outside the scope of the AGC it is requested that you recognize the appropriate source as listed below.
+These galaxies are publicly available and distribution with the pyHIARD is in agreement with the PIs of the various surveys.
+If you use these cubes for anything outside the scope of the pyHIARD it is requested that you recognize the appropriate source as listed below.
 
 ---- Circinus -----
-The cube used here comes from the LVHIS Survey. If you use this cube for scientific analysis please acknowledge it by citing the LVHIS overview paper (Koribalski et al. 2018, http://adsabs.harvard.edu/doi/10.1093/mnras/sty479) - Thank you. 
+The cube used here comes from the LVHIS Survey. If you use this cube for scientific analysis please acknowledge it by citing the LVHIS overview paper (Koribalski et al. 2018, http://adsabs.harvard.edu/doi/10.1093/mnras/sty479) - Thank you.
 
 Please download the original cube from
 
