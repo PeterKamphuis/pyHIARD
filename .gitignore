@@ -58,7 +58,7 @@ Thumbs.db
 ##################
 .eggs/
 .idea/
-cubical.egg-info/
+pyHIARD.egg-info/
 
 # Backup files #
 ################
