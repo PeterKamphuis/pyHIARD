@@ -2,6 +2,5 @@
 # -*- coding: utf-8 -*-
 
 import pyHIARD.main as main
-import sys
 
-main.main(sys.argv[1:])
+main.main()

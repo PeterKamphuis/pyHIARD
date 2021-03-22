@@ -43,28 +43,29 @@ def main():
     # If we are making new models we want to ensure this is a new file
     cat = open(Catalogue, 'w')
     cat.write('number|Distance|Directoryname|Cubename\n')
-    cat_AGC = open(work_dir_in+'/Output_AGC_Summary.txt','r')
-    AGCline = cat_AGC.readlines()
-    for line in AGCline:
-        tmp = line.split('|')
-        try:
-            lastnum=int(tmp[0])
-        except:
-            continue
-        cat.write(line)
-    lastnum += 1
-    cat_AGC.close()
-    cat_ROC = open(work_dir_in+'/Output_ROC_Summary.txt','r')
-    ROCline = cat_ROC.readlines()
-    for line in ROCline:
-        tmp = line.split('|')
-        try:
-            l=int(tmp[0])
-        except:
-            continue
-        cat.write(str(int(lastnum+int(tmp[0])))+'|'+tmp[1]+'|'+tmp[2]+'|'+tmp[3])
-    cat_ROC.close()
+    if run_AGC:
+        cat_AGC = open(work_dir_in+'/Output_AGC_Summary.txt','r')
+        AGCline = cat_AGC.readlines()
+        for line in AGCline:
+            tmp = line.split('|')
+            try:
+                lastnum=int(tmp[0])
+            except:
+                continue
+            cat.write(line)
+        lastnum += 1
+        cat_AGC.close()
+    else:
+        lastnum = 0.
+    if run_ROC:
+        cat_ROC = open(work_dir_in+'/Output_ROC_Summary.txt','r')
+        ROCline = cat_ROC.readlines()
+        for line in ROCline:
+            tmp = line.split('|')
+            try:
+                l=int(tmp[0])
+            except:
+                continue
+            cat.write(str(int(lastnum+int(tmp[0])))+'|'+tmp[1]+'|'+tmp[2]+'|'+tmp[3])
+        cat_ROC.close()
     cat.close()
-
-    cat.close()
-main()
