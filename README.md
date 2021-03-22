@@ -1,5 +1,5 @@
-# HI_TRM_Test_Database
-A project to create a comprehensive database of Artificial and real galaxies that can be used for testing the various tilted ring fitting software that is available.
+# pyHIARD
+A project to create a comprehensive database of Artificial and real galaxies that can be used for testing the various tilted ring fitting software that is available. 
 
 
 Requires working versions of tirific,casa and sofia2 installed as sofia2 for full functionality
@@ -31,6 +31,5 @@ run pyHIARD by typing
 pyHIARD
 
 answer the questions about what you want to create.
-
 
 Note: Degrading large real galaxies to very small ones takes some time due to the convolution and regridding of the cubes. 
