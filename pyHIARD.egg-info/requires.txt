@@ -1,6 +1,0 @@
-astropy
-future-fstrings
-importlib_resources>=3.3.0
-matplotlib
-numpy>=1.14
-scipy
