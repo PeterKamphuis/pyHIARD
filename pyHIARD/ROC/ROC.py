@@ -2,7 +2,7 @@
 #This program is a python script to create a data base of real observations at different resolutions.
 # It take 6 publicly available well resolved galaxy data cubes and smooths them to 3,4,5,6,7,8,10,12,16 beams across the major axis based on the extend of the best fit model.
 # The galaxies used are
-
+import importlib
 import numpy as np
 import sys
 import copy
@@ -65,179 +65,30 @@ def Regrid_Array(Array_In, Out_Shape):
 
 
 
-def ROC(work_dir='', running_default = 'Not_Set'):
+def ROC(cfg):
     #First ask for the directory to work in
-    if work_dir == '':
-        work_dir = input("Please provide the directory where to create the database :")
-
-    while not os.path.isdir(work_dir):
-        print("That is not a valid directory please try again :")
-        work_dir = input("Please provide the directory where to create the database :")
-
-    # Then do we want to set all values indivdually or not
-    if work_dir[-1] != '/':
-        work_dir = work_dir+'/'
-    if running_default == 'Not_Set':
-        run_default = cf.get_bool("Do you want want to create the default Real data base? (Yes/No, default = Yes ) : ")
-    else:
-        run_default = bool(running_default)
-
-    if not run_default:
-       #sets = 5  # This is the amount of base galaxies we want, i.e. the number of rotation curves
-        sets = str(input("Do you want to shift inclined galaxies (IG), edge-on galaxies (EO) or both (Both) (Default = Both): ") or 'Both')
-        if sets.lower() == 'ig' or sets.lower() == 'eo' or sets.lower() == 'both':
-            print('We will use {} as template.'.format(sets))
-        else:
-            print("{} is not a valid set".format(sets))
-            exit()
-        # do we wanr inhomogeneities
-        makenewmodels = cf.get_bool("Do you want to erase all existing models in the working directory? (Yes/No, default=No): ",default=False)
 
 
-        changes_poss = ['Beams','SNR']
-        changes = []
-        for opts in changes_poss:
-            inc_current_opt = cf.get_bool("Do you want to include a variation in {} (Yes/No, default = No): ".format(opts),default=False)
-            if inc_current_opt:
-                changes.append(opts)
-                if opts == 'Inclination':
-                    vals = input("please provide the input parameters to vary {} over. : ".format(opts))
-                    Inclination = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                elif opts == 'PA':
-                    vals = input("please provide the input parameters to vary {} over. : ".format(opts))
-                    PA = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                elif opts == 'Flare':
-                    Flare = []
-                    do_flare = cf.get_bool("Do you want to add a Flare when not present in the Base? (Yes/No, default = yes): ")
-                    if do_flare: Flare.append('Flared')
-                    do_not_flare = cf.get_bool("Do you want to remove the Flare when  present in the Base? (Yes/No, default = yes): ")
-                    if do_not_flare: Flare.append('No_Flare')
-                elif opts == 'Warp':
-                    Warp = []
-                    vals = input("Please provide the variation in theta and phi: ")
-                    initial = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                    while len(initial) != 2:
-                        vals = input("Please provide two and only two values: ")
-                        initial = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                    Warp.append([initial[0],initial[1]])
-                    another = cf.get_bool("Do you want to add another set of variation? (Yes/No, default=No): ",default=False)
-                    while another:
-                        vals = input("Please provide the variation in theta and phi : ")
-                        initial = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                        while len(initial) != 2:
-                             vals = input("Please provide two and only two values: ")
-                             initial = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                        Warp.append([initial[0],initial[1]])
-                        another = cf.get_bool("Do you want to add another set of variation? (Yes/No, default=No): ",default=False)
-                elif opts == 'Beams':
-                    vals = input("please provide the input parameters to vary {} over. : ".format(opts))
-                    Beams = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                elif opts == 'SNR':
-                    vals = input("please provide the input parameters to vary {} over. : ".format(opts))
-                    SNR = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                elif opts == 'Channelwidth':
-                    vals = input("please provide the input parameters to vary {} over. : ".format(opts))
-                    Channelwidth = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                elif opts == 'Res_Beam':
-                    Res_Beam = []
-                    vals = input("Please provide the major and minor beam axis: ")
-                    initial = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                    while len(initial) != 2:
-                             vals = input("Please provide two and only two values: ")
-                             initial = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                    Res_Beam.append([initial[0],initial[1]])
-                    another = cf.get_bool("Do you want to add another set of variation? (Yes/No, default=No): ",default=False)
-                    while another:
-                        vals = input("Please provide tthe major and minor beam axis: ")
-                        initial = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                        while len(initial) != 2:
-                             vals = input("Please provide two and only two values: ")
-                             initial = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                        Res_Beam.append([initial[0],initial[1]])
-                        another = cf.get_bool("Do you want to add another set of variation? (Yes/No, default=No): ",default=False)
-                elif opts == 'Arms':
-                    Arms = []
-                    do_flare = cf.get_bool("Do you want to add Arms when not present in the Base? (Yes/No, default = yes): ")
-                    if do_flare: Arms.append('Arms')
-                    do_not_flare = cf.get_bool("Do you want to remove the Arms when  present in the Base? (Yes/No, default = yes): ")
-                    if do_not_flare: Arms.append('No_Arms')
-                elif opts == 'Bar':
-                    Bar = []
-                    do_flare = cf.get_bool("Do you want to add a Bar when not present in the Base? (Yes/No, default = yes):")
-                    if do_flare: Bar.append('Bar')
-                    do_not_flare = cf.get_bool("Do you want to remove the Bar when  present in the Base? (Yes/No, default = yes):")
-                    if do_not_flare: Bar.append('No_Bar')
-                elif opts == 'Radial_Motions':
-                    vals = input("please provide the input parameters to vary {} over: ".format(opts))
-                    Radial_Motions = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                elif opts == 'Mass':
-                    vals = input("please provide the input parameters to vary {} over: ".format(opts))
-                    Mass = re.split("\s+|\s*,\s*|\s+$",vals.strip())
-                else:
-                    print("This is not a supported parameter")
-    else:
-        while work_dir == '':
-            print("There is no default")
-            work_dir = input("Please provide the directory where to create the database :")
-        sets = 'Both'
-        changes = ['Beams','SNR']
-        Beams=[2,4,6,8,-1] # Beam across the major axis. This also set the distance as the size in kpc will be determined by Wang 2016 from the SBR profile
-        SNR=[1,3] # These  are average signal to noise ratios
-        #Parameter to force a new set of models being made in this directory
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # please note that if set to true at the start of the script everything in work_dir wil be deleted
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        makenewmodels = True
+
     # Let's give an over view of the database that will be created
-    print("We will create a database with {} basic sets in the directory {}.\n".format(sets,work_dir))
-    if makenewmodels:
-        print("All previous models will be removed prior to the build. \n")
-        print("This means the directory {} will be wiped of previously created content.".format(work_dir))
-        print("The command {} will be run.".format('rm -R '+work_dir+'/NGC_*Beams*SNR '+work_dir+'/UGC_*Beams*SNR '+work_dir+'/M_83_*Beams*SNR '+work_dir+'/Circinus_*Beams*SNR '))
-        makenewmodels = cf.get_bool("Are you sure you want to do this? (Yes/No, default=No): ",default=False)
-    else:
-        print("We will retain previously build models. \n")
+    print(f"We will create a database with the galaxies {','.join([x for x in cfg.roc.base_galaxies])} basic sets in the directory {cfg.general.main_directory}.\n")
     print("We will vary the following parameters")
-    if 'Inclination' in changes:
-        print("We vary the inclination with the following values: {}.\n".format(" ".join([str(e) for e in Inclination])))
-    if 'PA' in changes:
-        print("We vary the PA with the following values: {}.\n".format(" ".join([str(e) for e in PA])))
-    if 'Beams' in changes:
-        print("We create the model with {} beams across the major axis.\n".format(", ".join([str(e) for e in Beams])))
-    if 'Radial_Motions' in changes:
-        print("Inject radial motions with speeds of {} km/s.\n".format(" ".join([str(e) for e in Radial_Motions])))
-    if 'Flare' in changes:
-        print("Varying the scale height with: {}.\n".format(" ".join([str(e) for e in Flare])))
-    if 'Arms' in changes:
-        print("Varying the arms with: {}.\n".format(" ".join([str(e) for e in Arms])))
-    if 'Bar' in changes:
-        print("Varying the bar with: {}.\n".format(" ".join([str(e) for e in Bar])))
-    if 'Mass' in changes:
-        print("We add the following masses to each base set: {}.\n".format(" ".join(["{:10.2e}".format(float(e)) for e in Mass])))
-    if 'Channelwidth' in changes:
-        print("Varying the channel width with: {} km/s.\n".format(" ".join([str(e) for e in Channelwidth])))
-    if 'SNR' in changes:
-        print("Varying the signal to noise ratio with: {}.\n".format(" ".join([str(e) for e in SNR])))
-    if 'Warp' in changes:
-        print("Varying the theta angle of the angular momentum vector with: {}.\n".format(" ".join([str(e) for e in Warp[0][:]])))
-        print("Varying the phi angle of the angular momentum vector with: {}.\n".format(" ".join([str(e) for e in Warp[1][:]])))
-    if 'Res_Beam' in changes:
-        print("Varying the beam size with: {}.\n".format(" ".join([str(e) for e in Res_Beam])))
 
-    with import_res.open_text(cubes,'Data_Cubes_Info.txt') as tmp:
-        unarranged = tmp.readlines()
-    with open(work_dir+'README_Cube_Usage_Acknowledgements.txt','w') as ack:
-        for tmp in unarranged:
-            ack.write(tmp)
+    if 'Beams' in cfg.roc.variables_to_vary:
+        print("We create the model with {} beams across the major axis.\n".format(", ".join([str(e) for e in cfg.roc.beams])))
+    if 'SNR' in cfg.roc.variables_to_vary:
+        print("Varying the signal to noise ratio with: {}.\n".format(" ".join([str(e) for e in cfg.roc.snr])))
+
     Clean_Cube = True
     # If we make new models delete everything in the directory
-    if makenewmodels:
-        os.system('rm -R '+work_dir+'/NGC_*Beams*SNR '+work_dir+'/UGC_*Beams*SNR '+work_dir+'/M_83_*Beams*SNR '+work_dir+'/Circinus_*Beams*SNR ')
-    Catalogue=work_dir+'/Output_ROC_Summary.txt'
+    if cfg.roc.delete_existing:
+        to_delete  =f'''rm -R {' '.join([f"{cfg.general.main_directory}{x}_*Beams_*SNR" for x in cfg.roc.base_galaxies])}'''
+        os.system(to_delete)
+    Catalogue=f'{cfg.general.main_directory}Output_ROC_Summary.txt'
     # If we are making new models we want to ensure this is a new file
-    if makenewmodels:
+    if cfg.roc.delete_existing:
        cat = open(Catalogue, 'w')
-       cat.write('number|Distance|Directoryname|Cubename\n')
+       cat.write('ID|Distance|Directoryname|Cubename\n')
        cat.close()
     #Input Galaxy names   DHI M 83, Circinus, UGC 7774, UGC 1281 from Wang 29016 Vizier http://vizier.u-strasbg.fr/viz-bin/VizieR?-source=J/MNRAS/460/2143
     #                     DHI NGC 3198 from Gentile https://arxiv.org/pdf/1304.4232.pdf
@@ -245,47 +96,31 @@ def ROC(work_dir='', running_default = 'Not_Set'):
     #                         NGC 5023 from Kamphuis 2013 https://arxiv.org/pdf/1306.5312.pdf
     #                         NGC 5204 from Jozsa 2007 https://www.aanda.org/articles/aa/pdf/2007/24/aa6165-06.pdf
 
-    Galaxies_Inclined = {'Galaxies'      :['Circinus','M_83'  ,'NGC_2903','NGC_3198','NGC_5204'],
-                   'DHIkpc'        :[ 59.52    ,58.09   ,51.9      ,60.6      ,9.6],
-                   'DHIDistance'   :[ 4.2      , 4.9    ,8.7       ,13.8      ,4.1],
-                   'Original_Model':['RC'      ,'RC'    ,'Tir'     ,'Tir'     ,'Tir'],
-                   'RMS'           :[0.012     ,0.0025  ,0.0033    ,0.00017   ,0.00038],
-                   'MHI'           :[10**9.83  ,10**9.91, 3.9e9    ,1.08e10   ,0.54e9]
+    Galaxies_Parameters = {'Galaxies'      :['Circinus','M_83'  ,'NGC_2903','NGC_3198','NGC_5204','NGC_5023','UGC_7774','UGC_1281'],
+                   'DHIkpc'        :[ 59.52    ,58.09   ,51.9      ,60.6      ,9.6,18.6,9.76,15.46],
+                   'DHIDistance'   :[ 4.2      , 4.9    ,8.7       ,13.8      ,4.1,6.6,5.5,7.9],
+                   'Original_Model':['RC'      ,'RC'    ,'Tir'     ,'Tir'     ,'Tir','Tir','Tir','Tir'],
+                   'RMS'           :[0.012     ,0.0025  ,0.0033    ,0.00017   ,0.00038,0.0002, 0.00021 ,   0.00043],
+                   'MHI'           :[10**9.83  ,10**9.91, 3.9e9    ,1.08e10   ,0.54e9,6.1e8,10**8.51,10**8.57]
                    }
-
-    Galaxies_Edge_On = {'Galaxies'      :['NGC_5023','UGC_7774','UGC_1281'],
-                        'DHIkpc'        :[18.6,9.76,15.46],
-                        'DHIDistance'   :[6.6,5.5,7.9],
-                        'Original_Model':['Tir','Tir','Tir'],
-                        'RMS'           :[0.0002, 0.00021 ,   0.00043],
-                        'MHI'           :[6.1e8,10**8.51,10**8.57]
-                        }
-    if sets.lower() == 'ig':
-        Galaxies_In =Galaxies_Inclined
-    elif sets.lower() == 'eo':
-        Galaxies_In =Galaxies_Edge_On
-    else:
-        tmp= [Galaxies_Inclined,Galaxies_Edge_On]
-        Galaxies_In ={}
-        for key in Galaxies_Inclined.keys():
-            Galaxies_In[key] = Galaxies_Inclined[key]
-            for x in Galaxies_Edge_On[key]:
-               Galaxies_In[key].append(x)
-
-
+    Galaxies_In ={}
+    for galaxy in cfg.roc.base_galaxies:
+        for key in Galaxies_Parameters:
+            if key in Galaxies_In:
+                Galaxies_In[key].append(Galaxies_Parameters[key][Galaxies_Parameters['Galaxies'].index(galaxy)])
+            else:
+                Galaxies_In[key] = [Galaxies_Parameters[key][Galaxies_Parameters['Galaxies'].index(galaxy)]]
     # The modifications requested. The original beam sizes will be maintained
 
     Modifications= {}
-    if 'Beams' in changes:
-        Modifications['Beams_Across'] = [float(x) for x in Beams]
+    if 'Beams' in cfg.roc.variables_to_vary:
+        Modifications['Beams_Across'] = [float(x) for x in cfg.roc.beams]
     else:
         Modifications['Beams_Across'] = [-1]
-    if 'SNR' in changes:
-        Modifications['SNR'] = [float(x) for x in SNR]
+    if 'SNR' in cfg.roc.variables_to_vary:
+        Modifications['SNR'] = [float(x) for x in cfg.roc.snr]
     else:
         Modifications['SNR'] = [-1]
-    print(Modifications)
-
     Template_in = cf.read_template_file('Template.def')
     H_0 = 69.6 # http://www.astro.ucla.edu/~wright/CosmoCalc.html
     c = 299792.458  # Km/s
@@ -293,24 +128,17 @@ def ROC(work_dir='', running_default = 'Not_Set'):
     for i in range(len(Galaxies_In['Galaxies'])):
         name=Galaxies_In['Galaxies'][i]
         print("Assembling Galaxy {}".format(name))
-        my_resources = import_res.files(f'pyHIARD.Resources.Cubes.{name}')
-        data = (my_resources / f'{name}.fits').read_bytes()
-        with open(f"{work_dir}/Input.fits",'w+b') as tmp:
-            tmp.write(data)
-        Template_Cube=fits.open(f"{work_dir}/Input.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
-        Template_Header = Template_Cube[0].header
 
-        # Since python and astropy are just stupid about every single f*ing thing
-        if Template_Header['NAXIS'] == 4:
-            tmp=Template_Cube[0].data[0,:,:,:]
-            Template_Header['NAXIS'] = 3
-            Template_Header.remove('NAXIS4')
-        elif Template_Header['NAXIS'] == 3:
-            tmp=Template_Cube[0].data[:,:,:]
-        Template_Cube.close()
-        Template_Cube = tmp
-        tmp =[]
-        os.system(f'rm -f {work_dir}/Input.fits')
+
+        galaxy_module = importlib.import_module(f'pyHIARD.Resources.Cubes.{name}.{name}')
+        Template_All=galaxy_module.get_data()
+
+        #Template_Cube=fits.open(f"{work_dir}/Input.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+        Template_Header = Template_All[0].header
+        Template_Cube = Template_All[0].data
+        Template_All.close()
+
+
         # We want to be sure our header is in km/s
         # And a corresponding model input  file
         try:
@@ -439,66 +267,8 @@ def ROC(work_dir='', running_default = 'Not_Set'):
         # if we want a clean set of cubes with only Gaussian noise we check for the existence of a mask and create that if not present to run on a cube with twice the beam size
 
         # if we want a cube without artifact we first smooth to twice the beamsize, Use SofIa to create a mask and cut out the emission to be replaced with gaussian noise
-        if Clean_Cube:
-            try:
-                my_resources = import_res.files(f'pyHIARD.Resources.Cubes.{name}')
-                for type in ['inner','outer']:
-                    data = (my_resources / f'{name}_mask_{type}.fits').read_bytes()
-                    with open(f"{work_dir}/tmp_mask.fits",'w+b') as tmp:
-                        tmp.write(data)
-                    if type == 'inner':
-                        Mask_Inner = fits.open(f"{work_dir}/tmp_mask.fits", uint=False,
-                                       do_not_scale_image_data=True, ignore_blank=True)
-                    else:
-                        Mask_Outer = fits.open(f"{work_dir}/tmp_mask.fits", uint=False,
-                                       do_not_scale_image_data=True, ignore_blank=True)
-                    os.system(f"rm -f {work_dir}/tmp_mask.fits")
-            except FileNotFoundError:
-                # First we smooth our template
-                # We smooth this to 1.25 the input beam
-                FWHM_conv_maj = np.sqrt((1.25 * bmaj) ** 2 - bmaj ** 2)
-                FWHM_conv_min = np.sqrt((1.25 * bmin) ** 2 - bmin ** 2)
-                # and in terms of pixels the sigmas
-                sig_maj = (FWHM_conv_maj / np.sqrt(8 * np.log(2))) / abs(Template_Header['CDELT1'] * 3600.)
-                sig_min = (FWHM_conv_min / np.sqrt(8 * np.log(2))) / abs(Template_Header['CDELT2'] * 3600.)
-                #We replace zeros with NAN
-                Template_Cube[Template_Cube == 0.] = float('NaN')
-                Tmp_Cube = scipy.ndimage.gaussian_filter(Template_Cube, sigma=(0, sig_min, sig_maj), order=0)
-                # Replace 0. with Nan
+        Mask_Inner,Mask_Outer = galaxy_module.get_masks(cfg.general.main_directory,sofia_call=cfg.general.sofia2)
 
-                #write this to the fits file
-                fits.writeto(work_dir + '/tmp.fits', Tmp_Cube, Template_Header,
-                             overwrite=True)
-                SoFiA_Template = cf.read_template_file('Sofia_Template.par')
-                SoFiA_Template['input.data'.upper()] = 'input.data = '+work_dir + '/tmp.fits'
-                SoFiA_Template['scfind.threshold'.upper()]= 'scfind.threshold	= 7'
-                SoFiA_Template['linker.minSizeZ'.upper()]=  'linker.minSizeZ = {}'.format(int(Tmp_Cube.shape[0]/2.))
-                tri = open('tmp_sof.par', 'w')
-                tri.writelines([SoFiA_Template[key] + "\n" for key in SoFiA_Template])
-                tri.close()
-                os.system('sofia2 tmp_sof.par')
-                Mask_Outer = fits.open(work_dir + '/tmp_mask.fits')
-                Mask_Outer[0].header['CUNIT3'] = 'KM/S'
-                os.system(f"rm -f {work_dir}/tmp_mask.fits")
-                #fits.writeto(work_dir + '/tmp_mask_outer.fits',cube[0].data,cube[0].header,overwrite = True)
-                #os.system('mv '+ work_dir + '/tmp_mask.fits Galaxies_In/Cubes/' + name + '/' + name + '_mask_outer.fits')
-
-                SoFiA_Template['dilation.enable'.upper()]='dilation.enable	=	false'
-                tri = open('tmp_sof.par', 'w')
-                tri.writelines([SoFiA_Template[key] + "\n" for key in SoFiA_Template])
-                tri.close()
-                os.system('sofia2 tmp_sof.par')
-                Mask_Inner = fits.open(work_dir + '/tmp_mask.fits')
-                Mask_Inner [0].header['CUNIT3'] = 'KM/S'
-                os.system(f"rm -f {work_dir}/tmp_mask.fits")
-                #fits.writeto(work_dir + '/tmp_mask_inner.fits',cube[0].data,cube[0].header,overwrite = True)
-                #os.system(
-                #    'mv ' + work_dir + '/tmp_mask.fits  Galaxies_In/Cubes/' + name + '/' + name + '_mask_inner.fits')
-                os.system('rm -f tmp_sof.par')
-                #Mask_Outer = fits.open(work_dir+'tmp_mask_outer.fits', uint=False,
-                #                       do_not_scale_image_data=True, ignore_blank=True)
-                #Mask_Inner = fits.open(work_dir+'tmp_mask_inner.fits', uint=False,
-                #                       do_not_scale_image_data=True, ignore_blank=True)
 
 
         Boundary_Mask=np.array(copy.deepcopy(Mask_Outer[0].data),dtype=float)
@@ -740,27 +510,30 @@ def ROC(work_dir='', running_default = 'Not_Set'):
                 hednew["CRPIX2"] = (Template_Header['CRPIX2']+Pix_Extend) / achieved
                 # Make a new directory
                 dirstring = "{}_{:.1f}Beams_{:.1f}SNR".format(name,nobeams,reqnoise)
-                galaxy_dir = os.path.isdir(work_dir + dirstring)
-                if not galaxy_dir:
-                    os.system("mkdir {}/{}".format(work_dir,dirstring))
+                galaxy_dir =f"{cfg.general.main_directory}{dirstring}/"
+                galaxy_dir_exists = os.path.isdir(galaxy_dir)
+                if not galaxy_dir_exists:
+                    os.system(f"mkdir {galaxy_dir}")
                 else:
                     # Do we have a cube
-                    galaxy_cube_exist = os.path.isfile(work_dir+'/'+dirstring+'/Convolved_Cube.fits')
+                    galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+
                     if galaxy_cube_exist:
                         print("This galaxy appears fully produced")
                         continue
                     else:
                         print("The directory was made but there is no full cube avalaible")
                         print("Reproducing the galaxy. Be aware of Double Table entries")
+                galaxy_module.place_disclaimer(f"{galaxy_dir}")
                 #ANd write to our directory
                 #print("Start writing")
-                fits.writeto(work_dir+ '/' + dirstring+'/Convolved_Cube.fits', regrid, hednew,
+                fits.writeto(f"{galaxy_dir}Convolved_Cube.fits", regrid, hednew,
                              overwrite=True)#ANd write to our directory
-                fits.writeto(work_dir+ '/' + dirstring+'/mask.fits', regrid_mask, hednew,
+                fits.writeto(f"{galaxy_dir}mask.fits", regrid_mask, hednew,
                              overwrite=True)
                 #print("Finished writing")
                 # Then we also want to write some info about the galaxy
-                overview = open(work_dir + '/' + dirstring + '/' + dirstring + '-Info.txt', 'w')
+                overview = open(f"{galaxy_dir}{dirstring}-Info.txt", 'w')
                 overview.write("This file contains the basic parameters of this galaxy\n")
                 overview.write("For the radial dependencies look at Overview.png or ModelInput.def\n")
                 overview.write("Inclination = {}\n".format(incli[0]))
@@ -789,7 +562,7 @@ def ROC(work_dir='', running_default = 'Not_Set'):
                 overview.write("h_z = {:.3f}-{:.3f} (kpc)".format(scaleheight[0], scaleheight[-1]))
                 overview.close()
                 # We need to make the model input
-                tri = open(work_dir +'/'+ dirstring + '/ModelInput.def', 'w')
+                tri = open(f"{galaxy_dir}ModelInput.def", 'w')
                 tri.writelines([Def_Template[key] + "\n" for key in Def_Template])
                 tri.close()
                 # And an overview plot
@@ -861,7 +634,7 @@ def ROC(work_dir='', running_default = 'Not_Set'):
                     top=False,  # ticks along the top edge are off
                     labelbottom=False)  # labels along the bottom edge are off
                 plt.ylabel('Disp. (km s$^{-1}$)', **labelfont)
-                plt.savefig(work_dir+'/'+dirstring+'/Overview_Input.png', bbox_inches='tight')
+                plt.savefig(f"{galaxy_dir}Overview_Input.png", bbox_inches='tight')
                 plt.close()
                 #print("Finisshed Plotting")
                 #And finally we need to add an entry to our catalogue
@@ -869,7 +642,7 @@ def ROC(work_dir='', running_default = 'Not_Set'):
                 cat.write('{:d}|{:.2f}|{}|Convolved_Cube\n'.format(int(number_models), Distance, dirstring))
                 cat.close()
                 # And a file with scrambled initial estimates
-                overview = open(work_dir + '/'+dirstring+ '/Initial_Estimates.txt', 'w')
+                overview = open(f"{galaxy_dir}Initial_Estimates.txt", 'w')
                 overview.write("#This file contains the initial estimates \n")
 
                 SBRprof = [sbr,sbr2]

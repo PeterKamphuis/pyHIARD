@@ -47,36 +47,19 @@ pipeline.threads           =  0
 
 # Input
 
-input.data                 =  
-input.region               =  
-input.gain                 =  
-input.noise                =  
-input.weights              =  
-input.mask                 =  
+
 input.invert               =  false
 
 
 # Flagging
 
-flag.region                =  
 flag.auto                  =  false
-flag.threshold             =  5.0
-flag.radiusSpatial         =  0
-flag.log                   =  false
+
 
 
 # Noise scaling
 
 scaleNoise.enable          =  false
-scaleNoise.mode            =  spectral
-scaleNoise.statistic       =  mad
-scaleNoise.fluxRange       =  all
-scaleNoise.windowXY        =  25
-scaleNoise.windowZ         =  15
-scaleNoise.gridXY          =  0
-scaleNoise.gridZ           =  0
-scaleNoise.interpolate     =  false
-scaleNoise.scfind          =  false
 
 
 # S+C finder
@@ -93,10 +76,6 @@ scfind.fluxRange           =  all
 # Threshold finder
 
 threshold.enable           =  false
-threshold.threshold        =  5.0
-threshold.mode             =  relative
-threshold.statistic        =  mad
-threshold.fluxRange        =  negative
 
 
 # Linker
@@ -113,32 +92,23 @@ linker.keepNegative        =  false
 # Reliability
 
 reliability.enable         =  false
-reliability.threshold      =  0.9
-reliability.scaleKernel    =  0.4
-reliability.fmin           =  15.0
-reliability.plot           =  true
-
 
 # Mask dilation
 
 dilation.enable            =  true
-dilation.iterations        =  6
+dilation.iterationsXY      =  6
+dilation.iterationsZ       =  1
 dilation.threshold         =  1e-5
 
 
 # Parameterisation
 
 parameter.enable           =  false
-parameter.wcs              =  true
-parameter.physical         =  false
-parameter.prefix           =  SoFiA
-parameter.offset           =  false
-
 
 # Output
 
-output.directory           =  
-output.filename            =  tmp 
+output.directory           =
+output.filename            =  tmp
 output.writeCatASCII       =  false
 output.writeCatXML         =  false
 output.writeCatSQL         =  false

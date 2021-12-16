@@ -11,13 +11,14 @@ requirements = [
     'numpy>=1.14',
     'scipy',
     'astropy',
+    'omegaconf',
     'matplotlib',
     'future-fstrings',
     'importlib_resources>=3.3.0',
 ]
 
 PACKAGE_NAME = 'pyHIARD'
-__version__ = '0.0.0'
+__version__ = '1.0.0'
 
 
 with open("README.md", "r") as fh:
@@ -38,7 +39,7 @@ setup(name=PACKAGE_NAME,
       include_package_data=False,
       # package_data - any binary or meta data files should go into MANIFEST.in
       scripts=["bin/" + j for j in os.listdir("bin")],
-      license=["GNU GPL v3"],
+      license="GNU GPL v3",
       classifiers=[
           "Development Status :: 5 - Production/Stable",
           "Intended Audience :: Science/Research",
