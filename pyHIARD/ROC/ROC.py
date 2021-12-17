@@ -24,7 +24,7 @@ except ImportError:
     # Try backported to PY<37 `importlib_resources`.
     import importlib_resources as import_res
 from pyHIARD.Resources import Cubes as cubes
-from pyHIARD.Resources import Known_Models as KM
+
 
 # function to properly regrid the cube after smoothing
 def Regrid_Array(Array_In, Out_Shape):
@@ -562,9 +562,9 @@ def ROC(cfg):
                 overview.write("h_z = {:.3f}-{:.3f} (kpc)".format(scaleheight[0], scaleheight[-1]))
                 overview.close()
                 # We need to make the model input
-                tri = open(f"{galaxy_dir}ModelInput.def", 'w')
-                tri.writelines([Def_Template[key] + "\n" for key in Def_Template])
-                tri.close()
+                with open(f"{galaxy_dir}ModelInput.def", 'w') as tri:
+                    tri.writelines([Def_Template[key] + "\n" for key in Def_Template])
+            
                 # And an overview plot
                 #print("Start plotting")
                 plt.figure(2, figsize=(8, 8), dpi=100, facecolor='w', edgecolor='k')

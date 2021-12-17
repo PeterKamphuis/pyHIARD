@@ -9,7 +9,6 @@ import numpy as np # Used in convertskyangle and columndensity and
 import os
 
 from pyHIARD import Templates as templates
-from pyHIARD.Resources import Known_Models as KM
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 try:
     import importlib.resources as import_res
@@ -577,7 +576,7 @@ def load_tirific(name,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR','R
                  'INCL_2','PA_2','XPOS_2','YPOS_2','VSYS_2','SDIS_2','CONDISP','CFLUX','CFLUX_2'],
                  unpack = True ):
 
-    model = __import__(f'pyHIARD.Resources.Known_Models.{name}', globals(), locals(), name,0)
+    model = __import__(f'pyHIARD.Resources.Cubes.{name}', globals(), locals(), name,0)
     with import_res.open_text(model, f'{name}.def') as tmp:
         unarranged = tmp.readlines()
 
@@ -643,7 +642,7 @@ print_base_galaxy.__doc__=f''' NAME:
 
 def read_template_RC(name,type= 'RC'):
     #temp = __import__('spam.ham', globals(), locals(), ['eggs', 'sausage'], 0)
-    model = __import__(f'pyHIARD.Resources.Known_Models.{name}', globals(), locals(), name,0)
+    model = __import__(f'pyHIARD.Resources.Cubes.{name}', globals(), locals(), name,0)
     with import_res.open_text(model, f'{name}.rotcur') as tmp:
         unarranged = tmp.readlines()
 

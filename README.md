@@ -1,5 +1,7 @@
-# pyHIARD
-The Python HI Artificial and Real Database (pyHIARD )is a project to create a comprehensive database of Artificial and real galaxies that can be used for testing the various  software that is available for fitting galaxy survey. In principle it is developed for testing Tilted Ring Fitting Software but in principle it can be used for testing any Software for which the input parameters should be known.
+#pyHIARD
+=====
+
+The Python HI Artificial and Real Database (pyHIARD ) is a project to create a comprehensive database of Artificial and real galaxies that can be used for testing the various  software that is available for fitting galaxy survey. In principle it is developed for testing Tilted Ring Fitting Software but in principle it can be used for testing any Software for which the input parameters should be known.
 
 
 pyHIARD Requires working versions of tirific, casa and sofia2  for full functionality.
@@ -16,7 +18,7 @@ Please see the read the docs pages for additional information and set up.
 
 
 Installation
-------------
+----
 
 Download the source code from the Github or simply install with pip as:
 
@@ -41,7 +43,7 @@ Once you have installed HIARD you can check that it has been installed properly 
 
 
 Running pyHIARD
------------
+----
 
 cd to the directory where you want the database to exist.
 run pyHIARD by typing:

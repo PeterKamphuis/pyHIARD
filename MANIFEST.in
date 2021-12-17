@@ -1,0 +1,27 @@
+include bin/pyHIARD
+recursive-include pyHIARD/ *.py
+recursive-include pyHIARD/AGC *.py
+recursive-include pyHIARD/ROC *.py
+recursive-include pyHIARD/Templates *.par
+recursive-include pyHIARD/Templates *.py
+recursive-include pyHIARD/Templates *.fits
+recursive-include pyHIARD/Templates *.def
+recursive-include pyHIARD/Resources/Cubes/Circinus/ *.py
+recursive-include pyHIARD/Resources/Cubes/Circinus/ *.rotcur
+recursive-include pyHIARD/Resources/Cubes/M_83/ *.py
+recursive-include pyHIARD/Resources/Cubes/M_83/ *.rotcur
+recursive-include pyHIARD/Resources/Cubes/NGC_2903/ *.py
+recursive-include pyHIARD/Resources/Cubes/NGC_2903/ *.def
+recursive-include pyHIARD/Resources/Cubes/NGC_3198/ *.py
+recursive-include pyHIARD/Resources/Cubes/NGC_3198/ *.def
+recursive-include pyHIARD/Resources/Cubes/NGC_5023/ *.py
+recursive-include pyHIARD/Resources/Cubes/NGC_5023/ *.def
+recursive-include pyHIARD/Resources/Cubes/NGC_5204/ *.py
+recursive-include pyHIARD/Resources/Cubes/NGC_5204/ *.def
+include pyHIARD/Resources/Cubes/NGC_5204/NGC_5204.fits
+recursive-include pyHIARD/Resources/Cubes/UGC_1281/ *.py
+recursive-include pyHIARD/Resources/Cubes/UGC_1281/ *.def
+include pyHIARD/Resources/Cubes/UGC_1281/UGC_1281.fits
+recursive-include pyHIARD/Resources/Cubes/UGC_7774/ *.py
+recursive-include pyHIARD/Resources/Cubes/UGC_7774/ *.def
+recursive-include pyHIARD/conf *.py

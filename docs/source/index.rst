@@ -1,15 +1,11 @@
-Welcome to pyFAT's documentation!
+Welcome to pyHIARD's documentation!
 =================================
-**pyFAT** is a python implementation of the fully automated TiRiFiC and is a python wrapper around the Tilted Ring Fitting Code (TiRiFiC, Jozsa 2007).
-**pyFAT** is a reiteration of FAT (https://github.com/PeterKamphuis/FAT) with improved handling and fitting as well as several new features.
-
+The Python HI Artificial and Real Database (**pyHIARD**) is a python code that can be used to construct artificial galaxies and modified real observations for testing HI analysis software.
 
 
 Contents
 --------
 .. toctree::
-
-
 
   Introduction, Installation & Easy use <README.rst>
   The Configuration File <configuration.rst>

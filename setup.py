@@ -36,7 +36,7 @@ setup(name=PACKAGE_NAME,
       packages=[PACKAGE_NAME],
       python_requires='>=3.6',
       install_requires=requirements,
-      include_package_data=False,
+      include_package_data=True,
       # package_data - any binary or meta data files should go into MANIFEST.in
       scripts=["bin/" + j for j in os.listdir("bin")],
       license="GNU GPL v3",
@@ -45,7 +45,7 @@ setup(name=PACKAGE_NAME,
           "Intended Audience :: Science/Research",
           "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
           "Operating System :: POSIX :: Linux",
-          "Programming Language :: Python 3",
+          "Programming Language :: Python :: 3",
           "Topic :: Scientific/Engineering :: Astronomy"
       ]
       )

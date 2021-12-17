@@ -1,6 +1,7 @@
 #!/usr/local/bin/ python3
 # This is the main program to easily create the real and false database
 
+import pyHIARD
 import pyHIARD.common_functions as cf
 import pyHIARD.AGC.AGC as AGC
 import pyHIARD.ROC.ROC as ROC
