@@ -1,4 +1,4 @@
-#pyHIARD
+pyHIARD
 =====
 
 The Python HI Artificial and Real Database (pyHIARD ) is a project to create a comprehensive database of Artificial and real galaxies that can be used for testing the various  software that is available for fitting galaxy survey. In principle it is developed for testing Tilted Ring Fitting Software but in principle it can be used for testing any Software for which the input parameters should be known.

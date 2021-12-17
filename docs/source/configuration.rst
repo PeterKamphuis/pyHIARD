@@ -1,4 +1,4 @@
-#The Configuration File
+The Configuration File
 =====
 
 Introduction
@@ -48,7 +48,7 @@ The Real Observations Catalogue (AGC) Section
 ----
 This section controls how a set of real galaxies are corrupted and shifted. The advantage here is that the input galaxies are completely realistic.
 The possible base galaxies are  M 83, Circinus, NGC 5023, NGC 2903, NGC 3198, NGC 5204, UGC 1281, UGC 7774. Note that only the galaxies NGC_5204 and UGC_1281 come with the python distribution.
-Other options are downloaded from their respective survey websites and thus require an internet connection the first time they are used. 
+Other options are downloaded from their respective survey websites and thus require an internet connection the first time they are used.
 
 The General section
 ----
