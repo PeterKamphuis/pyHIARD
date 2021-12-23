@@ -130,7 +130,7 @@ replace with:''')
 
     if cfg.roc.enable:
 
-        allowed_galaxies = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774']
+        allowed_galaxies = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774','ESO_223_G009']
         allowed_galaxies_low = [x.lower() for x in allowed_galaxies]
         for i,galaxy in enumerate(cfg.roc.base_galaxies):
             while galaxy.lower() not in allowed_galaxies_low:

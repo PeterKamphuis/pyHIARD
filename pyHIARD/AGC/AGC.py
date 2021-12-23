@@ -8,6 +8,7 @@
 import numpy as np
 import pyHIARD.common_functions as cf
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
+from pyHIARD.constants import G_agc,H_0
 import warnings
 import subprocess
 import sys
@@ -35,6 +36,45 @@ except ImportError:
 #Some errors
 class TirificRunError(Exception):
     pass
+
+def calc_vc_NFW(DM_mass,MHI,m_star, rad):
+    r200= (DM_mass*G_agc/(100.* H_0**2)*1e12)**(1./3.)
+    v200square=DM_mass*G_agc/r200
+    xr=rad/(r200/10**3)
+    c200=10**(0.905-0.101*np.log10(DM_mass/(10**12*100./H_0))) #From A. Dutton 2014
+    NFWvflat=np.sqrt(v200square*(1./xr)*((np.log(1.+c200*xr)-(c200*xr)/(1+c200*xr))/(np.log(1+c200)-c200/(1+c200))))
+    v_star=np.sqrt(m_star*G_agc/(rad*10**3))
+    v_HI=np.sqrt(MHI*1.4*G_agc/(rad*10**3))
+    return np.sqrt(NFWvflat**2+v_star**2+v_HI**2)
+calc_vc_NFW.__doc__ = f'''
+NAME:
+   calc_vc_NFW
+
+PURPOSE:
+    Calculate the total circular velocity bases on the DM mass with a NFW profile, the stellar mass and the HI mass.
+
+CATEGORY:
+   agc
+
+INPUTS:
+   DM_mass = the DM mass
+   MHI = the HI mass
+   m_star = the stellar mass
+   rad = the radius at which to calculate the circular velocity
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    The total circular velocity at the provided radius
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
+
 # First we define some useful routines for converting and copying
 # A routine to copy disks
 def copy_disk(olddisk,newdisk):
@@ -98,14 +138,12 @@ def derivative(x,func):
 
 
 # function to get the surface brightness profile based on the last element in the rotation curve
-def build_sbr_prof(Current_Galaxy):
+def build_sbr_prof(Current_Galaxy,symmetric = False):
     # First we use the mass to build a rotation curve and sbr profile
     # Avanti used 	V_Ropt = (200*(l**0.41))/(0.80 +0.49*np.log10(l) +(0.75*np.exp(-0.4*l))/(0.47 + 2.25*(l**0.4)))**0.5 (Persic & Sallucci)
     # We will not use the URC as it get's silly at high mass and remains showing flat parts at low mass
     # We will use the parameterisation of Courteau 1997
-    # G=6.674 x 10^neg20 #km^3⋅kg^neg1⋅s^neg2 pc=3.086e+13 km solarmass=1.98855e30 kg
-    # transform (pc x km^2)/(s^2 x solarmass)
-    G= 4.30058*10**-3
+
     # About 18.5% is cosmic baryon fraction from planck (Omb=0.048, OmDM = 0.2589). In a galactic halo this is roughly 70%-90% of the cosmic mean (See Crain et al. 2006, Pezzulli 2019)
     bary_frac = 0.1854
     diff=0.9
@@ -130,7 +168,7 @@ def build_sbr_prof(Current_Galaxy):
         # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
         HIrad=10**(0.506*np.log10(MHI)-3.293)/2.
         # let's calculate the final mass we obtain
-        masses = (MHI+m_star)/bary_frac
+        #masses = (MHI+m_star)/bary_frac
         # McGaugh 2014  M_*/Lk = 0.6
         # to get a B-band magnitude but mass picking are in K-band
         # Ponomareva 2017 has
@@ -141,96 +179,52 @@ def build_sbr_prof(Current_Galaxy):
         # log(LT ,b,i[3.6] ) = (3.7 ± 0.11) × log(2Vflat) + 1.3 ± 0.3,
         #L_36 = 10**(3.7*np.log10(2.*Base_Galaxy(num).rc_speed[-1])+1.3)
         MK = np.log10(m_star/0.6)*-2.5+3.29
-        v_c=10**((MK-1.44)/-9.77)/2.
+        v_circ_TF=10**((MK-1.44)/-9.77)/2.
         #  Let's check that this roughly gives our DM mass at the virial radius in pc
-        r200= (Current_Galaxy.Mass*G/(100.* H_0**2)*1e12)**(1./3.)
-        v200square=Current_Galaxy.Mass*G/r200
-        xr=HIrad/(r200/10**3)
-        c200=10**(0.905-0.101*np.log10(Current_Galaxy.Mass/(10**12*100./H_0))) #From A. Dutton 2014
-        NFWvflat=np.sqrt(v200square*(1./xr)*((np.log(1.+c200*xr)-(c200*xr)/(1+c200*xr))/(np.log(1+c200)-c200/(1+c200))))
-        v_star=np.sqrt(m_star*G/(HIrad*10**3))
-        v_HI=np.sqrt(MHI*1.4*G/(HIrad*10**3))
-        v_c_tot=np.sqrt(NFWvflat**2+v_star**2+v_HI**2)
-        DynMassNFW=HIrad*10**3*v_c_tot**2/G
+        v_circ_NFW = calc_vc_NFW(Current_Galaxy.Mass,MHI,m_star,HIrad)
 
-        # The core radius should be smaller for more massive galaxies with a minimum of 1.5 kpc see transition function .py for how these parameters run
-       # Made to match the sparcs data set
-        height=1.5
-        center=235
-        disp=30.
-        z=(v_c-center)/disp
-        R_0 =height*np.exp(-1*z**2/2.)*(np.arctan((v_c-center+disp)/2.)+0.4)*0.7+(HIrad-HIrad/10.)/(v_c/60.)**2.+HIrad/20.
-        # The behaviour at large radii should be to grow slowly above 120 km/s with a maximum of 0.5
-        # above 212 v_c it should decline again
-        beta = np.arctan((v_c-120.)/60.)*0.6
-        if beta < 0: beta = 0.
-        # The turnover sharpness should increase while beta < 0.45 above that it should decline again
-        height=0.9
-        center=212
-        disp=100.
-        z=(v_c-center)/disp
-        gamma_tmp =height*np.exp(-1*z**2/2.)+1.4
-        gamma_tmpagain=-0.2*(np.arctan((v_c-300)/30.)-0.5)
-        gamma=gamma_tmp+gamma_tmpagain
+        R_0,beta,gamma = get_sparcs_fit(v_circ_TF,HIrad)
         x=R_0/HIrad
-        vfinal=v_c*(1+x)**beta*(1+x**gamma)**(-1./gamma)
+        vfinal=v_circ_TF*(1+x)**beta*(1+x**gamma)**(-1./gamma)
 
         #diff=(Current_Galaxy.Mass*(3*xr)-DynMass)/DynMass
         #print("The NFW velocity at R_HI = {}  and the retrieved curve velocity at R_HI = {} diff {}".format(v_c_tot,vfinal,v_c_tot-vfinal))
 
-        diff=(vfinal-v_c_tot)/vfinal
+        diff=(vfinal-v_circ_NFW)/vfinal
         #print("The current fractional difference = {} and the baryon fraction = {}".format(diff,bary_frac))
 
         if abs(diff) > 2.:
-            diffch = 2.
-        else:
-            diffch = abs(diff)
-        if diff < 0.:
-            bary_frac = bary_frac+0.05*diffch
-        else:
-            bary_frac = bary_frac-0.05*diffch
-        if bary_frac < 0.01:
-            bary_frac= 0.01
+            diff = diff/abs(diff)*2.
+
+        bary_frac -= diff*0.05
         counter += 1
         if bary_frac >  0.1854*1.1 or bary_frac < 0.1854*0.2:
             counter=101
         if counter > 100:
-            v_c=(v_c+v_c_tot)/2.
-               # The core radius should be smaller for more massive galaxies with a minimum of 1.5 kpc see transition function .py for how these parameters run
-            # Made to match the sparcs data set
-            height=1.5
-            center=235
-            disp=30.
-            z=(v_c-center)/disp
-            R_0 =height*np.exp(-1*z**2/2.)*(np.arctan((v_c-center+disp)/2.)+0.4)*0.7+(HIrad-HIrad/10.)/(v_c/60.)**2.+HIrad/20.
-            # The behaviour at large radii should be to grow slowly above 120 km/s with a maximum of 0.5
-            # above 212 v_c it should decline again
-            beta = np.arctan((v_c-120.)/60.)*0.6
-            if beta < 0: beta = 0.
-            # The turnover sharpness should increase while beta < 0.45 above that it should decline again
-            height=0.9
-            center=212
-            disp=100.
-            z=(v_c-center)/disp
-            gamma_tmp =height*np.exp(-1*z**2/2.)+1.4
-            gamma_tmpagain=-0.2*(np.arctan((v_c-300)/30.)-0.5)
-            gamma=gamma_tmp+gamma_tmpagain
+            # If we can not converge we take the average of both methods.
+            v_circ=(v_circ_TF+v_circ_NFW )/2.
+            R_0,beta,gamma = get_sparcs_fit(v_circ_TF,HIrad)
+
             break
-    DynMass=HIrad*10**3*v_c**2/G
-    #print("The input Mass = {:.2e}  and the retrieved NFW Dynamical mass = {:.2e} and Dynamical Mass based on v_c = {:.2e}".format(Current_Galaxy.Mass,DynMassNFW,DynMass))
-    #print("The current fractional difference = {:.5f} and the baryon fraction = {:.5f}".format(diff,bary_frac))
-        #First we set the radii at with a 5 elements per rings out to 1.5 times HIrad. However we always need at least 25 rings for transition purposes
-    if Current_Galaxy.Beams < 5:
-        sub_ring = int(np.ceil(25./Current_Galaxy.Beams))
+        else:
+            v_circ = v_circ_TF
+    DynMass=HIrad*10**3*v_circ**2/G_agc
+    DynMassNFW= HIrad*10**3*v_circ_NFW**2/G_agc
+    with open('Fractions_and_Masses.txt','a') as file:
+        file.write(f'''The input Mass = {Current_Galaxy.Mass:.2e}  and the retrieved NFW Dynamical mass = {DynMassNFW:.2e} and Dynamical Mass based on v_circ = {DynMass:.2e}.
+The current fractional difference = {diff:.5f} and the baryon fraction = {bary_frac:.5f}\n''')
+        #First we set the radii at with a 10 elements per rings out to 1.5 times HIrad. However we always need at least 25 rings for transition purposes
+    if Current_Galaxy.Beams < 5.:
+        sub_ring = int(25./Current_Galaxy.Beams)
     else:
         sub_ring = 5
-    Rad= np.arange(0,1.5*HIrad, 1.5*HIrad/(sub_ring*Current_Galaxy.Beams))
+    Rad= np.linspace(0.,1.5*HIrad, sub_ring*Current_Galaxy.Beams)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         x = R_0/Rad
     x[0]=1e-8
     # Finaaly the courteau presciption
-    vrot = v_c*(1+x)**beta*(1+x**gamma)**(-1./gamma)
+    vrot = v_circ*(1+x)**beta*(1+x**gamma)**(-1./gamma)
     vrot[0] = 0.
     # from these we use the the prescription of Martinsson to get an HI profile.
     # As done by A. Gogate in initialparam.py
@@ -242,32 +236,37 @@ def build_sbr_prof(Current_Galaxy):
     # the H_2 follows an exponential distribution similar to the stellar disk (ref?)
     # The scale length is h=Vmax^2/(0.88**2*np.pi*G*sig0) (Freeman 1970)
 
-    # The scale length for the molecular disk is then from Graham rederived relation in cal_scl.py
-    h_r = (-4.13422991 - 0.31576291 * MK) * 1000.
-    if fracHIrad < 0.5:
-        Rhi_p = np.array([(HIrad - HIrad / 15.) * 10 ** 3, (HIrad + HIrad / 15.) * 10 ** 3])
-        # Rhi_p2 = HIrad + HIrad / 20. * 10 ** 3
-        h_r = np.array([h_r + h_r / 5, h_r - h_r / 5])
-        # h_r2 = h_r - h_r / 20.
+    # The scale length for the molecular disk is then from Graham 2014 rederived relation in cal_scl.py
+    h_r = (-4.13422991 - 0.31576291 * MK) * 1000. #parsec
+
+    if not symmetric:
+        if fracHIrad < 0.5:
+            Rhi_p = np.array([(HIrad - HIrad / 15.) * 10 ** 3, (HIrad + HIrad / 15.) * 10 ** 3])
+            # Rhi_p2 = HIrad + HIrad / 20. * 10 ** 3
+            h_r = np.array([h_r + h_r / 5, h_r - h_r / 5])
+            # h_r2 = h_r - h_r / 20.
+        else:
+            Rhi_p = np.array([(HIrad + HIrad / 15.) * 10 ** 3, (HIrad - HIrad / 15.) * 10 ** 3])
+            # Rhi_p2 = HIrad - HIrad / 20. * 10 ** 3
+            h_r = np.array([h_r - h_r / 5., h_r + h_r / 5.])
+            # h_r2 = h_r + h_r / 20.
     else:
-        Rhi_p = np.array([(HIrad + HIrad / 15.) * 10 ** 3, (HIrad - HIrad / 15.) * 10 ** 3])
-        # Rhi_p2 = HIrad - HIrad / 20. * 10 ** 3
-        h_r = np.array([h_r - h_r / 5., h_r + h_r / 5.])
-        # h_r2 = h_r + h_r / 20.
+        Rhi_p = np.array([HIrad,HIrad]*10**3,dtype=float)
+        h_r= np.array([h_r,h_r],dtype=float)
     Hiradindex = [0, 0]
     Hiradindex[0] = np.where((Rad > (Rhi_p[0] - Rhi_p[0] / (sub_ring * Current_Galaxy.Beams)) / 10 ** 3) & (
             Rad < (Rhi_p[0] + Rhi_p[0] / (sub_ring * Current_Galaxy.Beams)) / 10 ** 3))[0][0]
     Hiradindex[1] = np.where((Rad > (Rhi_p[1] - Rhi_p[1] / (sub_ring * Current_Galaxy.Beams)) / 10 ** 3) & (
             Rad < (Rhi_p[1] + Rhi_p[1] / (sub_ring * Current_Galaxy.Beams)) / 10 ** 3))[0][0]
 
+
     # print("This the HI Radius in kpc {}".format(HIrad))
     # std deviation or dispersion of gaussian
-    s1 = np.zeros(2)
     s1 = 0.36 * Rhi_p
     # s2 = 0.36 * Rhi_p2
     # We assume that at 120 km/s v_max the H_2 disk imprint on the HI disk is adequately described by the prescription of Martinsson.
     # Lower some of the disk is added back to the HI higher the central hole is more pronounced
-    I_cen = ((v_c / 120.) ** 0.5 - 1)
+    I_cen = ((v_circ / 120.) ** 0.5 - 1)
     #print("This the scale length {} and central brightness {}".format(h_r, I_cen))
     # So our molecular profile is
     Exp = np.zeros([len(a), 2])
@@ -295,7 +294,7 @@ def build_sbr_prof(Current_Galaxy):
     OutHIMass = integrate.simps((np.pi * a) * Sigma[:, 0], a) + integrate.simps((np.pi * a) * Sigma[:, 1], a)
     # And check that it matches the required HI mas within 5%
     counter = 1
-    while np.absolute(MHI - OutHIMass) > MHI / 50.:
+    while np.absolute(MHI - OutHIMass) > MHI *0.02:
         # if not rescale sigma1
         if MHI - OutHIMass > 0:
             s1 = (0.36 - (0.0025 * counter)) * Rhi_p
@@ -354,11 +353,45 @@ def build_sbr_prof(Current_Galaxy):
     #                                                                                                 Rhi_p[
     #                                                                                                     1] / 10 ** 3))
     h_r = np.mean(h_r)
-    tmp = np.zeros(len(sbr_prof[:, 0]))
+    average_sbr_profile = np.zeros(len(sbr_prof[:, 0]))
     for i in range(len(sbr_prof)):
-        tmp[i] = np.mean(sbr_prof[i, :])
-    return tmp,Rad,h_r/1000.,OutHIMass, HIrad,vrot,sub_ring
+        average_sbr_profile[i] = np.mean(sbr_prof[i, :])
+    return average_sbr_profile,Rad,h_r/1000.,OutHIMass, HIrad,vrot,sub_ring
+build_sbr_prof.__doc__ = f'''
+NAME:
+   build_sbr_prof
 
+PURPOSE:
+    Take the input galaxy and from the mass build the SBR profile, the RC,
+    the scale length and calculated the number of subring the model requires
+
+CATEGORY:
+   agc
+
+INPUTS:
+   Current_Galaxy = Galaxy class input
+   symmetric = Boolean do we want symmetric profiles?
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    average_sbr_profile = an average profile for the model in Jy Km/s arcsec^-2.
+                    The assymetric profile is written to Template whioch is a global
+    Rad = the Rad in kpc
+    h_r/1000. = the scale length in kpc
+    OutHIMass = the final retrieved HI mass
+    HIrad= the symmetric HI radius at 1 M_solar/pc^2
+    vrot = The rotation curve
+    sub_ring = the number sub rings  per beam in the model.
+
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 
 # Thi function creates the flarin g which is based on the rotation curve and dispersion according Puche et al. 1992
 def create_flare(Radii,velocity,dispersion,flare,Max_Rad,sub_ring,distance=1.):
@@ -995,7 +1028,122 @@ PROCEDURES CALLED:
 
 NOTE: The final SNR is a guesstimate as the actuall observation is based on the time. This part could be improved.
 '''
+def get_sparcs_fit(v_flat,radius):
+    # The core radius should be smaller for more massive galaxies with a minimum of 1.5 kpc see transition function .py for how these parameters run
+   # Made to match the sparcs data set
+    height=1.5
+    center=235
+    disp=30.
+    z=(v_flat-center)/disp
+    R_0 =height*np.exp(-1*z**2/2.)*(np.arctan((v_flat-center+disp)/2.)+0.4)*0.7+(radius-radius/10.)/(v_flat/60.)**2.+radius/20.
+    # The behaviour at large radii should be to grow slowly above 120 km/s with a maximum of 0.5
+    # above 212 v_c it should decline again
+    beta = np.arctan((v_flat-120.)/60.)*0.6
+    if beta < 0: beta = 0.
+    # The turnover sharpness should increase while beta < 0.45 above that it should decline again
+    height=0.9
+    center=212
+    disp=100.
+    z=(v_flat-center)/disp
+    gamma=height*np.exp(-1*z**2/2.)+1.4
+    gamma += -0.2*(np.arctan((v_flat-300)/30.)-0.5)
+    return R_0,beta,gamma
+get_sparcs_fit.__doc__ = f'''
+NAME:
+   get_sparcs_fit
 
+PURPOSE:
+    Calculate the R_0, gamma and beta parameters for Courteau's parameterization of the RC
+    based on a the fitting of all SPARCS RCs
+
+CATEGORY:
+   agc
+
+INPUTS:
+   v_flat = the flat velocity of the mass distribution
+   radius = the HI radius, used in R_0
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    R_0, gamma and beta
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
+
+def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring):
+    if set_done[0] == 1024:
+        set_done= [Mass]
+        labelfont= {'family':'Times New Roman',
+                 'weight':'normal',
+                 'size':22}
+        plt.rc('font',**labelfont)
+        c = next(colors)
+        plt.figure(59, figsize=(8, 8), dpi=300, facecolor='w', edgecolor='k')
+        ax = plt.subplot(1, 1, 1)
+        plt.plot(Rad,Vrot,c)
+        #plt.plot(Rad,Vrot,'ko',label='M$_{\odot}$ = {:.1e}'.format(Current_Galaxy.Mass))
+        plt.plot(Rad,Vrot,'o',c=c,label='M$_{\odot}$ = '+' {:.1e}'.format(Mass))
+        plt.ylabel('V$_{rot}$ (km s$^{-1}$)',**labelfont)
+        plt.xlabel('Radius (kpc)',**labelfont)
+        ax.yaxis.set_minor_locator(AutoMinorLocator(4))
+        ax.xaxis.set_minor_locator(AutoMinorLocator(4))
+        for axis in ['top','bottom','left','right']:
+            ax.spines[axis].set_linewidth(1.5)
+        plt.tick_params(axis='both', which='minor', bottom=True,left=True,length=3)
+        plt.tick_params(axis='both', which='major', labelsize=17, length=6)
+        plt.tick_params(axis='both', which='both', direction = 'in', width=1.5 , bottom=True,left=True ,right =True, top=True)
+        max_rad = np.max(Rad)+1
+
+    else:
+        set_done.append(Mass)
+        plt.figure(59)
+        c = next(colors)
+        if np.max(Rad)+1 > max_rad:
+            max_rad =  np.max(Rad)+1
+        plt.plot(Rad,Vrot,c=c)
+        #plt.plot(Rad,Vrot,'o',label=r'M$_{\odot}$ = {:.1e}'.format(Current_Galaxy.Mass),c=c)
+        plt.plot(Rad,Vrot,'o',label='M$_{\odot}$ = '+' {:.1e}'.format(Mass),c=c)
+
+    return set_done,max_rad,colors
+
+
+plot_RC.__doc__ = f'''
+NAME:
+   plot_RC
+
+PURPOSE:
+    Add the RC to the overview plot and return updated tracker
+
+CATEGORY:
+   agc
+
+INPUTS:
+   set_done = tracker on which masses are plotted
+   Mass = mass of the current galaxy
+   Rad = radii of the RC
+   Vrot = RC
+   colors = tracker which colors are used
+   max_rad = the maximum radius in the plot
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    set_done = updated tracker on which masses are plotted
+    max_rad = updated the maximum radius in the plot
+    colors = updated tracker which colors are used
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 
 #------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Start of the main program!!!!!!!!!!!!!!!!!!!!!----------------------
 def AGC(cfg):
@@ -1119,8 +1267,6 @@ def AGC(cfg):
     #If we want to corrupt in the casa way we'd need to read the file corruption file
     if (cfg.agc.corruption_method == 'Casa_Sim') or (cfg.agc.corruption_method == 'Casa_5') :
         Template_Casa_In = cf.read_casa_template('Template_Casa.py')
-    global H_0
-    H_0 = 69.6 # http://www.astro.ucla.edu/~wright/CosmoCalc.html
     # start a loop over the various base galaxies
     number_models = 0.
     set_done= [1024]
@@ -1141,7 +1287,7 @@ def AGC(cfg):
                 masses_to_delete.append(User_Defined.Mass)
             else:
                 masses_to_delete.append(Base_Galaxy(galaxy).Mass)
-        to_delete= f"rm -R {' '.join([f'{cfg.general.main_directory}Mass{x:.1e}-*rm*' for x in masses_to_delete])}"
+        to_delete= f"rm -R {' '.join([f'{cfg.general.main_directory}Mass{x:.1e}-*rm*' for x in masses_to_delete])} {cfg.general.main_directory}Fractions_and_Masses.txt"
         print("All previous models of the requested base galaxies will be removed prior to the build. \n")
         print(f"The command {to_delete} will be run.")
         cfg.agc.delete_existing = cf.get_bool("Are you sure you want to do this? (Yes/No, default=No): ",default=False)
@@ -1153,6 +1299,8 @@ def AGC(cfg):
 
 
     colors=iter(plt.cm.rainbow(np.linspace(0,1,len(cfg.agc.base_galaxies)+len(cfg.agc.masses))))
+    max_rad = 0.
+
     for base in range(len(cfg.agc.base_galaxies)):
         # From here we go into a loop to adjust variables over the bases
         for ix in range(len(cfg.agc.variables_to_vary)):
@@ -1243,7 +1391,11 @@ def AGC(cfg):
                 # Then we copy the original Template def
                 number_models += 1
                 global Template
-                Template=copy.deepcopy(Template_in)
+                #dictionaries are mutible and hence there should not have to be declared global
+                # But since python is the most alogical programming language ever invented
+                # it does have to be declared because we  are in a function not in Global
+                #Template=copy.deepcopy(Template_in)
+                Template=Template_in.copy()
                 # We also open a figure to plot all info on
                 plt.figure(2, figsize=(8, 12), dpi=100, facecolor='w', edgecolor='k')
                 global overview
@@ -1258,43 +1410,11 @@ def AGC(cfg):
                             'size':22}
                 plt.rc('font',**labelfont)
                 #Then we need to build the Surface Brightnes profile
-                SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring = build_sbr_prof(Current_Galaxy) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
+                SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
                             #We want to make a figure with all the Rotation curves
                 if Current_Galaxy.Mass not in set_done:
-                    if set_done[0] == 1024:
-                        set_done= [Current_Galaxy.Mass]
-                        labelfont= {'family':'Times New Roman',
-                                 'weight':'normal',
-                                 'size':22}
-                        plt.rc('font',**labelfont)
-                        plt.figure(59, figsize=(8, 8), dpi=300, facecolor='w', edgecolor='k')
-                        ax = plt.subplot(1, 1, 1)
-                        plt.plot(Rad,Vrot,'k')
-                        #plt.plot(Rad,Vrot,'ko',label='M$_{\odot}$ = {:.1e}'.format(Current_Galaxy.Mass))
-                        plt.plot(Rad,Vrot,'ko',label='M$_{\odot}$ = '+' {:.1e}'.format(Current_Galaxy.Mass))
-                        plt.ylabel('V$_{rot}$ (km s$^{-1}$)',**labelfont)
-                        plt.xlabel('Radius (kpc)',**labelfont)
-                        ax.yaxis.set_minor_locator(AutoMinorLocator(4))
-                        ax.xaxis.set_minor_locator(AutoMinorLocator(4))
-                        for axis in ['top','bottom','left','right']:
-                            ax.spines[axis].set_linewidth(1.5)
-                        plt.tick_params(axis='both', which='minor', bottom=True,left=True,length=3)
-                        plt.tick_params(axis='both', which='major', labelsize=17, length=6)
-                        plt.tick_params(axis='both', which='both', direction = 'in', width=1.5 , bottom=True,left=True ,right =True, top=True)
-                        max_rad = np.max(Rad)+1
-                        names_used=[Current_Galaxy.Mass]
-                        colors_used=[0.]
-                    else:
-                        set_done.append(Current_Galaxy.Mass)
-                        plt.figure(59)
-                        c=next(colors)
-                        if np.max(Rad)+1 > max_rad:
-                            max_rad =  np.max(Rad)+1
-                        plt.plot(Rad,Vrot,c=c)
-                        #plt.plot(Rad,Vrot,'o',label=r'M$_{\odot}$ = {:.1e}'.format(Current_Galaxy.Mass),c=c)
-                        plt.plot(Rad,Vrot,'o',label='M$_{\odot}$ = '+' {:.1e}'.format(Current_Galaxy.Mass),c=c)
-                        names_used.append(Current_Galaxy.Mass)
-                        colors_used.append(c)
+                    set_done,max_rad,colors = plot_RC(set_done,Current_Galaxy.Mass,Rad,Vrot,colors,max_rad,sub_ring)
+
 
 
                 #We need central coordinates the vsys will come from the required distance and hubble flow. The RA and dec should not matter hance it will be the only random component in the code as we do want to test variations of them
