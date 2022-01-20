@@ -4,7 +4,11 @@ from pyHIARD.common_functions import download_cube,create_masks
 from astropy.io import fits
 import os
 
+galaxy_parameters = {'Galaxy': 'NGC_5023', 'DHIkpc': 18.6  ,'Distance': 6.6, 'Original_Model': 'Tir', 'RMS': 0.0002 , 'MHI': 6.1e8  }
+
+
 def get_data():
+    '''Download the data for this galaxy and prepare the cube for usage'''
     succes= False
     outdir = os.path.dirname(os.path.abspath(__file__))
     try:
@@ -17,8 +21,34 @@ def get_data():
 
     #place_disclaimer(dir_to_place)
     return Cube
+get_data.__doc__=f'''
+NAME:
+   get_data
+
+PURPOSE:
+   Download the data for this galaxy and prepare the cube for usage
+
+CATEGORY:
+   agc
+
+INPUTS:
+
+OPTIONAL INPUTS:
+
+
+OUTPUTS:
+   Cube = Cube in astropy format
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 
 def get_masks(dir_to_place,sofia_call='sofia2'):
+    '''Get or create the masks for a galaxy'''
     name = 'NGC_5023'
     outdir = os.path.dirname(os.path.abspath(__file__))
     try:
@@ -32,6 +62,33 @@ def get_masks(dir_to_place,sofia_call='sofia2'):
     except FileNotFoundError:
         Mask_Inner, Mask_Outer = create_masks(outdir,dir_to_place,name,sofia_call=sofia_call)
     return Mask_Inner,Mask_Outer
+get_masks.__doc__=f'''
+NAME:
+   get_masks
+
+PURPOSE:
+   Get or create the masks for a galaxy
+
+CATEGORY:
+   agc
+
+INPUTS:
+    dir_to_place = The directory where the galaxy is to be created.
+
+OPTIONAL INPUTS:
+    sofia_call = command name for sofia
+
+OUTPUTS:
+   Inner Mask = the inner edge mask
+   Outer Mask = the Outer edge mask
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 
 def place_disclaimer(dir_to_place):
     disclaimer = '''----- NGC 5023 -----
@@ -55,3 +112,28 @@ def place_disclaimer(dir_to_place):
 '''
     with open(f'{dir_to_place}/ACKNOWLEDGE_HALOGAS.txt', 'w') as file:
         file.writelines(disclaimer)
+place_disclaimer.__doc__=f'''
+NAME:
+   place_disclaimer
+
+PURPOSE:
+   Place a disclaimer about the source, models and acknowledgements in the directory.
+
+CATEGORY:
+   agc
+
+INPUTS:
+    dir_to_place = The directory where the galaxy is cretated.
+
+OPTIONAL INPUTS:
+
+
+OUTPUTS:
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''

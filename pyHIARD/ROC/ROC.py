@@ -90,27 +90,7 @@ def ROC(cfg):
        cat = open(Catalogue, 'w')
        cat.write('ID|Distance|Directoryname|Cubename\n')
        cat.close()
-    #Input Galaxy names   DHI M 83, Circinus, UGC 7774, UGC 1281 from Wang 29016 Vizier http://vizier.u-strasbg.fr/viz-bin/VizieR?-source=J/MNRAS/460/2143
-    #                     DHI NGC 3198 from Gentile https://arxiv.org/pdf/1304.4232.pdf
-    #                     DHI NGC 2903 From the FAT installation check initial input
-    #                         NGC 5023 from Kamphuis 2013 https://arxiv.org/pdf/1306.5312.pdf
-    #                         NGC 5204 from Jozsa 2007 https://www.aanda.org/articles/aa/pdf/2007/24/aa6165-06.pdf
-
-    Galaxies_Parameters = {'Galaxies'      :['Circinus','M_83'  ,'NGC_2903','NGC_3198','NGC_5204','NGC_5023','UGC_7774','UGC_1281'],
-                   'DHIkpc'        :[ 59.52    ,58.09   ,51.9      ,60.6      ,9.6,18.6,9.76,15.46],
-                   'DHIDistance'   :[ 4.2      , 4.9    ,8.7       ,13.8      ,4.1,6.6,5.5,7.9],
-                   'Original_Model':['RC'      ,'RC'    ,'Tir'     ,'Tir'     ,'Tir','Tir','Tir','Tir'],
-                   'RMS'           :[0.012     ,0.0025  ,0.0033    ,0.00017   ,0.00038,0.0002, 0.00021 ,   0.00043],
-                   'MHI'           :[10**9.83  ,10**9.91, 3.9e9    ,1.08e10   ,0.54e9,6.1e8,10**8.51,10**8.57]
-                   }
-    Galaxies_In ={}
-    for galaxy in cfg.roc.base_galaxies:
-        for key in Galaxies_Parameters:
-            if key in Galaxies_In:
-                Galaxies_In[key].append(Galaxies_Parameters[key][Galaxies_Parameters['Galaxies'].index(galaxy)])
-            else:
-                Galaxies_In[key] = [Galaxies_Parameters[key][Galaxies_Parameters['Galaxies'].index(galaxy)]]
-    # The modifications requested. The original beam sizes will be maintained
+    
 
     Modifications= {}
     if 'Beams' in cfg.roc.variables_to_vary:
@@ -125,11 +105,8 @@ def ROC(cfg):
     H_0 = 69.6 # http://www.astro.ucla.edu/~wright/CosmoCalc.html
     c = 299792.458  # Km/s
     number_models=0.
-    for i in range(len(Galaxies_In['Galaxies'])):
-        name=Galaxies_In['Galaxies'][i]
-        print("Assembling Galaxy {}".format(name))
-
-
+    for name in cfg.roc.base_galaxies:
+        print(f"Assembling Galaxy {name}")
         galaxy_module = importlib.import_module(f'pyHIARD.Resources.Cubes.{name}.{name}')
         Template_All=galaxy_module.get_data()
 
@@ -155,7 +132,7 @@ def ROC(cfg):
             Template_Header['CRVAL3'] = Template_Header['CRVAL3'] / 1000.
 
         #We assume the cubes to be centered
-        if Galaxies_In['Original_Model'][i] == 'RC':
+        if galaxy_module.galaxy_parameters['Original_Model'] == 'RC':
 
 
             radius, width, systemic, errorsys, rotation, errorrot, expansion, errorexp,\
@@ -178,7 +155,7 @@ def ROC(cfg):
 
             dispersion[:] = 0.
             dispersion2[:] = 0.
-        elif Galaxies_In['Original_Model'][i] == 'Tir':
+        elif galaxy_module.galaxy_parameters['Original_Model'] == 'Tir':
             radius, rotation, pa,incli,xpos,ypos,systemic,rotation2, pa2,incli2,xpos2,ypos2,systemic2,\
              scaleheight, dispersion, scaleheight2, dispersion2,condisp,sbr,sbr2 = cf.load_tirific(
                 name , unpack=True,Variables=['RADI','VROT','PA','INCL','XPOS','YPOS','VSYS','VROT_2','PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0','SDIS','Z0_2','SDIS_2','CONDISP', 'SBR', 'SBR_2'])
@@ -212,9 +189,9 @@ def ROC(cfg):
         RAdeg = xpos[0]
         DECdeg = ypos[0]
         #All values that are in arcsec need to be converted to kpc
-        radius = cf.convertskyangle(radius,distance=Galaxies_In['DHIDistance'][i])
-        scaleheight = cf.convertskyangle(scaleheight,distance=Galaxies_In['DHIDistance'][i])
-        scaleheight2 = cf.convertskyangle(scaleheight2, distance=Galaxies_In['DHIDistance'][i])
+        radius = cf.convertskyangle(radius,distance=galaxy_module.galaxy_parameters['Distance'])
+        scaleheight = cf.convertskyangle(scaleheight,distance=galaxy_module.galaxy_parameters['Distance'])
+        scaleheight2 = cf.convertskyangle(scaleheight2, distance=galaxy_module.galaxy_parameters['Distance'])
         #Everything that is constant can be written to the Template def file
         Template_in['NUR'] = f'NUR = {len(radius)}'
         Template_in['INCL'] = 'INCL = '+" ".join(str(e) for e in incli if e != 0.)
@@ -257,7 +234,7 @@ def ROC(cfg):
         # We need to expand the input cube with the correct noise level for the largest increase in smoothing beam
         # minbeam=np.min(beamsreq)
 
-        DHIarcsec=cf.convertskyangle(Galaxies_In['DHIkpc'][i],distance=Galaxies_In['DHIDistance'][i],physical=True)
+        DHIarcsec=cf.convertskyangle(galaxy_module.galaxy_parameters['DHIkpc'],distance=galaxy_module.galaxy_parameters['Distance'],physical=True)
         #The minimum degradation is if we require more beams across the degradation is skipped
         max_beams_across=(DHIarcsec)/(bmaj)
         #the maximum smoothing will be
@@ -305,7 +282,7 @@ def ROC(cfg):
         #And then calculate the total flux in the input cube
         Total_Flux_In = np.sum(Template_Cube[Template_Cube > 0.])/pixperbeam * Template_Header['CDELT3']# In Jy
         #Get the input noise
-        Original_Noise = Galaxies_In["RMS"][i]
+        Original_Noise = galaxy_module.galaxy_parameters["RMS"]
         # and the the original SNR is the mean signal in the masked cube / by the noise
         Original_Mean=np.mean(Template_Cube[Template_Cube > 0.])
         Original_z= np.sqrt((1+systemic[0]/c)/(1-systemic[0]/c))
@@ -336,7 +313,7 @@ def ROC(cfg):
             # in terms of pixels
             pixsizenew = (newbmin / 5.) / abs(Template_Header['CDELT1'] * 3600.)
             # Our new distance is
-            Distance = fact * Galaxies_In['DHIDistance'][i]
+            Distance = fact * galaxy_module.galaxy_parameters['Distance']
 
             Def_Template['DISTANCE'] = 'DISTANCE = '+str(Distance)
             # And we need to adjust the header for our new cube
@@ -555,7 +532,7 @@ def ROC(cfg):
                 overview.write("It's central coordinates are RA={} DEC={} vsys={:.2f} km/s\n".format(RAhr, DEChr, New_Systemic))
                 overview.write("At a Distance of {:.2f} Mpc \n".format(Distance))
                 #overview.write("HI_Mass Requested {:.2e} (M_solar) and an optical h {:.2f} (kpc)\n".format(MHI, sclength))
-                overview.write("HI_Mass {:.2e} (M_solar) \n".format(Galaxies_In['MHI'][i]))
+                overview.write("HI_Mass {:.2e} (M_solar) \n".format(galaxy_module.galaxy_parameters['MHI']))
                 #overview.write("We have {} pix per beam \n".format(pixperbeam))
                 overview.write("The cube was corrupted with the {} method \n".format('Gaussian'))
                 overview.write("The final noise level is {} Jy/beam \n".format(Achieved_Noise))
@@ -564,7 +541,7 @@ def ROC(cfg):
                 # We need to make the model input
                 with open(f"{galaxy_dir}ModelInput.def", 'w') as tri:
                     tri.writelines([Def_Template[key] + "\n" for key in Def_Template])
-            
+
                 # And an overview plot
                 #print("Start plotting")
                 plt.figure(2, figsize=(8, 8), dpi=100, facecolor='w', edgecolor='k')
