@@ -153,6 +153,12 @@ The Real Observations Catalogue (AGC) keywords
 
     Boolean to indicate whether observed and shifted galaxies should be made (True) or not (False)
 
+**add_template**:
+
+    *bool, optional, default = False*
+
+    Boolean to allow a new galaxy template to the ROC. If set to True all other options are ignored.
+
 **delete_existing**
 
     *bool, optional, default = False*
@@ -162,7 +168,7 @@ The Real Observations Catalogue (AGC) keywords
 
 **base_galaxies**:
 
-    *integer List, optional, default = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774']*
+    *integer List, optional, default = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774','ESO_223_G009']*
 
     List of base galaxies to vary. The default contains all possible options. Only the galaxies NGC_5204 and UGC_1281 come with the python distribution.
     Other options are downloaded from their respective survey websites and thus require an internet connection the first time they are used.

@@ -10,6 +10,7 @@ import os
 
 from pyHIARD import Templates as templates
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
+from pyHIARD.Resources import Cubes as cubes
 try:
     import importlib.resources as import_res
 except ImportError:
@@ -50,6 +51,49 @@ class Proper_Dictionary(OrderedDict):
         if not done:
             print("----!!!!!!!!We were unable to add your key!!!!!!---------")
 #Function to convert column densities
+def create_directory(directory,base_directory,debug=False):
+    split_directory = [x for x in directory.split('/') if x]
+    split_directory_clean = [x for x in directory.split('/') if x]
+    split_base = [x for x in base_directory.split('/') if x]
+    #First remove the base from the directory but only if the first directories are the same
+    if split_directory[0] == split_base[0]:
+        for dirs,dirs2 in zip(split_base,split_directory):
+            if dirs == dirs2:
+                split_directory_clean.remove(dirs2)
+            else:
+                if dirs != split_base[-1]:
+                    raise InputError(f"You are not arranging the directory input properly ({directory},{base_directory}).")
+    for new_dir in split_directory_clean:
+        if not os.path.isdir(f"{base_directory}/{new_dir}"):
+            os.mkdir(f"{base_directory}/{new_dir}")
+        base_directory = f"{base_directory}/{new_dir}"
+create_directory.__doc__ =f'''
+ NAME:
+    create_directory
+
+ PURPOSE:
+    create a directory recursively if it does not exists and strip leading directories when the same fro the base directory and directory to create
+
+ CATEGORY:
+    support_functions
+
+ INPUTS:
+    directory = string with directory to be created
+    base_directory = string with directory that exists and from where to start the check from
+
+ OPTIONAL INPUTS:
+    debug = False
+
+ OUTPUTS:
+
+ OPTIONAL OUTPUTS:
+    The requested directory is created but only if it does not yet exist
+
+ PROCEDURES CALLED:
+    Unspecified
+
+ NOTE:
+'''
 
 def check_input(cfg):
     #Check the main directory exists
@@ -130,7 +174,9 @@ replace with:''')
 
     if cfg.roc.enable:
 
-        allowed_galaxies = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774','ESO_223_G009']
+        path_to_resources = os.path.dirname(os.path.abspath(cubes.__file__))
+        allowed_galaxies = [ name for name in os.listdir(path_to_resources) if os.path.isdir(os.path.join(path_to_resources, name)) ]
+        allowed_galaxies.remove('__pycache__')
         allowed_galaxies_low = [x.lower() for x in allowed_galaxies]
         for i,galaxy in enumerate(cfg.roc.base_galaxies):
             while galaxy.lower() not in allowed_galaxies_low:
@@ -167,15 +213,12 @@ check_input.__doc__ =f'''
     common_functions
 
  INPUTS:
-    outdir = directory where to put the final masks for future use
-    working_dir = directory where to run sofia
-    name = Base name of the input and output files
+    cfg = omega conf configuration
 
  OPTIONAL INPUTS:
-    sofia_call = command name to run sofia
 
  OUTPUTS:
-    the cut cube is returned.
+    a modified cfg
 
  OPTIONAL OUTPUTS:
 
@@ -475,6 +518,42 @@ cut_input_cube.__doc__ =f'''
  NOTE:
 '''
 
+def delete_directory(dir_to_delete):
+    try:
+        for f in os.listdir(dir_to_delete):
+            os.remove(os.path.join(dir_to_delete, f))
+    except FileNotFoundError:
+        pass
+    try:
+        os.rmdir(dir_to_delete)
+    except FileNotFoundError:
+        pass
+delete_directory.__doc__ =f'''
+ NAME:
+    delete_directory
+
+ PURPOSE:
+    delete a non empty directory
+
+ CATEGORY:
+    common_functions
+
+ INPUTS:
+    dir = directory to delete
+
+ OPTIONAL INPUTS:
+
+ OUTPUTS:
+
+ OPTIONAL OUTPUTS:
+
+ PROCEDURES CALLED:
+    Unspecified
+
+ NOTE:
+'''
+
+
 def download_cube(name,url,sizes,new_location):
     name_in = download_file(url,pkgname='pyHIARD')
     cube = cut_input_cube(name_in,sizes)
@@ -574,11 +653,14 @@ def get_bool(print_str="Please type True or False",default=True):
 def load_tirific(name,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR','RADI','VROT',
                  'Z0', 'SBR', 'INCL','PA','XPOS','YPOS','VSYS','SDIS','VROT_2',  'Z0_2','SBR_2',
                  'INCL_2','PA_2','XPOS_2','YPOS_2','VSYS_2','SDIS_2','CONDISP','CFLUX','CFLUX_2'],
-                 unpack = True ):
-
-    model = __import__(f'pyHIARD.Resources.Cubes.{name}', globals(), locals(), name,0)
-    with import_res.open_text(model, f'{name}.def') as tmp:
-        unarranged = tmp.readlines()
+                 unpack = True,new_file = False ):
+    if new_file:
+        with open(name,'r') as tmp:
+            unarranged = tmp.readlines()
+    else:
+        model = __import__(f'pyHIARD.Resources.Cubes.{name}', globals(), locals(), name,0)
+        with import_res.open_text(model, f'{name}.def') as tmp:
+            unarranged = tmp.readlines()
 
 
     Variables = np.array([e.upper() for e in Variables],dtype=str)
@@ -640,11 +722,15 @@ print_base_galaxy.__doc__=f''' NAME:
  NOTE:
  '''
 
-def read_template_RC(name,type= 'RC'):
+def read_template_RC(name,type= 'RC',new_file=False):
     #temp = __import__('spam.ham', globals(), locals(), ['eggs', 'sausage'], 0)
-    model = __import__(f'pyHIARD.Resources.Cubes.{name}', globals(), locals(), name,0)
-    with import_res.open_text(model, f'{name}.rotcur') as tmp:
-        unarranged = tmp.readlines()
+    if new_file:
+        with open(name,'r') as tmp:
+            unarranged = tmp.readlines()
+    else:
+        model = __import__(f'pyHIARD.Resources.Cubes.{name}', globals(), locals(), name,0)
+        with import_res.open_text(model, f'{name}.rotcur') as tmp:
+            unarranged = tmp.readlines()
 
     Template_in = Proper_Dictionary({})
     counter = 0.

@@ -7,6 +7,7 @@ import numpy as np
 import sys
 import copy
 import pyHIARD.common_functions as cf
+from pyHIARD import Templates as templates
 import scipy.ndimage
 import os
 import re
@@ -24,6 +25,138 @@ except ImportError:
     # Try backported to PY<37 `importlib_resources`.
     import importlib_resources as import_res
 from pyHIARD.Resources import Cubes as cubes
+
+
+def add_template(cfg):
+    confirm_directory = False
+    while not confirm_directory:
+        confirm_directory = cf.get_bool(f"We are working in the directory {cfg.general.main_directory}. Is this correct? (Yes/No, default =True)",default=True)
+        if not confirm_directory:
+            cfg.general.main_directory = input(f"Which directory would you like to work in?")
+        else:
+            while not os.path.isdir(cfg.general.main_directory):
+                print(f'The directory {cfg.general.main_directory} does not exist please provide the correct directory')
+                cfg.general.main_directory = input("Please provide the directory where to create the database :")
+            confirm_directory = True
+
+
+    galaxy_parameters = {'Galaxy': None, 'DHIkpc': None ,'Distance': None, 'Original_Model': None, 'RMS': None , 'MHI':  None  }
+    galaxy_translation = {'Galaxy': 'the name to use in the package', \
+                          'DHIkpc':  'the HI diameter in kpc' , \
+                          'Distance': 'distance in Mpc',\
+                          'Original_Model': 'the format of the orginal model (Tirific, Rotcur)',\
+                          'RMS': 'the noise in the cube in data units' , \
+                          'MHI':  'the HI mass'  }
+
+
+    path_to_resources = os.path.dirname(os.path.abspath(cubes.__file__))+'/'
+    existing_galaxies = [ name for name in os.listdir(path_to_resources) if os.path.isdir(os.path.join(path_to_resources, name)) ]
+    existing_galaxies.remove('__pycache__')
+    existing_galaxies_low = [x.lower() for x in existing_galaxies]
+    fixed_templates = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774','ESO_223_G009']
+    fixed_templates_low = [x.lower() for x in fixed_templates]
+
+    for key in galaxy_parameters:
+        galaxy_parameters[key]= input(f"Please provide {galaxy_translation[key]} of the galaxy:")
+        if key == 'Galaxy':
+            while galaxy_parameters[key].lower() in fixed_templates_low:
+                galaxy_parameters[key] = input(f"The galaxy {galaxy_parameters[key]} is a standard pyHIARD template please pick a different name")
+            if galaxy_parameters[key].lower() in existing_galaxies_low:
+                remove_galaxy = cf.get_bool(f"The galaxy {galaxy_parameters[key]} already exists, do you want to delete it? (default = no)",default=False)
+                if remove_galaxy:
+                    to_remove = existing_galaxies[existing_galaxies_low.index(galaxy_parameters[key].lower())]
+                    really = cf.get_bool(f"Are you certain to remove the template for  {to_remove}? This action can not be undone. (default = yes)",default=True)
+                    if really:
+                        print(f"We will remove the template {to_remove}. Afterwards we will exit pyHIARD if you want to create a new tmplate with this name please restart pyHIARD")
+                        cf.delete_directory(f"{path_to_resources}{to_remove}")
+                        if not os.path.isdir(f"{path_to_resources}{to_remove}"):
+                            print(f"We have succesfully removed the template {to_remove}.")
+                        else:
+                            print(f"Something went wrong. please try again or start an issue on github")
+                        sys.exit()
+                else:
+                    while galaxy_parameters[key].lower() in existing_galaxies_low:
+                        galaxy_parameters[key] = input(f"Please provide a different name (current = {galaxy_parameters[key]}).")
+
+        if key == 'Original_Model':
+            acceptable_model = False
+            while not acceptable_model:
+                if galaxy_parameters[key].lower() == 'tirific':
+                    galaxy_parameters[key] = 'Tir'
+                    acceptable_model = True
+                elif galaxy_parameters[key].lower() == 'rotcur':
+                    galaxy_parameters[key] = 'RC'
+                    acceptable_model = True
+                else:
+                    galaxy_parameters[key] = input(f"{galaxy_parameters[key]} is not yet a model pyHIARD can process please type TiRiFiC or Rotcur as an input model: ")
+
+            model_file=input(f'Please provide the model text file:')
+            while not os.path.isfile(f"{cfg.general.main_directory}{model_file}"):
+                model_file=input(f'Print we can not find the file {cfg.general.main_directory}{model_file}, please provide the correct name with a path from {cfg.general.main_directory}:')
+            if galaxy_parameters[key] == 'Tir':
+                try:
+                    test=cf.load_tirific(
+                    f"{cfg.general.main_directory}{model_file}",new_file=True,\
+                     unpack=False,Variables=['RADI','VROT','PA','INCL','XPOS','YPOS','VSYS','VROT_2','PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0','SDIS','Z0_2','SDIS_2','CONDISP', 'SBR', 'SBR_2'])
+                except:
+                    print(f"We cannot read your Tirific file, please provide a standard TiRiFiC model with 2 disks (approaching/receding)")
+                    print("We are exiting pyHIARD")
+                    sys.exit()
+                ext = '.def'
+            else:
+                try:
+                    test=cf.read_template_RC(f"{cfg.general.main_directory}{model_file}",new_file=True)
+                except:
+                    print(f"We cannot read your rotcur file, please provide a standard Rotcur model.")
+                    print("We are exiting pyHIARD")
+                    sys.exit()
+                ext = '.rotcur'
+
+
+    input_fits_file = input("Please provide the galaxy fits file:")
+    while not os.path.isfile(f"{cfg.general.main_directory}{input_fits_file}"):
+        input_fits_file = input(f"We cannot find {cfg.general.main_directory}{input_fits_file}. Please provide the correct path from {cfg.general.main_directory}.")
+
+    try:
+        Cube=fits.open(f"{cfg.general.main_directory}{input_fits_file}",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+        length = Cube[0].header['NAXIS3']
+    except:
+        print(f"We cannot read your fits file, please provide a standard fits file with 3 axes.")
+        print("We are exiting pyHIARD")
+        sys.exit()
+
+    #galaxy_parameters = {'Galaxy': 'New_Galaxy', 'DHIkpc': '9.6', 'Distance': '4.1', 'Original_Model': 'Tir', 'RMS': '0.00038', 'MHI': '0.54e9'}
+    #read or template and modify it
+    with import_res.open_text(templates, 'roc_galaxy_template.py') as tmp:
+        module_template = tmp.readlines()
+
+    galaxy_line="galaxy_parameters = {"
+    for key in galaxy_parameters:
+        if key in ['Galaxy', 'Original_Model']:
+            galaxy_line=f"{galaxy_line}'{key}': '{galaxy_parameters[key]}', "
+        else:
+            galaxy_line=f"{galaxy_line}'{key}': {galaxy_parameters[key]}, "
+    galaxy_line=galaxy_line[:-2]+"}"
+
+    for i,line in enumerate(module_template):
+        start= line.split('=')
+        if start[0].strip() == 'galaxy_parameters':
+            module_template[i] = galaxy_line
+        if 'Input_Name' in line:
+            line = line.replace('Input_Name',galaxy_parameters['Galaxy'])
+            module_template[i] = line
+
+    #Create the new directory and place all files in there
+    new_resource = os.path.join(path_to_resources, galaxy_parameters['Galaxy'])+'/'
+    cf.create_directory(galaxy_parameters['Galaxy'],path_to_resources)
+
+    fits.writeto(f'{new_resource}/{galaxy_parameters["Galaxy"]}.fits', Cube[0].data,Cube[0].header,overwrite=False)
+    Cube.close()
+    Mask_Inner, Mask_Outer = cf.create_masks(new_resource,cfg.general.main_directory,galaxy_parameters['Galaxy'],sofia_call=cfg.general.sofia2)
+    os.system(f"cp {cfg.general.main_directory}{model_file} {new_resource}{galaxy_parameters['Galaxy']}{ext}")
+    with open(f"{new_resource}{galaxy_parameters['Galaxy']}.py",'w') as f:
+        f.writelines(module_template)
+
 
 
 # function to properly regrid the cube after smoothing
@@ -66,9 +199,6 @@ def Regrid_Array(Array_In, Out_Shape):
 
 
 def ROC(cfg):
-    #First ask for the directory to work in
-
-
 
     # Let's give an over view of the database that will be created
     print(f"We will create a database with the galaxies {','.join([x for x in cfg.roc.base_galaxies])} basic sets in the directory {cfg.general.main_directory}.\n")
@@ -90,7 +220,7 @@ def ROC(cfg):
        cat = open(Catalogue, 'w')
        cat.write('ID|Distance|Directoryname|Cubename\n')
        cat.close()
-    
+
 
     Modifications= {}
     if 'Beams' in cfg.roc.variables_to_vary:

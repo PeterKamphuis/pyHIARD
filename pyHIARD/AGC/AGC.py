@@ -510,7 +510,7 @@ The type of galaxy = {Current_Galaxy.Mass:1e}.
 PA = {Current_Galaxy.PA}.
 Warp = {Current_Galaxy.Warp[0]}-{Current_Galaxy.Warp[1]}.
 Which starts at {WarpStart:.2f} kpc and the 1M/pc^2 radius is {Rad_HI:.2f} kpc.
-Flare = {}\n".format(Current_Galaxy.Flare))
+Flare = {Current_Galaxy.Flare}.
 Beams across the major axis = {Current_Galaxy.Beams}.
 SNR Requested = {Current_Galaxy.SNR} SNR Achieved = {SNRachieved}.
 Mean Signal = {mean_signal}.
@@ -524,10 +524,10 @@ HI_Mass Retrieved {mass:.2e} (M_solar).
 We have {pixperbeam} pix per beam.
 The cube was corrupted with the {cfg.agc.corruption_method} method.
 The final noise level is {sigma} Jy/beam.
-h_z = {h_z[0]:.3f}-{h_z[-1]:.3f} (kpc).'''
+h_z = {h_z[0]:.3f}-{h_z[-1]:.3f} (kpc).''')
 
                 with open(Catalogue, 'a') as cat:
-                    cat.write(f'{int(number_models):d}|{Distance:.2f}|{name}|Convolved_Cube\n'
+                    cat.write(f'{int(number_models):d}|{Distance:.2f}|{name}|Convolved_Cube\n')
                 # We also want a file that contains initial estimates for all the parameters. We scramble them with gaussian variations
                 with open(f"{cfg.general.main_directory}{name}/Initial_Estimates.txt", 'w') as overview:
                     overview.write("#This file contains the initial estimates \n")

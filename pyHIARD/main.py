@@ -3,8 +3,8 @@
 
 import pyHIARD
 import pyHIARD.common_functions as cf
-import pyHIARD.AGC.AGC as AGC
-import pyHIARD.ROC.ROC as ROC
+from pyHIARD.AGC.AGC import AGC
+from pyHIARD.ROC.ROC import ROC,add_template
 from pyHIARD.conf.config import Config
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from omegaconf import OmegaConf,MissingMandatoryValue
@@ -91,11 +91,15 @@ configuration_file = ''')
 
     cfg = OmegaConf.merge(cfg,inputconf)
     cfg = cf.check_input(cfg)
+    if cfg.roc.add_template:
+        add_template(cfg)
+        sys.exit()
+
     if cfg.agc.enable:
-        AGC.AGC(cfg)
+        AGC(cfg)
 
     if cfg.roc.enable:
-        ROC.ROC(cfg)
+        ROC(cfg)
     Catalogue = f'{cfg.general.main_directory}/Output_Summary.txt'
     # If we are making new models we want to ensure this is a new file
     cat = open(Catalogue, 'w')
