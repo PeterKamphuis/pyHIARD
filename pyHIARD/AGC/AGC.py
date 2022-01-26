@@ -99,15 +99,15 @@ def AGC(cfg):
             tmp.write(data)
        # let's make sure it has BMAJ, BMIN and BPA
         dummy = fits.open(cfg.general.main_directory+'/Input.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
-        sizex = 500.
-        sizey = 500.
-        sizez= 120.
+        sizex = 500
+        sizey = 500
+        sizez= 120
         header_sets = {'BMAJ': 0., 'BMIN': 0., 'BPA': 0.,\
                        'CRPIX1': 200., 'CRPIX2': 200.,'CRPIX3': 60.,\
                        'CDELT1': -4./3600.,'CDELT2': -4./3600.,'CDELT3': -4.,\
                        'CUNIT2': 'M/S', 'CRVAL3': 500.,\
                        'CTYPE1': 'RA--SIN',  'CTYPE2': 'DEC-SIN', 'CTYPE3': 'VELO-HEL',\
-                       'BITPIX': -32,'NAXIS': 3.,\
+                       'BITPIX': -32,'NAXIS': 3,\
                        'NAXIS1':sizex,'NAXIS2':sizey,'NAXIS3':sizez}
         for key,value in header_sets.items():
             dummy[0].header[key] = value
@@ -141,6 +141,7 @@ def AGC(cfg):
     # start a loop over the various base galaxies
     number_models = 0.
     set_done= [1024]
+    plot_ax =[]
     if 6 in cfg.agc.base_galaxies:
         print(f''' Please define your personal base galaxy now. \n''')
         User_Defined = Base_Galaxy(6)
@@ -229,7 +230,7 @@ def AGC(cfg):
                 # Build a name and a directory where to stor the specific output
 
                 #print("This is the Current Mass = {:.1e}".format(Current_Galaxy.Mass))
-                name = set_name(Current_galaxy)
+                name = set_name(Current_Galaxy)
                 print(f"{name} is the name we attach to the current galaxy")
 
                 # Make a dirctory
@@ -281,7 +282,7 @@ def AGC(cfg):
                 SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
                             #We want to make a figure with all the Rotation curves
                 if Current_Galaxy.Mass not in set_done:
-                    set_done,max_rad,colors = plot_RC(set_done,Current_Galaxy.Mass,Rad,Vrot,colors,max_rad,sub_ring)
+                    set_done,max_rad,colors,plot_ax = plot_RC(set_done,Current_Galaxy.Mass,Rad,Vrot,colors,max_rad,sub_ring,plot_ax)
 
 
 
@@ -554,8 +555,9 @@ h_z = {h_z[0]:.3f}-{h_z[-1]:.3f} (kpc).''')
     os.system(f'rm -f {cfg.general.main_directory}/Input.fits')
     print("We created {} models".format(number_models))
     plt.figure(59)
-    ax.set_ylim(ymin=0)
-    ax.set_xlim(xmin=0, xmax=max_rad)
+
+    plot_ax.set_ylim(ymin=0)
+    plot_ax.set_xlim(xmin=0, xmax=max_rad)
     plt.legend(loc='lower right',fontsize=12)
     plt.savefig('Rotation_Curves.pdf', bbox_inches='tight')
     plt.close()
@@ -723,7 +725,7 @@ INPUTS:
 OPTIONAL INPUTS:
 
 OUTPUTS:
-    the dreivative
+    the derivative
 
 OPTIONAL OUTPUTS:
 
@@ -738,8 +740,6 @@ NOTE:
 
 # Then the functions that create the different components of the galaxy
 
-
-
 # function to get the surface brightness profile based on the last element in the rotation curve
 def build_sbr_prof(Current_Galaxy,symmetric = False):
     '''function to get the surface brightness profile based on the last element in the rotation curve'''
@@ -747,88 +747,22 @@ def build_sbr_prof(Current_Galaxy,symmetric = False):
     # Avanti used 	V_Ropt = (200*(l**0.41))/(0.80 +0.49*np.log10(l) +(0.75*np.exp(-0.4*l))/(0.47 + 2.25*(l**0.4)))**0.5 (Persic & Sallucci)
     # We will not use the URC as it get's silly at high mass and remains showing flat parts at low mass
     # We will use the parameterisation of Courteau 1997
+    v_circ, HIrad, MHI,MK = get_HI_disk(Current_Galaxy.Mass)
 
-    # About 18.5% is cosmic baryon fraction from planck (Omb=0.048, OmDM = 0.2589). In a galactic halo this is roughly 70%-90% of the cosmic mean (See Crain et al. 2006, Pezzulli 2019)
-    bary_frac = 0.1854
-    diff=0.9
-    counter = 0
-    while abs(diff) > 0.1:
-    # if above 10**10 then -10**9 to account for gas
-        if Current_Galaxy.Mass > 10**10:
-            #m_star = bary_frac* Current_Galaxy.Mass-(bary_frac*Current_Galaxy.Mass-10**9)*10**(-0.43*np.log10((bary_frac*Current_Galaxy.Mass-10**9))+3.75)
-            m_star=bary_frac* Current_Galaxy.Mass-10**9
-        else:
-            # else half baryonic in stars
-            #m_star  = bary_frac*Current_Galaxy.Mass-(bary_frac*Current_Galaxy.Mass/2.)*10**(-0.43*np.log10((bary_frac*Current_Galaxy.Mass/2.))+3.75)
-            m_star=bary_frac* Current_Galaxy.Mass/2.
-        # and convert stellar mass to an HI Mass following van Driel (2016)
-        # log(MH I/M?) = −0.43 log (M?) + 3.75.
-        m_star_prev=1
-        while abs(m_star_prev-m_star)/m_star > 0.1:
-            MHI = m_star*10**(-0.43*np.log10(m_star)+3.75)
-            m_star_prev=copy.deepcopy(m_star)
-            m_star=bary_frac* Current_Galaxy.Mass-MHI*1.4
-        #print("This is MHI {:.2e} and mstar {:.2e}".format(MHI,m_star,m_star_prev))
-        # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
-        HIrad=10**(0.506*np.log10(MHI)-3.293)/2.
-        # let's calculate the final mass we obtain
-        #masses = (MHI+m_star)/bary_frac
-        # McGaugh 2014  M_*/Lk = 0.6
-        # to get a B-band magnitude but mass picking are in K-band
-        # Ponomareva 2017 has
-        # M^T,b,i_[3.6] = (−9.52 ± 0.32) × log(2V_flat) + 3.3 ± 0.8
-        #    So can we find a 3.6 scaling to HI
-        # Mag_36 = -9.52*np.log10(2*Base_Galaxy(num).rc_speed[-1])+3.3
-        # in luminosity L_solar
-        # log(LT ,b,i[3.6] ) = (3.7 ± 0.11) × log(2Vflat) + 1.3 ± 0.3,
-        #L_36 = 10**(3.7*np.log10(2.*Base_Galaxy(num).rc_speed[-1])+1.3)
-        MK = np.log10(m_star/0.6)*-2.5+3.29
-        v_circ_TF=10**((MK-1.44)/-9.77)/2.
-        #  Let's check that this roughly gives our DM mass at the virial radius in pc
-        v_circ_NFW = calc_vc_NFW(Current_Galaxy.Mass,MHI,m_star,HIrad)
-
-        R_0,beta,gamma = get_sparcs_fit(v_circ_TF,HIrad)
-        x=R_0/HIrad
-        vfinal=v_circ_TF*(1+x)**beta*(1+x**gamma)**(-1./gamma)
-
-        #diff=(Current_Galaxy.Mass*(3*xr)-DynMass)/DynMass
-        #print("The NFW velocity at R_HI = {}  and the retrieved curve velocity at R_HI = {} diff {}".format(v_c_tot,vfinal,v_c_tot-vfinal))
-
-        diff=(vfinal-v_circ_NFW)/vfinal
-        #print("The current fractional difference = {} and the baryon fraction = {}".format(diff,bary_frac))
-
-        if abs(diff) > 2.:
-            diff = diff/abs(diff)*2.
-
-        bary_frac -= diff*0.05
-        counter += 1
-        if bary_frac >  0.1854*1.1 or bary_frac < 0.1854*0.2:
-            counter=101
-        if counter > 100:
-            # If we can not converge we take the average of both methods.
-            v_circ=(v_circ_TF+v_circ_NFW )/2.
-            R_0,beta,gamma = get_sparcs_fit(v_circ_TF,HIrad)
-
-            break
-        else:
-            v_circ = v_circ_TF
-    DynMass=HIrad*10**3*v_circ**2/G_agc
-    DynMassNFW= HIrad*10**3*v_circ_NFW**2/G_agc
-    with open('Fractions_and_Masses.txt','a') as file:
-        file.write(f'''The input Mass = {Current_Galaxy.Mass:.2e}  and the retrieved NFW Dynamical mass = {DynMassNFW:.2e} and Dynamical Mass based on v_circ = {DynMass:.2e}.
-The current fractional difference = {diff:.5f} and the baryon fraction = {bary_frac:.5f}\n''')
         #First we set the radii at with a 10 elements per rings out to 1.5 times HIrad. However we always need at least 25 rings for transition purposes
     if Current_Galaxy.Beams < 5.:
         sub_ring = int(25./Current_Galaxy.Beams)
     else:
         sub_ring = 5
     Rad= np.linspace(0.,1.5*HIrad, sub_ring*Current_Galaxy.Beams)
+    # Finaaly the courteau presciption
+    v_flat,R_0,beta,gamma = get_sparcs_fit(v_circ,HIrad)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         x = R_0/Rad
     x[0]=1e-8
-    # Finaaly the courteau presciption
-    vrot = v_circ*(1+x)**beta*(1+x**gamma)**(-1./gamma)
+
+    vrot = v_flat*(1+x)**beta*(1+x**gamma)**(-1./gamma)
     vrot[0] = 0.
     # from these we use the the prescription of Martinsson to get an HI profile.
     # As done by A. Gogate in initialparam.py
@@ -1777,27 +1711,94 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def get_sparcs_fit(v_flat,radius):
+def get_HI_disk(Mass,output_directory=None):
+    # About 18.5% is cosmic baryon fraction from planck (Omb=0.048, OmDM = 0.2589). In a galactic halo this is roughly 70%-90% of the cosmic mean (See Crain et al. 2006, Pezzulli 2019)
+    bary_frac = 0.1854
+    diff=0.9
+    counter = 0
+    # if the baryon mass is higher the 2* a typical gass mass disk (i.e. M_HI = 1e9 Msol)
+    # then we subtract this disk from the baryonic fraction and count the remainder as the initial stellar mass guess
+    if bary_frac*Mass > 2.8*10**9:
+        m_star=bary_frac*Mass-1.4*10**9
+    else:
+        # else half baryonic in stars
+        m_star=bary_frac*Mass/2.
+
+    # and convert stellar mass to an HI Mass following van Driel (2016)
+    m_star_prev=1
+    while abs(m_star_prev-m_star)/m_star > 0.1:
+        M_HI = m_star*10**(-0.43*np.log10(m_star)+3.75)
+        # If the total gas mass is higher than the calculated baryonic mass then modify
+        if 1.4*M_HI > bary_frac*Mass:
+            if (1.4*M_HI+m_star) > Mass:
+                #MHI is the total mass  - the expected cosmic mean stellar mass
+                M_HI = (Mass-m_star)/1.4
+                bary_frac = 1.
+            else:
+                #The baryonic fraction is raised to match the current one
+                bary_frac = (1.4*M_HI+m_star)/(Mass)
+        m_star_prev=copy.deepcopy(m_star)
+        m_star=bary_frac* Mass-M_HI*1.4
+
+    #print("This is MHI {:.2e} and mstar {:.2e}".format(MHI,m_star,m_star_prev))
+    # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
+    R_HI=10**(0.506*np.log10(M_HI)-3.293)/2.
+
+    # McGaugh 2014  M_*/Lk = 0.6
+    M_K = np.log10(m_star/0.6)*-2.5+3.29
+    # Ponomareva 2017 has
+    # log(LT,b,i) = (3.7 ± 0.11) × log(2Vflat) + 1.3 ± 0.3 for 3.6 mu  and then in Table 3 the values for Ks band
+    v_circ_TF = 10**((np.log10(m_star/0.6)-1.22)/3.81)/2.
+
+    #  Let's check that this roughly gives our DM mass at the virial radius in pc
+    v_circ_NFW = calc_vc_NFW(Mass,M_HI,m_star,R_HI)
+    #our final velocity is an average between TF and NFW
+    V_HI=(v_circ_TF+v_circ_NFW )/2.
+
+    if output_directory:
+        DynMass=R_HI*10**3*V_HI**2/G_agc
+        DynMassNFW= R_HI*10**3*v_circ_NFW**2/G_agc
+        with open(f'{output_directory}Fractions_and_Masses.txt','a') as file:
+            file.write(f'''The input Mass = {Mass:.2e}  and the retrieved NFW Dynamical mass = {DynMassNFW:.2e} and Dynamical Mass based on v_circ = {DynMass:.2e}.
+The current the baryon fraction = {bary_frac:.5f}\n''')
+    return V_HI, R_HI, M_HI,M_K
+get_HI_disk.__doc__ = f'''
+NAME:
+    get_HI_disk
+
+PURPOSE:
+    Obtaining the V_HI, R_HI and M_HI to build the HI disk from.
+
+CATEGORY:
+   agc
+
+INPUTS:
+    Mass = the requested DM mass
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+     V_HI, R_HI and M_HI and the absolute magnitude of the stellar disk.
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
+
+def get_sparcs_fit(v_end,radius):
     '''Calculate the R_0, gamma and beta parameters'''
-    # The core radius should be smaller for more massive galaxies with a minimum of 1.5 kpc see transition function .py for how these parameters run
-   # Made to match the sparcs data set
-    height=1.5
-    center=235
-    disp=30.
-    z=(v_flat-center)/disp
-    R_0 =height*np.exp(-1*z**2/2.)*(np.arctan((v_flat-center+disp)/2.)+0.4)*0.7+(radius-radius/10.)/(v_flat/60.)**2.+radius/20.
-    # The behaviour at large radii should be to grow slowly above 120 km/s with a maximum of 0.5
-    # above 212 v_c it should decline again
-    beta = np.arctan((v_flat-120.)/60.)*0.6
-    if beta < 0: beta = 0.
-    # The turnover sharpness should increase while beta < 0.45 above that it should decline again
-    height=0.9
-    center=212
-    disp=100.
-    z=(v_flat-center)/disp
-    gamma=height*np.exp(-1*z**2/2.)+1.4
-    gamma += -0.2*(np.arctan((v_flat-300)/30.)-0.5)
-    return R_0,beta,gamma
+
+    v_flat=11.+0.76*v_end
+    R_0 = 10*np.exp(-1*radius**2/10.**2)+2.25+0.08*radius
+    beta = 0.5*(1.14-0.0006*v_end)+0.5*(0.7*np.arctan((radius - 32.)/25.))
+    if beta < 0.25:
+        beta = 0.25
+    gamma = 0.5*(gaussian_function(v_end,1.5,170.,60.))+0.5*(3.7- 0.003*radius)
+    return v_flat,R_0,beta,gamma
+
 get_sparcs_fit.__doc__ = f'''
 NAME:
    get_sparcs_fit
@@ -1825,7 +1826,40 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring):
+def gaussian_function(x,amp,center,sigma):
+    return amp*np.exp(-(x-center)**2/(2.*sigma**2))
+gaussian_function.__doc__ = f'''
+NAME:
+   gaussian_function
+
+PURPOSE:
+    return a value on a gaussian function
+
+CATEGORY:
+   agc
+
+INPUTS:
+   x input value
+   amp = amplitude of the gaussian function
+   center = center of the gaussian
+   sigma = sigma of the gaussian function
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    y value of the gaussian
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
+
+
+
+def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax):
     '''dd the RC to the overview plot and return updated tracker'''
     if set_done[0] == 1024:
         set_done= [Mass]
@@ -1836,7 +1870,7 @@ def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring):
         c = next(colors)
         plt.figure(59, figsize=(8, 8), dpi=300, facecolor='w', edgecolor='k')
         ax = plt.subplot(1, 1, 1)
-        plt.plot(Rad,Vrot,c)
+        plt.plot(Rad,Vrot,c=c)
         #plt.plot(Rad,Vrot,'ko',label='M$_{\odot}$ = {:.1e}'.format(Current_Galaxy.Mass))
         plt.plot(Rad,Vrot,'o',c=c,label='M$_{\odot}$ = '+' {:.1e}'.format(Mass))
         plt.ylabel('V$_{rot}$ (km s$^{-1}$)',**labelfont)
@@ -1860,7 +1894,7 @@ def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring):
         #plt.plot(Rad,Vrot,'o',label=r'M$_{\odot}$ = {:.1e}'.format(Current_Galaxy.Mass),c=c)
         plt.plot(Rad,Vrot,'o',label='M$_{\odot}$ = '+' {:.1e}'.format(Mass),c=c)
 
-    return set_done,max_rad,colors
+    return set_done,max_rad,colors,ax
 plot_RC.__doc__ = f'''
 NAME:
    plot_RC
