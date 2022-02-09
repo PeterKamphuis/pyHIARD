@@ -11,9 +11,10 @@ class AGC:
     #The default database currently make 149 galaxies
     enable: bool = True
     delete_existing: bool = False  # Delete all models already existing in the directory?
-    # 1-6 6 creates random galaxy by asking questions
-    base_galaxies: List[int] = field(default_factory=lambda: [1, 2, 3, 4, 5])
-    inhomogenous: bool = True  # Add homgenieties?
+    # 1-6 6 creates user galaxy by asking questions
+    base_galaxies: List[int] = field(
+        default_factory=lambda: [1, 2, 3, 4, 5, 6])
+    inhomogenous: bool = True  # Add homogenieties?
     symmetric: bool = False  # Keep galaxies symmetric
     corruption_method: str = 'Gaussian'  # options are Casa_Sim, Gaussian, Casa_5
     variables_to_vary: List[str] = field(default_factory=lambda: ['Inclination', 'Beams', 'Radial_Motions',
@@ -36,12 +37,16 @@ class AGC:
     beam_size: List[float] = field(default_factory=lambda: [[5., 5.]])
     #Resolution of the beam in arcsec
     masses:  List[float] = field(default_factory=lambda: [2.5e11])
+    # The channel dependency
+    # 'Options are independent, sinusoidal, hanning
+    channel_dependency: str = 'independent'
 
 
 @dataclass
 class ROC:
     enable: bool = True
     add_template: bool = False
+    remove_template: bool = False
     delete_existing: bool = False
     base_galaxies: List[str] = field(default_factory=lambda: [
                                      'M_83', 'Circinus', 'NGC_5023', 'NGC_2903', 'NGC_3198', 'NGC_5204', 'UGC_1281', 'UGC_7774'])

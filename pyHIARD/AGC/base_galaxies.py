@@ -55,7 +55,7 @@ class Base_Galaxy:
             self.Radial_Motions= 0.
             # RA and DEC in degrees, Only used in casa sim
             self.Coord = [50.81166937467079,57.76644335595375]
-            self.Mass = 2.5e10 #5e11 # in km/s
+            self.Mass = 7.5e11 #5e11 # in km/s
             #self.Mass = 1e11
         elif num == 3:
             self.Inclination = 65.
@@ -71,7 +71,7 @@ class Base_Galaxy:
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
-            self.Mass= 5e11
+            self.Mass= 2.5e11
         elif num == 4:
             self.Inclination = 48.
             self.Dispersion = [13., 7.5]
@@ -86,7 +86,7 @@ class Base_Galaxy:
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
-            self.Mass= 2.5e11
+            self.Mass= 7.5e10
             #self.Mass= 1e10
         elif num == 5:
             self.Inclination = 42.
@@ -102,7 +102,24 @@ class Base_Galaxy:
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
-            self.Mass= 5e10
+            self.Mass= 2.5e10
+        elif num == 6:
+            self.Inclination = 60.
+            self.Dispersion = [14.,7.5] #[13., 7.5]
+            self.Mass= 7.5e9 #1e12
+            #self.Mass= 1e12
+            self.PA = 35.
+#            self.Warp = [0.1, 0.15]
+            self.Warp = [0.,0.]
+            self.Flare = "No_Flare" #"Flare"
+            self.Beams= 12 #18 #16.
+            self.SNR= 8
+            self.Channelwidth = 4.
+            self.Coord = [3.56406541347E+01,4.23492081422E+01]
+            self.Res_Beam = [20.,20.]
+            self.Arms = "Arms"
+            self.Bar = "No_Bar"
+            self.Radial_Motions= 0.
         else:
             #Self construct a base by asking
             single = ['Inclination', 'PA', 'Beams','SNR','Channelwidth','Radial_Motions','Mass']

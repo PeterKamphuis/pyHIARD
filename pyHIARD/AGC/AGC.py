@@ -104,15 +104,15 @@ def AGC(cfg):
         sizez= 120
         header_sets = {'BMAJ': 0., 'BMIN': 0., 'BPA': 0.,\
                        'CRPIX1': 200., 'CRPIX2': 200.,'CRPIX3': 60.,\
-                       'CDELT1': -4./3600.,'CDELT2': -4./3600.,'CDELT3': -4.,\
+                       'CDELT1': -4./3600.,'CDELT2': 4./3600.,'CDELT3': 4.,\
                        'CUNIT2': 'M/S', 'CRVAL3': 500.,\
-                       'CTYPE1': 'RA--SIN',  'CTYPE2': 'DEC-SIN', 'CTYPE3': 'VELO-HEL',\
+                       'CTYPE1': 'RA---SIN',  'CTYPE2': 'DEC--SIN', 'CTYPE3': 'VELO-HEL',\
                        'BITPIX': -32,'NAXIS': 3,\
                        'NAXIS1':sizex,'NAXIS2':sizey,'NAXIS3':sizez}
         for key,value in header_sets.items():
             dummy[0].header[key] = value
         header_deletes = ['CROTA1','CROTA2','DRVAL3','DTYPE3','DUNIT3','HISTORY',\
-                            'BMMAJ','BMMIN','BMPA']
+                            'BMMAJ','BMMIN','BMPA','MAPLAB']
         for key in header_deletes:
             del dummy[0].header[key]
         # make the cube a typical size
@@ -142,9 +142,9 @@ def AGC(cfg):
     number_models = 0.
     set_done= [1024]
     plot_ax =[]
-    if 6 in cfg.agc.base_galaxies:
+    if 7 in cfg.agc.base_galaxies:
         print(f''' Please define your personal base galaxy now. \n''')
-        User_Defined = Base_Galaxy(6)
+        User_Defined = Base_Galaxy(7)
         print(f'''You have defined the following Base Galaxy''')
         cf.print_base_galaxy(User_Defined)
 
@@ -155,7 +155,7 @@ def AGC(cfg):
             #Because python is the dumbest language ever
             masses_to_delete= copy.deepcopy(cfg.agc.masses)
         for galaxy in cfg.agc.base_galaxies:
-            if galaxy == 6:
+            if galaxy == 7:
                 masses_to_delete.append(User_Defined.Mass)
             else:
                 masses_to_delete.append(Base_Galaxy(galaxy).Mass)
@@ -190,7 +190,7 @@ def AGC(cfg):
                 print("This is not a supported parameter")
                 exit()
             for jx in range (numloops):
-                if 1 <= cfg.agc.base_galaxies[base] <= 5:
+                if 1 <= cfg.agc.base_galaxies[base] <= 6:
                     Current_Galaxy = Base_Galaxy(cfg.agc.base_galaxies[base])
                 else:
                     Current_Galaxy = copy.deepcopy(User_Defined)
@@ -365,7 +365,14 @@ def AGC(cfg):
                 # This comes from FAT. If I remember correctly this is the sine response to the channels *1.2/(2*SQRT(2*ALOG(2.))))
                 # However in our input we want independent channels which means we should set this to 0.
                 # Template["CONDISP"]="CONDISP = 0."
-                Template["CONDISP"]="CONDISP = {}".format(Current_Galaxy.Channelwidth*1.2/(2*np.sqrt(2*np.log(2.))))
+                if cfg.agc.channel_dependency == 'sinusoidal':
+                    Template["CONDISP"]="CONDISP = {}".format(Current_Galaxy.Channelwidth*1.2/(2*np.sqrt(2*np.log(2.))))
+                elif cfg.agc.channel_dependency == 'hanning':
+                    Template["CONDISP"]="CONDISP = {}".format(Current_Galaxy.Channelwidth*2./(2*np.sqrt(2*np.log(2.))))
+                elif cfg.agc.channel_dependency == 'independent':
+                    Template["CONDISP"]="CONDISP = 0."
+                else:
+                    raise InputError(f"{cfg.agc.channel_dependency} is not an option for the channel dependency")
                 # We need to set the input and output cube
                 Template["INSET"]="INSET = ../Input.fits"
                 Template["OUTSET"]="OUTSET = unconvolved_cube.fits"
@@ -435,7 +442,8 @@ def AGC(cfg):
                 dummy[0].header['NAXIS3'] = velpix
                 dummy[0].header['BMAJ'] = 0.
                 dummy[0].header['BMIN'] = 0.
-
+                dummy[0].header['OBJECT'] = f'AGC_GALAXY'
+                dummy[0].header['INSTRUME'] =f'AGC'
                 # make the cube a typical size
                 dummy2 = np.zeros((velpix,required_pixels,required_pixels),dtype= np.float32)
                 dummy2[int(np.floor(velpix/2.)),int(np.floor(required_pixels/2.)),int(np.floor(required_pixels/2.))] = 5
@@ -515,7 +523,7 @@ Flare = {Current_Galaxy.Flare}.
 Beams across the major axis = {Current_Galaxy.Beams}.
 SNR Requested = {Current_Galaxy.SNR} SNR Achieved = {SNRachieved}.
 Mean Signal = {mean_signal}.
-Channelwidth = {Current_Galaxy.Channelwidth}.
+Channelwidth = {Current_Galaxy.Channelwidth} and their dependency is {cfg.agc.channel_dependency}.
 Major axis beam = {Current_Galaxy.Res_Beam[0]} Minor axis beam= {Current_Galaxy.Res_Beam[1]}.
 This galaxy has {Current_Galaxy.Arms} and a {Current_Galaxy.Bar}.
 It's central coordinates are RA={RAhr} DEC={DEChr} vsys={vsys:.2f} km/s.
@@ -526,7 +534,7 @@ We have {pixperbeam} pix per beam.
 The cube was corrupted with the {cfg.agc.corruption_method} method.
 The final noise level is {sigma} Jy/beam.
 h_z = {h_z[0]:.3f}-{h_z[-1]:.3f} (kpc).''')
-
+            
                 with open(Catalogue, 'a') as cat:
                     cat.write(f'{int(number_models):d}|{Distance:.2f}|{name}|Convolved_Cube\n')
                 # We also want a file that contains initial estimates for all the parameters. We scramble them with gaussian variations

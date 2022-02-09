@@ -144,6 +144,10 @@ def check_input(cfg):
         elif cfg.agc.corruption_method .lower() == 'casa_5' or cfg.agc.corruption_method .lower() == "c_5":
             cfg.agc.corruption_method  = 'Casa_5'
             print("You are using the casa corruption method please make sure python can access casa.")
+        channel_options= ['indpendent','sinusoidal','hanning']
+        while cfg.agc.channel_dependency.lower() not in channel_options:
+            cfg.agc.channel_dependency = input(f''' {cfg.agc.channel_dependency} is not a valid channel dependency
+Please choose from {','.join([x for x in channel_options])}:''')
 
         question_variations = False
         changes_poss = ['Inclination', 'PA','Beams','Radial_Motions','Flare','Arms','Bar','Channelwidth','SNR','Warp','Mass','Beam_Resolution','Base']
@@ -519,11 +523,14 @@ cut_input_cube.__doc__ =f'''
 '''
 
 def delete_directory(dir_to_delete):
-    try:
-        for f in os.listdir(dir_to_delete):
+    for f in os.listdir(dir_to_delete):
+        try:
             os.remove(os.path.join(dir_to_delete, f))
-    except FileNotFoundError:
-        pass
+        except FileNotFoundError:
+            pass
+        except IsADirectoryError:
+            delete_directory(os.path.join(dir_to_delete, f))
+
     try:
         os.rmdir(dir_to_delete)
     except FileNotFoundError:
@@ -649,43 +656,139 @@ def get_bool(print_str="Please type True or False",default=True):
             return False
         else:
             print("Error: the answer must be true/false or yes/no.")
-#Function for loading the variables of a tirific def file into a set of variables to be used
-def load_tirific(name,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR','RADI','VROT',
+
+def load_text_model(filename,type = 'Tirific',  Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR','RADI','VROT',
                  'Z0', 'SBR', 'INCL','PA','XPOS','YPOS','VSYS','SDIS','VROT_2',  'Z0_2','SBR_2',
-                 'INCL_2','PA_2','XPOS_2','YPOS_2','VSYS_2','SDIS_2','CONDISP','CFLUX','CFLUX_2'],
-                 unpack = True,new_file = False ):
-    if new_file:
-        with open(name,'r') as tmp:
+                 'INCL_2','PA_2','XPOS_2','YPOS_2','VSYS_2','SDIS_2','CONDISP','CFLUX','CFLUX_2'],package_file = True):
+    #First check that we have a proper type
+    allowed_types = ['tir','rc','bar','tirific','rotcur','barolo','fat']
+    while type.lower() not in allowed_types:
+        type = input(f'''pyHIARD can not deal with the type {type}.
+please provide one of the following types {', '.join(allowed_types)}:''')
+    # Then make sure the type adheres to a single desganation
+    if type.lower() in ['tir','tirific']:
+        type = 'tir'
+    elif type.lower() in ['rc','rotcur']:
+        type = 'rc'
+    elif type.lower() in ['bar','barolo']:
+        type = 'bar'
+    else:
+        raise InputError('This should be impossible.')
+
+    ext = {'tir': 'def', 'bar': 'txt', 'rc':'rotcur'}
+    if package_file:
+        model = __import__(f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename,0)
+        with import_res.open_text(model, f'{filename}.{ext[type]}') as tmp:
             unarranged = tmp.readlines()
     else:
-        model = __import__(f'pyHIARD.Resources.Cubes.{name}', globals(), locals(), name,0)
-        with import_res.open_text(model, f'{name}.def') as tmp:
+        with open(filename,'r') as tmp:
             unarranged = tmp.readlines()
+    Values = Proper_Dictionary({})
+    variable_location = {}
 
-
-    Variables = np.array([e.upper() for e in Variables],dtype=str)
-    numrings = [int(e.split('=')[1].strip()) for e in unarranged if e.split('=')[0].strip().upper() == 'NUR']
-    outputarray=np.zeros((numrings[0],len(Variables)),dtype=float)
-
-    # Separate the keyword names
+    for key in Variables:
+        Values[key] = []
+        variable_location[key] = -1
+    mapping = {'rc': {'RADI':'radius','VSYS': 'systemic','VSYS_ERR':'systemic_error',
+                      'VROT':'rotation','VROT_ERR': 'rotation_error','VRAD': 'expansion',
+                      'VRAD_ERR': 'expansion_error', 'PA': 'pos.','PA_ERR': 'pos._error',
+                      'INCL': 'incli-', 'INCL_ERR': 'incli-_error', 'XPOS': 'x-pos.',
+                      'XPOS_ERR': 'x-pos._error','YPOS': 'y-pos.','YPOS_ERR': 'y-pos._error'},
+               'bar': {'RADI':'RAD(arcs)','VSYS': 'VSYS(km/s)','VSYS_ERR':'E_VSYS',
+                      'VROT':'VROT(km/s)','VROT_ERR': 'E_VROT','VRAD': 'VRAD(km/s)',
+                      'VRAD_ERR': 'E_VRAD', 'PA': 'P.A.(deg)','PA_ERR': 'E_PA',
+                      'INCL': 'INC(deg)', 'INCL_ERR': 'E_INC', 'XPOS': 'XPOS(pix)',
+                      'XPOS_ERR': 'E_XPOS','YPOS': 'YPOS(pix)','YPOS_ERR': 'E_YPOS',
+                      'SDIS': 'DISP(km/s)', 'SDIS_ERR': 'E_DISP', 'Z0': 'Z0(arcs)', 'Z0_ERR': 'E_Z0' }
+                      }
     for line in unarranged:
-        var_concerned = str(line.split('=')[0].strip().upper())
-        if len(var_concerned) < 1:
-            var_concerned = 'xxx'
-        varpos = np.where(Variables == var_concerned)[0]
-        if varpos.size > 0:
-            tmp =  np.array(line.split('=')[1].rsplit(),dtype=float)
-            outputarray[0:len(tmp),int(varpos)] = tmp[0:len(tmp)]
+        stripped = False
+        if line[0] in ['#','!']:
+            line = line[1:]
+            stripped = True
+        if type == 'tir':
+            variable = str(line.split('=')[0].strip().upper())
+            if variable in Variables:
+                Values[variable] = line.split('=')[1].rsplit()
+        elif stripped:
+            split_line = [x.strip() for x in line.split()]
+            if len(split_line) == 0:
+                continue
+            if type == 'rc':
+                if split_line[0] != 'radius':
+                    continue
+            for key in Variables:
+                if key not in mapping[type]:
+                    continue
+                if key[-4:] == '_ERR':
+                    if type == 'bar':
+                        if f'{mapping[type][key]}1' in split_line:
+                            variable_location[key] = [split_line.index(f'{mapping[type][key]}1'),split_line.index(f'{mapping[type][key]}2')]
+                    elif type == 'rc':
+                        var = mapping[type][key].split('_')
+                        if var[0] in split_line:
+                            if split_line[split_line.index(var[0])+1] == var[1]:
+                                variable_location[key] = split_line.index(var[0])+1
+                else:
+                    if mapping[type][key] in split_line:
+                        variable_location[key] = split_line.index(mapping[type][key])
         else:
-            if var_concerned[0] == '#':
-                varpos = np.where(var_concerned[2:] == Variables)[0]
-                if varpos.size > 0:
-                    tmp = np.array(line.split('=')[1].rsplit(),dtype=float)
-                    outputarray[0:len(tmp),int(varpos)] = tmp[:]
-    if unpack:
-        return (*outputarray.T,)
-    else:
-        return outputarray
+            split_line = [float(x.strip()) for x in line.split()]
+            for var in variable_location:
+                if variable_location[var] == -1:
+                    pass
+                elif isinstance(variable_location[var],int):
+                    Values[var].append(float(split_line[variable_location[var]]))
+                else:
+                    the_av = np.mean([abs(split_line[variable_location[var][0]]),abs(split_line[variable_location[var][1]])])
+                    Values[var].append(float(the_av))
+
+    final_values =[]
+    for key in Variables:
+        if len(Values[key]) > 0.:
+            if 'RADI' in Variables:
+                while len(Values[key]) < len(Values['RADI']):
+                    Values[key].append(Values[key][-1])
+            final_values.append(np.array(Values[key]))
+        else:
+            if 'RADI' in Variables:
+                final_values.append(np.full(len(Values['RADI']),-1.))
+            else:
+                final_values.append(np.full(len(Values[0]),-1.))
+    return final_values
+load_text_model.__doc__=f'''
+ NAME:
+    load_text_model
+
+ PURPOSE:
+    load a text file tilted ring model
+
+ CATEGORY:
+    common_functions
+
+ INPUTS:
+    name = name of the packaged galaxy or text file
+    type = type of input file, options are  ['tir','rc','bar','tirific','rotcur','barolo','fat']
+    Variables = variable to extract following tirific convention
+    package_file = Boolean indicating whether the file is from the python package or not
+
+ OPTIONAL INPUTS:
+
+ OUTPUTS:
+    arrays of variables in the order of variables is put in.
+
+ OPTIONAL OUTPUTS:
+
+ PROCEDURES CALLED:
+    Unspecified
+
+ NOTE:
+    Note that rotcur and barolo are not very intelligent and hence return the
+    xpos and ypos in pixel coordinates which are worthless without a corresponding cube.
+    barolo errors are averaged from lower and upper error in the file.
+
+ '''
+#
 
 def print_base_galaxy(Galaxy):
     print(f'''{'Inclination':15s} = {Galaxy.Inclination:<10.1f}, {'Dispersion':15s} = {Galaxy.Dispersion}
@@ -721,46 +824,6 @@ print_base_galaxy.__doc__=f''' NAME:
 
  NOTE:
  '''
-
-def read_template_RC(name,type= 'RC',new_file=False):
-    #temp = __import__('spam.ham', globals(), locals(), ['eggs', 'sausage'], 0)
-    if new_file:
-        with open(name,'r') as tmp:
-            unarranged = tmp.readlines()
-    else:
-        model = __import__(f'pyHIARD.Resources.Cubes.{name}', globals(), locals(), name,0)
-        with import_res.open_text(model, f'{name}.rotcur') as tmp:
-            unarranged = tmp.readlines()
-
-    Template_in = Proper_Dictionary({})
-    counter = 0.
-    # Separate the keyword names
-    values=[]
-    for tmp in unarranged:
-        if tmp[0] != '!':
-            range = tmp.split()
-            if counter == 0:
-                for item in range:
-                    values.append([float(item)])
-                counter = 1.
-            else:
-                for i,item in enumerate(range):
-                    values[i].append(float(item))
-    return np.array(values)
-
-
-
-def read_template_file(filename):
-    with import_res.open_text(templates, filename) as tmp:
-        unarranged = tmp.readlines()
-    Template_in = Proper_Dictionary({})
-
-    # Separate the keyword names
-    for tmp in unarranged:
-        # python is really annoying with needing endlines. Let's strip them here and add them when writing
-        Template_in[tmp.split('=',1)[0].strip().upper()]=tmp.rstrip()
-    return Template_in
-
 
 def read_casa_template(filename):
     with import_res.open_text(templates, filename) as tmp:
@@ -822,18 +885,23 @@ read_casa_template.__doc__=f'''
 
  NOTE:
  '''
+
 #Function to read simple input files that  use = as a separator between ithe required input and the values
-def read_input_file(filename):
 
+def read_template_file(filename,package_file = True):
+    if package_file:
+        with import_res.open_text(templates, filename) as tmp:
+            unarranged = tmp.readlines()
+    else:
+        with open(filename, 'r') as tmp:
+            unarranged = tmp.readlines()
+    Template_in = Proper_Dictionary({})
 
-    tmpfile = open(filename, 'r')
-    File = Proper_Dictionary({})
-    unarranged = tmpfile.readlines()
     # Separate the keyword names
     for tmp in unarranged:
         # python is really annoying with needing endlines. Let's strip them here and add them when writing
-        File[tmp.split('=', 1)[0].strip().upper()] = tmp.rstrip()
-    return File
+        Template_in[tmp.split('=',1)[0].strip().upper()]=tmp.rstrip()
+    return Template_in
 
 def run_sofia(working_dir,parameter_file,sofia_call = 'sofia2'):
     sfrun = subprocess.Popen([sofia_call,parameter_file],cwd=working_dir, stdout = subprocess.PIPE, stderr = subprocess.PIPE)

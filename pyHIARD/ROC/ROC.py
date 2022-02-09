@@ -12,6 +12,7 @@ import scipy.ndimage
 import os
 import re
 from astropy.io import fits
+from astropy.wcs import WCS
 import warnings
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -27,7 +28,8 @@ except ImportError:
 from pyHIARD.Resources import Cubes as cubes
 
 
-def add_template(cfg):
+
+def add_template(cfg,path_to_resources,existing_galaxies):
     confirm_directory = False
     while not confirm_directory:
         confirm_directory = cf.get_bool(f"We are working in the directory {cfg.general.main_directory}. Is this correct? (Yes/No, default =True)",default=True)
@@ -44,36 +46,24 @@ def add_template(cfg):
     galaxy_translation = {'Galaxy': 'the name to use in the package', \
                           'DHIkpc':  'the HI diameter in kpc' , \
                           'Distance': 'distance in Mpc',\
-                          'Original_Model': 'the format of the orginal model (Tirific, Rotcur)',\
+                          'Original_Model': 'the format of the orginal model (Tirific, Barolo, Rotcur)',\
                           'RMS': 'the noise in the cube in data units' , \
                           'MHI':  'the HI mass'  }
 
 
-    path_to_resources = os.path.dirname(os.path.abspath(cubes.__file__))+'/'
-    existing_galaxies = [ name for name in os.listdir(path_to_resources) if os.path.isdir(os.path.join(path_to_resources, name)) ]
-    existing_galaxies.remove('__pycache__')
     existing_galaxies_low = [x.lower() for x in existing_galaxies]
-    fixed_templates = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774','ESO_223_G009']
-    fixed_templates_low = [x.lower() for x in fixed_templates]
 
     for key in galaxy_parameters:
         galaxy_parameters[key]= input(f"Please provide {galaxy_translation[key]} of the galaxy:")
         if key == 'Galaxy':
-            while galaxy_parameters[key].lower() in fixed_templates_low:
-                galaxy_parameters[key] = input(f"The galaxy {galaxy_parameters[key]} is a standard pyHIARD template please pick a different name")
             if galaxy_parameters[key].lower() in existing_galaxies_low:
                 remove_galaxy = cf.get_bool(f"The galaxy {galaxy_parameters[key]} already exists, do you want to delete it? (default = no)",default=False)
                 if remove_galaxy:
-                    to_remove = existing_galaxies[existing_galaxies_low.index(galaxy_parameters[key].lower())]
-                    really = cf.get_bool(f"Are you certain to remove the template for  {to_remove}? This action can not be undone. (default = yes)",default=True)
-                    if really:
-                        print(f"We will remove the template {to_remove}. Afterwards we will exit pyHIARD if you want to create a new tmplate with this name please restart pyHIARD")
-                        cf.delete_directory(f"{path_to_resources}{to_remove}")
-                        if not os.path.isdir(f"{path_to_resources}{to_remove}"):
-                            print(f"We have succesfully removed the template {to_remove}.")
-                        else:
-                            print(f"Something went wrong. please try again or start an issue on github")
-                        sys.exit()
+                    removed = remove_template(galaxy_parameters[key], path_to_resources, existing_galaxies)
+                    if not removed:
+                        while galaxy_parameters[key].lower() in existing_galaxies_low:
+                            galaxy_parameters[key] = input(f"Please provide a different name (current = {galaxy_parameters[key]}).")
+
                 else:
                     while galaxy_parameters[key].lower() in existing_galaxies_low:
                         galaxy_parameters[key] = input(f"Please provide a different name (current = {galaxy_parameters[key]}).")
@@ -87,30 +77,27 @@ def add_template(cfg):
                 elif galaxy_parameters[key].lower() == 'rotcur':
                     galaxy_parameters[key] = 'RC'
                     acceptable_model = True
+                elif galaxy_parameters[key].lower() == 'barolo':
+                    galaxy_parameters[key] = 'Bar'
+                    acceptable_model = True
                 else:
-                    galaxy_parameters[key] = input(f"{galaxy_parameters[key]} is not yet a model pyHIARD can process please type TiRiFiC or Rotcur as an input model: ")
+                    galaxy_parameters[key] = input(f"{galaxy_parameters[key]} is not yet a model pyHIARD can process please type TiRiFiC, Barolo or Rotcur as an input model: ")
 
             model_file=input(f'Please provide the model text file:')
             while not os.path.isfile(f"{cfg.general.main_directory}{model_file}"):
                 model_file=input(f'Print we can not find the file {cfg.general.main_directory}{model_file}, please provide the correct name with a path from {cfg.general.main_directory}:')
-            if galaxy_parameters[key] == 'Tir':
-                try:
-                    test=cf.load_tirific(
-                    f"{cfg.general.main_directory}{model_file}",new_file=True,\
-                     unpack=False,Variables=['RADI','VROT','PA','INCL','XPOS','YPOS','VSYS','VROT_2','PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0','SDIS','Z0_2','SDIS_2','CONDISP', 'SBR', 'SBR_2'])
-                except:
-                    print(f"We cannot read your Tirific file, please provide a standard TiRiFiC model with 2 disks (approaching/receding)")
-                    print("We are exiting pyHIARD")
-                    sys.exit()
-                ext = '.def'
-            else:
-                try:
-                    test=cf.read_template_RC(f"{cfg.general.main_directory}{model_file}",new_file=True)
-                except:
-                    print(f"We cannot read your rotcur file, please provide a standard Rotcur model.")
-                    print("We are exiting pyHIARD")
-                    sys.exit()
-                ext = '.rotcur'
+
+            #try:
+            test = cf.load_text_model(
+            f"{cfg.general.main_directory}{model_file}",package_file=False,\
+             type= galaxy_parameters[key],Variables=['RADI','VROT','PA','INCL','XPOS','YPOS',\
+             'VSYS','VROT_2','PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0'\
+             ,'SDIS','Z0_2','SDIS_2','CONDISP', 'SBR', 'SBR_2'])
+            #except:
+            #    print(f"We cannot read your file, please provide a standard TiRiFiC, Barolo or RotCur model.")
+            #    print("We are exiting pyHIARD")
+            #    sys.exit()
+
 
 
     input_fits_file = input("Please provide the galaxy fits file:")
@@ -153,10 +140,37 @@ def add_template(cfg):
     fits.writeto(f'{new_resource}/{galaxy_parameters["Galaxy"]}.fits', Cube[0].data,Cube[0].header,overwrite=False)
     Cube.close()
     Mask_Inner, Mask_Outer = cf.create_masks(new_resource,cfg.general.main_directory,galaxy_parameters['Galaxy'],sofia_call=cfg.general.sofia2)
-    os.system(f"cp {cfg.general.main_directory}{model_file} {new_resource}{galaxy_parameters['Galaxy']}{ext}")
+    ext = {'Tir': 'def', 'Bar': 'txt', 'RC':'rotcur'}
+    os.system(f"cp {cfg.general.main_directory}{model_file} {new_resource}{galaxy_parameters['Galaxy']}.{ext[galaxy_parameters['Original_Model']]}")
     with open(f"{new_resource}{galaxy_parameters['Galaxy']}.py",'w') as f:
         f.writelines(module_template)
+add_template.__doc__ = f'''
+NAME:
+    add_template
 
+PURPOSE:
+    add a galaxy template to the package
+
+CATEGORY:
+   roc
+
+INPUTS:
+    cfg=  input configuration
+    path_to_resources = path to the resources cube directory
+    existing_galaxies = list of existing templates
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    template is added inside the package
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 
 
 # function to properly regrid the cube after smoothing
@@ -195,8 +209,74 @@ def Regrid_Array(Array_In, Out_Shape):
     if regridded.shape != Out_Shape:
         print("Something went wrong when regridding.")
     return regridded
+Regrid_Array.__doc__ = f'''
+NAME:
+    Regrid_Array
 
+PURPOSE:
+    regrid an array into a different shape
 
+CATEGORY:
+   roc
+
+INPUTS:
+    Array_In = original array
+    Out_Shape = shape of the final array
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    the array with the new shape
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
+def remove_template(galaxy_to_remove,path_to_resources,existing_galaxies):
+    existing_galaxies_low = [x.lower() for x in existing_galaxies]
+    to_remove = existing_galaxies[existing_galaxies_low.index(galaxy_to_remove.lower())]
+    really = cf.get_bool(f"Are you certain you want to remove the template for  {to_remove}? This action can not be undone. (default = yes)",default=True)
+    if really:
+        print(f"We will remove the template {to_remove}.")
+        cf.delete_directory(f"{path_to_resources}{to_remove}")
+        if not os.path.isdir(f"{path_to_resources}{to_remove}"):
+            print(f"We have succesfully removed the template {to_remove}.")
+            return True
+        else:
+            print(f"Something went wrong. please try again or start an issue on github")
+            sys.exit()
+    else:
+        return False
+remove_template.__doc__ = f'''
+NAME:
+  remove_template(galaxy_to_remove,path_to_resources,existing_galaxies):
+
+PURPOSE:
+    remove a galaxy template from the package
+
+CATEGORY:
+   roc
+
+INPUTS:
+    galaxy_to_remove = Name of the template to remove
+    path_to_resources = path to the resources cube directory
+    existing_galaxies = list of existing templates
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    boolean indicating succes or abort
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 
 def ROC(cfg):
 
@@ -258,54 +338,45 @@ def ROC(cfg):
 
         if Template_Header['CUNIT3'].lower() == 'm/s' or Template_Header['CDELT3'] > 150.:
             Template_Header['CDELT3'] = Template_Header['CDELT3'] / 1000.
-            Template_Header['CUNIT3'] = 'KM/S'
+            Template_Header['CUNIT3'] = 'km/s'
             Template_Header['CRVAL3'] = Template_Header['CRVAL3'] / 1000.
 
         #We assume the cubes to be centered
-        if galaxy_module.galaxy_parameters['Original_Model'] == 'RC':
+
+        radius, rotation, pa,incli,xpos,ypos,systemic,rotation2, pa2,incli2,xpos2,ypos2,systemic2,\
+             scaleheight, dispersion, scaleheight2, dispersion2,condisp,sbr,sbr2 = cf.load_text_model(
+                name,type =galaxy_module.galaxy_parameters['Original_Model'] ,\
+                Variables=['RADI','VROT','PA','INCL','XPOS','YPOS','VSYS','VROT_2',\
+                'PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0','SDIS','Z0_2',\
+                'SDIS_2','CONDISP', 'SBR', 'SBR_2'])
 
 
-            radius, width, systemic, errorsys, rotation, errorrot, expansion, errorexp,\
-             pa, errorpa, incli, inclerror, xpos, xposerror, ypos, yposerror, npts, sigma = cf.read_template_RC(name)
+
+        if galaxy_module.galaxy_parameters['Original_Model'] in ['Bar','RC']:
             ndisks= 1
-            dispersion = np.zeros(len(radius))
-            scaleheight = np.zeros(len(radius))
-            dispersion2 = np.zeros(len(radius))
-            scaleheight2 =  np.zeros(len(radius))
             rotation2= rotation
             pa2=  pa
             incli2= incli
-            condisp = (Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))
+            if galaxy_module.galaxy_parameters['Original_Model'] in ['RC']:
+                xpos = [x+Template_Header['CRPIX1'] for x in xpos]
+                ypos = [x+Template_Header['CRPIX2'] for x in ypos]
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                input_wcs = WCS(Template_Header).celestial
+
+            xpos,ypos = zip(*[input_wcs.wcs_pix2world(x,y,1) for x,y in zip(xpos,ypos)])
+
             xpos2=xpos
             ypos2=ypos
-            sbr = [0.]
-            sbr2 = [0.]
-            #Rotcur values should be converted to degrees with
-            # xpos = Template_Header["CRVAL1"]  +(xpospix[:])*(Template_Header["CDELT1"])
 
-            dispersion[:] = 0.
-            dispersion2[:] = 0.
+
         elif galaxy_module.galaxy_parameters['Original_Model'] == 'Tir':
-            radius, rotation, pa,incli,xpos,ypos,systemic,rotation2, pa2,incli2,xpos2,ypos2,systemic2,\
-             scaleheight, dispersion, scaleheight2, dispersion2,condisp,sbr,sbr2 = cf.load_tirific(
-                name , unpack=True,Variables=['RADI','VROT','PA','INCL','XPOS','YPOS','VSYS','VROT_2','PA_2','INCL_2','XPOS_2','YPOS_2','VSYS_2','Z0','SDIS','Z0_2','SDIS_2','CONDISP', 'SBR', 'SBR_2'])
-
-            short = np.where(rotation == 0. )[0]
-            if len(short) > 0.:
-                for ind in short:
-                    if radius[ind] != 0.:
-                        rotation[ind] = rotation2[ind]
-            short = np.where(rotation2 == 0. )[0]
-            if len(short) > 0.:
-                for ind in short:
-                    if radius[ind] != 0.:
-                        rotation2[ind] = rotation[ind]
             rotation = (rotation[:]+rotation2[:])/2.
-            rotation2 = rotation
-            if np.sum(dispersion) == 0.:
-                dispersion[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
-                dispersion2[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
-                condisp = (Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))
+        if condisp[0] == -1.:
+            condisp = [(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))]
+        if np.sum(dispersion) == -1.*len(dispersion):
+            dispersion[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
+            dispersion2[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
 
         else:
             print("This type of model is not supported")
@@ -640,34 +711,25 @@ def ROC(cfg):
                              overwrite=True)
                 #print("Finished writing")
                 # Then we also want to write some info about the galaxy
-                overview = open(f"{galaxy_dir}{dirstring}-Info.txt", 'w')
-                overview.write("This file contains the basic parameters of this galaxy\n")
-                overview.write("For the radial dependencies look at Overview.png or ModelInput.def\n")
-                overview.write("Inclination = {}\n".format(incli[0]))
-                overview.write("The dispersion = {:.2f}-{:.2f}\n".format(dispersion[0], dispersion[-1]))
-                overview.write("The type of galaxy = {}\n".format(name))
-                overview.write("PA = {}\n".format(pa[0]))
-                #overview.write("Warp = {}-{}\n".format(Current_Galaxy.Warp[0], Current_Galaxy.Warp[1]))
-                #overview.write(
-                #    "Which starts at {:.2f} kpc and the 1M/pc^2 radius is {:.2f} kpc \n".format(WarpStart, Rad_HI))
-                #overview.write("Flare = {}\n".format(Current_Galaxy.Flare))
-                overview.write("Beams across the major axis = {}\n".format(nobeams))
-                overview.write("SNR Requested = {} SNR Achieved = {}  \n".format(reqnoise, Achieved_SNR))
-                overview.write("Mean Signal = {}  \n".format(Achieved_Mean))
-                overview.write("Channelwidth = {}\n".format(hednew['CDELT3']))
-                overview.write("Major axis beam = {} Minor axis beam= {}\n".format(bmaj,
-                                                                               bmin))
                 RAhr, DEChr = cf.convertRADEC(RAdeg, DECdeg)
-                #overview.write("This galaxy has {} and a {}\n".format(Current_Galaxy.Arms, Current_Galaxy.Bar))
-                overview.write("It's central coordinates are RA={} DEC={} vsys={:.2f} km/s\n".format(RAhr, DEChr, New_Systemic))
-                overview.write("At a Distance of {:.2f} Mpc \n".format(Distance))
-                #overview.write("HI_Mass Requested {:.2e} (M_solar) and an optical h {:.2f} (kpc)\n".format(MHI, sclength))
-                overview.write("HI_Mass {:.2e} (M_solar) \n".format(galaxy_module.galaxy_parameters['MHI']))
-                #overview.write("We have {} pix per beam \n".format(pixperbeam))
-                overview.write("The cube was corrupted with the {} method \n".format('Gaussian'))
-                overview.write("The final noise level is {} Jy/beam \n".format(Achieved_Noise))
-                overview.write("h_z = {:.3f}-{:.3f} (kpc)".format(scaleheight[0], scaleheight[-1]))
-                overview.close()
+                with open(f"{galaxy_dir}{dirstring}-Info.txt", 'w') as overview:
+                    overview.write(f'''This file contains the basic parameters of this galaxy.
+For the radial dependencies look at Overview.png or ModelInput.def.
+Inclination = {incli[0]}.
+The dispersion = {dispersion[0]:.2f}-{dispersion[-1]:.2f}.
+The type of galaxy = {name}.
+PA = {pa[0]}.
+Beams across the major axis = {nobeams}.
+SNR Requested = {reqnoise} SNR Achieved = {Achieved_SNR}.
+Mean Signal = {Achieved_Mean}.
+Channelwidth = {hednew['CDELT3']}.
+Major axis beam = {bmaj} Minor axis beam= {bmin}.
+It's central coordinates are RA={RAhr} DEC={DEChr} vsys={New_Systemic:.2f} km/s.
+At a Distance of {Distance:.2f} Mpc.
+HI_Mass {galaxy_module.galaxy_parameters['MHI']:.2e} (M_solar).
+The final noise level is {Achieved_Noise} Jy/beam.
+h_z = {scaleheight[0]:.3f}-{scaleheight[-1]:.3f} (kpc).''')
+
                 # We need to make the model input
                 with open(f"{galaxy_dir}ModelInput.def", 'w') as tri:
                     tri.writelines([Def_Template[key] + "\n" for key in Def_Template])
@@ -782,6 +844,30 @@ def ROC(cfg):
                 overview.close()
                 #print(f"Finished {dirstring}")
                 number_models += 1.
+ROC.__doc__ = f'''
+NAME:
+    ROC
 
+PURPOSE:
+    Shift and degrade real galaxies.
+
+CATEGORY:
+    agc
+
+INPUTS:
+    cfg = OmegaConf Configuration file
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    A set of real galaxies in a setup ready for FAT fitting
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 if __name__ == '__main__':
     ROC()
