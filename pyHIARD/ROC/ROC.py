@@ -633,7 +633,7 @@ def ROC(cfg):
 
                 # If we want to add noise  we construct a new noise cube for this purpose
                 if Diff_Noise > 0.:
-                    print("Creating the the difference noise cube. Shifted noise = {}.".format(Diff_Noise))
+                    print("Creating the  difference noise cube. Shifted noise = {}.".format(Diff_Noise))
                     Pix_Noise = ((Diff_Noise * sigma[0] * 2 * np.sqrt(np.pi)) + (
                             Diff_Noise * sigma[1] * 2 * np.sqrt(np.pi))) / 2.
                     New_Noise = 0.

@@ -144,7 +144,7 @@ def check_input(cfg):
         elif cfg.agc.corruption_method .lower() == 'casa_5' or cfg.agc.corruption_method .lower() == "c_5":
             cfg.agc.corruption_method  = 'Casa_5'
             print("You are using the casa corruption method please make sure python can access casa.")
-        channel_options= ['indpendent','sinusoidal','hanning']
+        channel_options= ['independent','sinusoidal','hanning']
         while cfg.agc.channel_dependency.lower() not in channel_options:
             cfg.agc.channel_dependency = input(f''' {cfg.agc.channel_dependency} is not a valid channel dependency
 Please choose from {','.join([x for x in channel_options])}:''')

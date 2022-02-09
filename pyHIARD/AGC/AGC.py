@@ -469,47 +469,65 @@ def AGC(cfg):
                 # Now we want to corrupt this cube with some realistic noise
                 # For this we first want to get the noise we want in terms of Jansky per beam
                 # we will define the SNR as the mean(Intensity)/noiselevel hence noise =mean(In)/SNR
+                if cfg.agc.corrupt_models:
+                    if (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) == number_models/5.)) or (cfg.agc.corruption_method == 'Casa_Sim'):
+                        Template_Casa=copy.deepcopy(Template_Casa_In)
+                        corrupt_casa(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam,Template_Casa,Current_Galaxy.SNR,casa_call=cfg.general.casa)
+                        os.chdir(cfg.general.main_directory)
+                        mask = fits.open(f"{cfg.general.main_directory}{name}/mask.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+                        Cube = fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+                        maskr = mask[0].data[1:]
+                        sigma = (np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
+                        Cube_Clean = Cube[0].data
+                        Cube_Clean[maskr < 0.5] = 0.
+                        beamarea=(np.pi*abs(Cube[0].header['BMAJ']*3600.*Cube[0].header['BMIN']*3600.))/(4.*np.log(2.))
+                        pixperbeam=beamarea/(abs(Cube[0].header['CDELT1']*3600.)*abs(Cube[0].header['CDELT2']*3600.))
+                        totalsignal = np.sum(Cube_Clean)/pixperbeam
+                        mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
+                        totsig=np.zeros(len(Cube_Clean[:]))
+                        for j in range(len(totsig)):
+                            if  len(Cube_Clean[j][Cube_Clean[j] > 0.]) > 0:
+                                totsig[j]=np.mean(Cube_Clean[j][Cube_Clean[j] > 0.])
+                        mean_signal = np.median(totsig[totsig > 0.])
+                        SNRachieved = mean_signal/(sigma)
 
-                if (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) == number_models/5.)) or (cfg.agc.corruption_method == 'Casa_Sim'):
-                    Template_Casa=copy.deepcopy(Template_Casa_In)
-                    corrupt_casa(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam,Template_Casa,Current_Galaxy.SNR,casa_call=cfg.general.casa)
-                    os.chdir(cfg.general.main_directory)
-                    mask = fits.open(f"{cfg.general.main_directory}{name}/mask.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
-                    Cube = fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
-                    maskr = mask[0].data[1:]
-                    sigma = (np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
-                    Cube_Clean = Cube[0].data
-                    Cube_Clean[maskr < 0.5] = 0.
-                    beamarea=(np.pi*abs(Cube[0].header['BMAJ']*3600.*Cube[0].header['BMIN']*3600.))/(4.*np.log(2.))
-                    pixperbeam=beamarea/(abs(Cube[0].header['CDELT1']*3600.)*abs(Cube[0].header['CDELT2']*3600.))
-                    totalsignal = np.sum(Cube_Clean)/pixperbeam
-                    mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
-                    totsig=np.zeros(len(Cube_Clean[:]))
-                    for j in range(len(totsig)):
-                        if  len(Cube_Clean[j][Cube_Clean[j] > 0.]) > 0:
-                            totsig[j]=np.mean(Cube_Clean[j][Cube_Clean[j] > 0.])
-                    mean_signal = np.median(totsig[totsig > 0.])
-                    SNRachieved = mean_signal/(sigma)
-
-                elif (cfg.agc.corruption_method == 'Gaussian' or cfg.agc.corruption_method == 'Casa_5'):
-                    corrupt_gauss(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam,Current_Galaxy.SNR)
-                    mask = fits.open(f"{cfg.general.main_directory}{name}/mask.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
-                    Cube = fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
-                    maskr = mask[0].data[:]
-                    sigma = (np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
-                    Cube_Clean = Cube[0].data
-                    Cube_Clean[maskr < 0.5] = 0.
-                    beamarea=(np.pi*abs(Cube[0].header['BMAJ']*3600.*Cube[0].header['BMIN']*3600.))/(4.*np.log(2.))
+                    elif (cfg.agc.corruption_method == 'Gaussian' or cfg.agc.corruption_method == 'Casa_5'):
+                        corrupt_gauss(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam,Current_Galaxy.SNR)
+                        mask = fits.open(f"{cfg.general.main_directory}{name}/mask.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+                        Cube = fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+                        maskr = mask[0].data[:]
+                        sigma = (np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
+                        Cube_Clean = Cube[0].data
+                        Cube_Clean[maskr < 0.5] = 0.
+                        beamarea=(np.pi*abs(Cube[0].header['BMAJ']*3600.*Cube[0].header['BMIN']*3600.))/(4.*np.log(2.))
 
 
-                    pixperbeam=beamarea/(abs(Cube[0].header['CDELT1']*3600.)*abs(Cube[0].header['CDELT2']*3600.))
-                    totalsignal = np.sum(Cube_Clean)/pixperbeam
-                    mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
-                    mean_signal = np.mean(Cube_Clean[maskr > 0.5])
-                    SNRachieved = mean_signal/(sigma)
+                        pixperbeam=beamarea/(abs(Cube[0].header['CDELT1']*3600.)*abs(Cube[0].header['CDELT2']*3600.))
+                        totalsignal = np.sum(Cube_Clean)/pixperbeam
+                        mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
+                        mean_signal = np.mean(Cube_Clean[maskr > 0.5])
+                        SNRachieved = mean_signal/(sigma)
+                    else:
+                        print("!!!!!!!This corruption method is unknown, leaving the cube uncorrupted and unconvolved!!!!!!!!")
+                        # We'll create a little text file with an Overview of all the parameters
+                if cfg.agc.corrupt_models:
+                    beam_line = f"Major axis beam = {Current_Galaxy.Res_Beam[0]} Minor axis beam= {Current_Galaxy.Res_Beam[1]}."
+                    corrupt_line = f"The cube was corrupted with the {cfg.agc.corruption_method} method."
+                    catalog_cube_name = 'Convolved_Cube'
+                    os.remove(f"{cfg.general.main_directory}{name}/unconvolved_cube.fits")
                 else:
-                    print("!!!!!!!This corruption method is unknown, leaving the cube uncorrupted and unconvolved!!!!!!!!")
-                    # We'll create a little text file with an Overview of all the parameters
+                    beam_line = 'This galaxy is unconvolved.'
+                    corrupt_line = 'This galaxy is not corrupted.'
+                    SNRachieved = float('NaN')
+                    sigma=float('NaN')
+                    mass=float('NaN')
+                    catalog_cube_name = 'unconvolved_cube'
+                    mean_signal,hdr,data= create_mask(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam)
+                    beamarea=(np.pi*abs(hdr['BMAJ']*3600.*hdr['BMIN']*3600.))/(4.*np.log(2.))
+                    pixperbeam=beamarea/(abs(hdr['CDELT1']*3600.)*abs(hdr['CDELT2']*3600.))
+
+                    hdr=[]
+                    data=[]
                 with open(f"{cfg.general.main_directory}{name}/{name}-Info.txt", 'w') as overview:
                     overview.write(f'''This file contains the basic parameters of this galaxy.
 For the radial dependencies look at Overview.png or ModelInput.def.
@@ -524,22 +542,22 @@ Beams across the major axis = {Current_Galaxy.Beams}.
 SNR Requested = {Current_Galaxy.SNR} SNR Achieved = {SNRachieved}.
 Mean Signal = {mean_signal}.
 Channelwidth = {Current_Galaxy.Channelwidth} and their dependency is {cfg.agc.channel_dependency}.
-Major axis beam = {Current_Galaxy.Res_Beam[0]} Minor axis beam= {Current_Galaxy.Res_Beam[1]}.
+{beam_line}
 This galaxy has {Current_Galaxy.Arms} and a {Current_Galaxy.Bar}.
 It's central coordinates are RA={RAhr} DEC={DEChr} vsys={vsys:.2f} km/s.
 At a Distance of {Distance:.2f} Mpc.
 HI_Mass Requested {MHI:.2e} (M_solar) and an optical h {sclength:.2f} (kpc).
 HI_Mass Retrieved {mass:.2e} (M_solar).
 We have {pixperbeam} pix per beam.
-The cube was corrupted with the {cfg.agc.corruption_method} method.
+{corrupt_line}
 The final noise level is {sigma} Jy/beam.
 h_z = {h_z[0]:.3f}-{h_z[-1]:.3f} (kpc).''')
-            
+
                 with open(Catalogue, 'a') as cat:
-                    cat.write(f'{int(number_models):d}|{Distance:.2f}|{name}|Convolved_Cube\n')
+                    cat.write(f'{int(number_models):d}|{Distance:.2f}|{name}|{catalog_cube_name}\n')
                 # We also want a file that contains initial estimates for all the parameters. We scramble them with gaussian variations
                 with open(f"{cfg.general.main_directory}{name}/Initial_Estimates.txt", 'w') as overview:
-                    overview.write("#This file contains the initial estimates \n")
+                    overview.write("#This file contains the initial estimates modfied with a random deviation. \n")
                     scale=h_z[0]+np.random.randn(1)[0]*0.1+0.1
                     if scale < 0.05: scale = 0.05
                     overview.write("#{:<15} {:<15} {:<15} {:<15} {:<15} {:<15} {:<15} {:<15} {:<15}  {:<15}\n ".format('VROT','INCL','PA','Z0','SBR','DISP','VRAD','RA','DEC','VSYS'))
@@ -560,6 +578,8 @@ h_z = {h_z[0]:.3f}-{h_z[-1]:.3f} (kpc).''')
                 # and cleanup
                 os.system(f"rm -f {cfg.general.main_directory}{name}/ModelInput.def")
                 os.system(f"mv {cfg.general.main_directory}{name}/tirific.def {cfg.general.main_directory}{name}/ModelInput.def")
+
+
     os.system(f'rm -f {cfg.general.main_directory}/Input.fits')
     print("We created {} models".format(number_models))
     plt.figure(59)
@@ -1525,7 +1545,7 @@ NAME:
    create_mask
 
 PURPOSE:
-   Create the mask for the final cube from the unsmoothed data cube and calaculate the average signal.
+   Create the mask for the final cube from the unsmoothed data cube and calculate the average signal.
 
 CATEGORY:
    agc
@@ -1542,6 +1562,7 @@ OUTPUTS:
     the mask is written to disk and the final uncorrupted signal is returned in Jy/beam
     mean_signal = uncorrupted signal is returned in Jy/beam with the correct beam
     hdr = hdr is the header of the mask such that it can be used for further calculations
+    data = is the unconvolved signal cube but the velocity axis is cut down to the final axis.
 
 OPTIONAL OUTPUTS:
 

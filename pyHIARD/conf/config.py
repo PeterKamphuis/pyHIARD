@@ -40,6 +40,7 @@ class AGC:
     # The channel dependency
     # 'Options are independent, sinusoidal, hanning
     channel_dependency: str = 'independent'
+    corrupt_models: bool = True
 
 
 @dataclass
