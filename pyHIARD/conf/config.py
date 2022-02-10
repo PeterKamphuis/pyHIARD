@@ -20,26 +20,26 @@ class AGC:
     variables_to_vary: List[str] = field(default_factory=lambda: ['Inclination', 'Beams', 'Radial_Motions',
                                          'Flare', 'Arms', 'Bar', 'Mass', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Resolution'])
     # Each base is created with the variations in the following parameters if they are listed to be varied.
-    masses:  List[float] = field(default_factory=lambda: [2.5e11])
     inclination: List[float] = field(default_factory=lambda: [
                                      15., 20., 30., 50., 70., 80., 88., 90.])
     pa: List[float] = field(default_factory=lambda: [0., 360.])
     warp: List[float] = field(default_factory=lambda: [
                               [0.15, 0.05], [0.05, 0.2]])
-    radial_motions: List[float] = field(default_factory=lambda: [-5., -10.])
+    radial_motions: List[float] = field(default_factory=lambda: [-10. , -20.])
     #The flare, arms and bar will be swapped when incuded in the swap lisr
     beams:  List[float] = field(default_factory=lambda: [
                                 2., 4., 6., 7., 8., 10., 12.])
     # Beam across the major axis. This also set the distance as the size in kpc will be determined by Wang 2016 from the SBR profile
-    snr: List[float] = field(default_factory=lambda: [1., 3., 5.])
+    snr: List[float] = field(default_factory=lambda: [0.5, 1., 3., 5.])
     # These  are average signal to noise ratios
     channelwidth: List[float] = field(default_factory=lambda: [2., 8.])
+
     beam_size: List[float] = field(default_factory=lambda: [[5., 5.]])
     #Resolution of the beam in arcsec
     masses:  List[float] = field(default_factory=lambda: [2.5e11])
     # The channel dependency
     # 'Options are independent, sinusoidal, hanning
-    channel_dependency: str = 'independent'
+    channel_dependency: str = 'sinusoidal'
     corrupt_models: bool = True
 
 
