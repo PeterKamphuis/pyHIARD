@@ -24,7 +24,7 @@ Download the source code from the Github or simply install with pip as:
 
   	pip install pyHIARD
 
-This should also install all required python dependencies.
+This should also install all required python dependencies. (If it gives a PILLOW error run 'pip install --upgrade pip wheel setuptools' before installing pyHIARD. )
 We recommend the use of python virtual environments. If so desired a pyHIARD installation would look like:
 
   	python3 -m venv pyHIARD_venv

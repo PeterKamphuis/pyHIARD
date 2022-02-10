@@ -469,6 +469,7 @@ def AGC(cfg):
                 # Now we want to corrupt this cube with some realistic noise
                 # For this we first want to get the noise we want in terms of Jansky per beam
                 # we will define the SNR as the mean(Intensity)/noiselevel hence noise =mean(In)/SNR
+                corrupted = 'uncorrupted'
                 if cfg.agc.corrupt_models:
                     if (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) == number_models/5.)) or (cfg.agc.corruption_method == 'Casa_Sim'):
                         Template_Casa=copy.deepcopy(Template_Casa_In)
@@ -490,6 +491,7 @@ def AGC(cfg):
                                 totsig[j]=np.mean(Cube_Clean[j][Cube_Clean[j] > 0.])
                         mean_signal = np.median(totsig[totsig > 0.])
                         SNRachieved = mean_signal/(sigma)
+                        corrupted = 'Casa_Sim'
 
                     elif (cfg.agc.corruption_method == 'Gaussian' or cfg.agc.corruption_method == 'Casa_5'):
                         corrupt_gauss(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam,Current_Galaxy.SNR)
@@ -507,13 +509,18 @@ def AGC(cfg):
                         mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
                         mean_signal = np.mean(Cube_Clean[maskr > 0.5])
                         SNRachieved = mean_signal/(sigma)
+                        corrupted = 'Gaussian'
                     else:
                         print("!!!!!!!This corruption method is unknown, leaving the cube uncorrupted and unconvolved!!!!!!!!")
                         # We'll create a little text file with an Overview of all the parameters
                 if cfg.agc.corrupt_models:
                     beam_line = f"Major axis beam = {Current_Galaxy.Res_Beam[0]} Minor axis beam= {Current_Galaxy.Res_Beam[1]}."
-                    corrupt_line = f"The cube was corrupted with the {cfg.agc.corruption_method} method."
-                    catalog_cube_name = 'Convolved_Cube'
+                    corrupt_line = f"The cube was corrupted with the {corrupted} method."
+                    if corrupted == 'Casa_Sim':
+                        catalog_cube_name = 'Convolved_Cube_CS'
+                        os.system(f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_CS.fits")
+                    else:
+                        catalog_cube_name = 'Convolved_Cube'
                     os.remove(f"{cfg.general.main_directory}{name}/unconvolved_cube.fits")
                 else:
                     beam_line = 'This galaxy is unconvolved.'
