@@ -48,7 +48,7 @@ class Base_Galaxy:
             self.Channelwidth = 4.
             self.Res_Beam = [15.,15.]
             self.Arms = "Arms"
-            self.Bar = "No_Bar"
+            self.Bar = "Bar"
             self.Radial_Motions= 0.
             self.Mass = 7.5e11 #5e11 # in km/s
         elif num == 3:
@@ -58,8 +58,8 @@ class Base_Galaxy:
             self.Warp = [0.05, 0.025] # in radians.
             self.Flare = "Flare"
             self.Beams= 16 #16
-            self.SNR= 8.
-            self.Channelwidth = 4.
+            self.SNR= 7.
+            self.Channelwidth = 5.4
             self.Res_Beam = [25.,25.]
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
@@ -72,11 +72,11 @@ class Base_Galaxy:
             self.Warp = [0.07, 0.15] # in radians.
             self.Flare = "No_Flare"
             self.Beams= 15
-            self.SNR= 8.
-            self.Channelwidth = 4.
-            self.Res_Beam = [10.,10.]
+            self.SNR= 6.
+            self.Channelwidth = 8.
+            self.Res_Beam = [15.,10.]
             self.Arms = "No_Arms"
-            self.Bar = "No_Bar"
+            self.Bar = "Bar"
             self.Radial_Motions= 0.
             self.Mass= 7.5e10
             #self.Mass= 1e10
@@ -88,8 +88,8 @@ class Base_Galaxy:
             self.Flare = "Flare"
             self.Beams= 14
             self.SNR= 8.
-            self.Channelwidth = 4.
-            self.Res_Beam = [10.,10.]
+            self.Channelwidth = 6.
+            self.Res_Beam = [12.5,10.]
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
