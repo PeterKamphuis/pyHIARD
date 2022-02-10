@@ -304,7 +304,7 @@ def AGC(cfg):
                 Distance = (Rad_HI/(np.tan(Sky_Size/2.)))/1000.
                 #print("The Distance is {:5.2f} Mpc".format(Distance))
                 vsys = Distance*H_0
-                if cfg.agc.corruption_method == 'Gaussian':
+                if cfg.agc.corruption_method == 'Gaussian' or (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) != number_models/5.)):
                     RAdeg=np.random.uniform()*360
                     DECdeg=(np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
                 else:

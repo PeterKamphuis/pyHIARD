@@ -26,15 +26,12 @@ class Base_Galaxy:
             self.Inclination = 60.
             self.Dispersion = [14.,7.5] #[13., 7.5]
             self.Mass= 2.5e12 #1e12
-            #self.Mass= 1e12
             self.PA = 35.
-#            self.Warp = [0.1, 0.15]
             self.Warp = [0.,0.]
             self.Flare = "No_Flare" #"Flare"
             self.Beams= 12 #18 #16.
             self.SNR= 8
             self.Channelwidth = 4.
-            self.Coord = [3.56406541347E+01,4.23492081422E+01]
             self.Res_Beam = [20.,20.]
             self.Arms = "Arms"
             self.Bar = "No_Bar"
@@ -53,10 +50,7 @@ class Base_Galaxy:
             self.Arms = "Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
-            # RA and DEC in degrees, Only used in casa sim
-            self.Coord = [50.81166937467079,57.76644335595375]
             self.Mass = 7.5e11 #5e11 # in km/s
-            #self.Mass = 1e11
         elif num == 3:
             self.Inclination = 65.
             self.Dispersion = [8., 8.]
@@ -66,7 +60,6 @@ class Base_Galaxy:
             self.Beams= 16 #16
             self.SNR= 8.
             self.Channelwidth = 4.
-            self.Coord = [50.81166937467079,57.76644335595375]
             self.Res_Beam = [25.,25.]
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
@@ -81,7 +74,6 @@ class Base_Galaxy:
             self.Beams= 15
             self.SNR= 8.
             self.Channelwidth = 4.
-            self.Coord = [50.81166937467079,57.76644335595375]
             self.Res_Beam = [10.,10.]
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
@@ -97,7 +89,6 @@ class Base_Galaxy:
             self.Beams= 14
             self.SNR= 8.
             self.Channelwidth = 4.
-            self.Coord = [50.81166937467079,57.76644335595375]
             self.Res_Beam = [10.,10.]
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
@@ -107,15 +98,12 @@ class Base_Galaxy:
             self.Inclination = 60.
             self.Dispersion = [14.,7.5] #[13., 7.5]
             self.Mass= 7.5e9 #1e12
-            #self.Mass= 1e12
             self.PA = 35.
-#            self.Warp = [0.1, 0.15]
             self.Warp = [0.,0.]
             self.Flare = "No_Flare" #"Flare"
             self.Beams= 12 #18 #16.
             self.SNR= 8
             self.Channelwidth = 4.
-            self.Coord = [3.56406541347E+01,4.23492081422E+01]
             self.Res_Beam = [20.,20.]
             self.Arms = "Arms"
             self.Bar = "No_Bar"
@@ -123,7 +111,7 @@ class Base_Galaxy:
         else:
             #Self construct a base by asking
             single = ['Inclination', 'PA', 'Beams','SNR','Channelwidth','Radial_Motions','Mass']
-            double = ['Warp','Coord','Res_Beam','Dispersion']
+            double = ['Warp','Res_Beam','Dispersion']
             bool = ['Flare','Arms','Bar']
             for parameter in single:
                 val = ''
