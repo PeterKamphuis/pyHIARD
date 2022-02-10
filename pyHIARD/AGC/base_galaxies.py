@@ -29,8 +29,8 @@ class Base_Galaxy:
             self.PA = 35.
             self.Warp = [0.,0.]
             self.Flare = "No_Flare" #"Flare"
-            self.Beams= 12 #18 #16.
-            self.SNR= 8
+            self.Beams= 12. #18 #16.
+            self.SNR= 8.0
             self.Channelwidth = 4.
             self.Res_Beam = [20.,20.]
             self.Arms = "Arms"
@@ -39,11 +39,11 @@ class Base_Galaxy:
         elif num == 2:
              # options are inclination, PA, flare, warp, beams, SNR, Channelwidth, Res_Beam, Arms, Bar, Radial_Motions
             self.Inclination = 55.
-            self.Dispersion = [13,9.] # [9., 8.]
-            self.PA = 45
+            self.Dispersion = [13.,9.] # [9., 8.]
+            self.PA = 45.
             self.Warp = [0.,0.] #[0.03, 0.111] # in radians.  in Theta and phi
             self.Flare = "No_Flare"
-            self.Beams= 14 #17 #16
+            self.Beams= 14. #17 #16
             self.SNR= 8.
             self.Channelwidth = 4.
             self.Res_Beam = [15.,15.]
@@ -54,10 +54,10 @@ class Base_Galaxy:
         elif num == 3:
             self.Inclination = 65.
             self.Dispersion = [8., 8.]
-            self.PA = 145
+            self.PA = 145.
             self.Warp = [0.05, 0.025] # in radians.
             self.Flare = "Flare"
-            self.Beams= 16 #16
+            self.Beams= 16. #16
             self.SNR= 7.
             self.Channelwidth = 5.4
             self.Res_Beam = [25.,25.]
@@ -68,10 +68,10 @@ class Base_Galaxy:
         elif num == 4:
             self.Inclination = 48.
             self.Dispersion = [13., 7.5]
-            self.PA = 115
+            self.PA = 115.
             self.Warp = [0.07, 0.15] # in radians.
             self.Flare = "No_Flare"
-            self.Beams= 15
+            self.Beams= 15.
             self.SNR= 6.
             self.Channelwidth = 8.
             self.Res_Beam = [15.,10.]
@@ -83,10 +83,10 @@ class Base_Galaxy:
         elif num == 5:
             self.Inclination = 42.
             self.Dispersion = [15., 12.]
-            self.PA = 115
+            self.PA = 115.
             self.Warp = [0.1, 0.07] # in radians.
             self.Flare = "Flare"
-            self.Beams= 14
+            self.Beams= 14.
             self.SNR= 8.
             self.Channelwidth = 6.
             self.Res_Beam = [12.5,10.]
