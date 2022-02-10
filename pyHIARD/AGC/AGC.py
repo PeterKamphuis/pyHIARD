@@ -92,7 +92,7 @@ def AGC(cfg):
         #we want to start counting from the last line
         with open(Catalogue) as cat:
             lines = cat.readlines()
-        for line in unarranged:
+        for line in lines:
             try:
                 split = line.split('|')
                 if len(split) > 0:
