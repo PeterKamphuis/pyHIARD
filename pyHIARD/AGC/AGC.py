@@ -85,8 +85,20 @@ def AGC(cfg):
     Catalogue=f"{cfg.general.main_directory}Output_AGC_Summary.txt"
     # If we are making new models we want to ensure this is a new file
     if cfg.agc.delete_existing:
-       with open(Catalogue, 'w') as cat:
+        with open(Catalogue, 'w') as cat:
            cat.write('ID|Distance|Directoryname|Cubename\n')
+        number_models = 0.
+    else:
+        #we want to start counting from the last line
+        with open(Catalogue) as cat:
+            lines = cat.readlines()
+        for line in unarranged:
+            try:
+                split = line.split('|')
+                if len(split) > 0:
+                    number_models = float(split[0])
+            except:
+                pass
     #Copy a fits file from the WHISP data base to use as template if it is not ther3 yet
     # Check for the existence of a template fits file
     templatethere= os.path.isfile(cfg.general.main_directory+'/Input.fits')
@@ -139,7 +151,6 @@ def AGC(cfg):
     if (cfg.agc.corruption_method == 'Casa_Sim') or (cfg.agc.corruption_method == 'Casa_5') :
         Template_Casa_In = cf.read_casa_template('Template_Casa.py')
     # start a loop over the various base galaxies
-    number_models = 0.
     set_done= [1024]
     plot_ax =[]
     if 7 in cfg.agc.base_galaxies:
