@@ -793,11 +793,10 @@ load_text_model.__doc__=f'''
 def print_base_galaxy(Galaxy):
     print(f'''{'Inclination':15s} = {Galaxy.Inclination:<10.1f}, {'Dispersion':15s} = {Galaxy.Dispersion}
 {'Mass':15s} = {Galaxy.Mass:<10.2e}, {'PA':15s} = {Galaxy.PA}
-{'Flare':15s} = {Galaxy.Flare:10s}, {'Warp':15s} = {Galaxy.Warp}
-{'Beams':15s} = {Galaxy.Beams:<10.1f}, {'SNR':15s} = {Galaxy.SNR}
-{'Channelwidth':15s} = {Galaxy.Channelwidth:<10.1f}, {'Coord':15s} = {Galaxy.Coord}
-{'Arms':15s} = {Galaxy.Arms:10s}, {'Res_Beam':15s} = {Galaxy.Res_Beam}
-{'Bar':15s} = {Galaxy.Bar:10s}, {'Radial_Motions':15s} = {Galaxy.Radial_Motions}
+{'Beams':15s} = {Galaxy.Beams:<10.1f},  {'Warp':15s} = {Galaxy.Warp}
+{'Radial_Motions':15s} = {Galaxy.Radial_Motions}, {'SNR':15s} = {Galaxy.SNR}
+{'Channelwidth':15s} = {Galaxy.Channelwidth:<10.1f}, {'Res_Beam':15s} = {Galaxy.Res_Beam}
+{'Arms':15s} = {Galaxy.Arms:10s}, {'Flare':15s} = {Galaxy.Flare:10s}, {'Bar':15s} = {Galaxy.Bar:10s}
 ''')
 
 print_base_galaxy.__doc__=f''' NAME:
