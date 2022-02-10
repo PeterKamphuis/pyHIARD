@@ -789,7 +789,7 @@ def build_sbr_prof(Current_Galaxy,symmetric = False):
         sub_ring = int(25./Current_Galaxy.Beams)
     else:
         sub_ring = 5
-    Rad= np.linspace(0.,1.5*HIrad, sub_ring*Current_Galaxy.Beams)
+    Rad= np.linspace(0.,1.5*HIrad, int(sub_ring*Current_Galaxy.Beams))
     # Finaaly the courteau presciption
     v_flat,R_0,beta,gamma = get_sparcs_fit(v_circ,HIrad)
     with warnings.catch_warnings():
