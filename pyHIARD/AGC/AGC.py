@@ -245,6 +245,8 @@ def AGC(cfg):
                     time.sleep(0.1)
                     # Do we have a cube
                     galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+                    if not galaxy_cube_exist:
+                        galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube_CS.fits")
                     if galaxy_cube_exist:
                         print("This galaxy appears fully produced")
                         checkdir = True
