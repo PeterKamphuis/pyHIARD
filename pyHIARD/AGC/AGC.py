@@ -232,7 +232,6 @@ def AGC(cfg):
                 elif cfg.agc.variables_to_vary[ix] == 'Base': pass
                 else:print("This is not a supported parameter")
                 Current_Galaxy.Res_Beam[0:1] = np.sort(Current_Galaxy.Res_Beam[0:1])
-                if len(Current_Galaxy.Res_Beam) == 2: Current_Galaxy.Res_Beam.append(0)
                 print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
                 print(f'''This is the galaxy we are creating.''')
                 cf.print_base_galaxy(Current_Galaxy)
