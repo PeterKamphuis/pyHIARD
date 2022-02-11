@@ -29,11 +29,11 @@ class AGC:
     dispersion: List[float] = field(default_factory=lambda: [[30.0, 8.0]])
     #The flare, arms and bar will be swapped when incuded in the swap lisr
     beams:  List[float] = field(default_factory=lambda: [
-                                2., 4., 6., 7., 8., 10., 12.])
+                                2., 4., 5., 6., 8., 10., 12.])
     # Beam across the major axis. This also set the distance as the size in kpc will be determined by Wang 2016 from the SBR profile
     snr: List[float] = field(default_factory=lambda: [0.5, 1., 3., 5.])
     # These  are average signal to noise ratios
-    channelwidth: List[float] = field(default_factory=lambda: [2., 8.])
+    channelwidth: List[float] = field(default_factory=lambda: [2.])
 
     beam_size: List[float] = field(default_factory=lambda: [[5., 5.]])
     #Resolution of the beam in arcsec
@@ -58,7 +58,7 @@ class ROC:
     # Beam across the major axis. This also set the distance as the size in kpc
     #will be determined by Wang 2016 from the SBR profile. -1 means the maximum possible for the ROC.
     # These  are average signal to noise ratios
-    snr: List[float] = field(default_factory=lambda: [1., 3.])
+    snr: List[float] = field(default_factory=lambda: [0.5, 1., 3.])
 
 
 @dataclass

@@ -114,34 +114,36 @@ configuration_file = ''')
         ROC(cfg)
     Catalogue = f'{cfg.general.main_directory}/Output_Summary.txt'
     # If we are making new models we want to ensure this is a new file
-    cat = open(Catalogue, 'w')
-    cat.write('number|Distance|Directoryname|Cubename\n')
-    if cfg.agc.enable:
-        cat_AGC = open(
-            f'{cfg.general.main_directory}/Output_AGC_Summary.txt', 'r')
-        AGCline = cat_AGC.readlines()
-        for line in AGCline:
-            tmp = line.split('|')
-            try:
-                lastnum = int(tmp[0])
-            except:
-                continue
-            cat.write(line)
-        lastnum += 1
-        cat_AGC.close()
-    else:
-        lastnum = 0.
-    if cfg.roc.enable:
-        cat_ROC = open(
-            f'{cfg.general.main_directory}/Output_ROC_Summary.txt', 'r')
-        ROCline = cat_ROC.readlines()
-        for line in ROCline:
-            tmp = line.split('|')
-            try:
-                l = int(tmp[0])
-            except:
-                continue
-            cat.write(
-                str(int(lastnum+int(tmp[0])))+'|'+tmp[1]+'|'+tmp[2]+'|'+tmp[3])
-        cat_ROC.close()
-    cat.close()
+    with open(Catalogue, 'w') as cat:
+        cat.write('number|Distance|Directoryname|Cubename\n')
+        if cfg.agc.enable:
+            with open(
+                f'{cfg.general.main_directory}/Output_AGC_Summary.txt', 'r') as cat_AGC:
+                AGCline = cat_AGC.readlines()
+                for line in AGCline:
+                    tmp = line.split('|')
+                    try:
+                        lastnum = int(tmp[0])
+                    except:
+                        continue
+                    cat.write(line)
+                lastnum += 1
+        else:
+            lastnum = 0.
+        if cfg.roc.enable:
+            with open(
+                f'{cfg.general.main_directory}/Output_ROC_Summary.txt', 'r') as cat_ROC:
+                ROCline = cat_ROC.readlines()
+                for line in ROCline:
+                    tmp = line.split('|')
+                    try:
+                        l = int(tmp[0])
+                    except:
+                        continue
+                    cat.write(
+                        str(int(lastnum+int(tmp[0])))+'|'+tmp[1]+'|'+tmp[2]+'|'+tmp[3])
+                lastroc = int(tmp[0])+1
+        else:
+            lastroc = 0
+    print(f"In this pyHIARD run we have created {lastnum} AGC models and {lastroc} ROC cubes. In total this makes this database {int(lastnum+lastroc)} models big")
+    

@@ -297,9 +297,23 @@ def ROC(cfg):
     Catalogue=f'{cfg.general.main_directory}Output_ROC_Summary.txt'
     # If we are making new models we want to ensure this is a new file
     if cfg.roc.delete_existing:
-       cat = open(Catalogue, 'w')
-       cat.write('ID|Distance|Directoryname|Cubename\n')
-       cat.close()
+        with  open(Catalogue, 'w') as cat:
+            cat.write('ID|Distance|Directoryname|Cubename\n')
+        number_models = 0
+    else:
+       #we want to start counting from the last line
+       with open(Catalogue) as cat:
+           lines = cat.readlines()
+       for line in lines:
+           try:
+               split = line.split('|')
+               if len(split) > 0:
+                   number_models = int(split[0])
+           except:
+               pass
+    if not "number_models" in locals():
+        number_models = 0
+
 
 
     Modifications= {}
@@ -314,9 +328,32 @@ def ROC(cfg):
     Template_in = cf.read_template_file('Template.def')
     H_0 = 69.6 # http://www.astro.ucla.edu/~wright/CosmoCalc.html
     c = 299792.458  # Km/s
-    number_models=0.
     for name in cfg.roc.base_galaxies:
         print(f"Assembling Galaxy {name}")
+
+        #Check whether we need to construct this
+        to_be_produced = []
+        beams_to_produce = []
+        for nobeams in Modifications['Beams_Across']:
+            for reqnoise in Modifications['SNR']:
+                dirstring = f"{name}_{nobeams:.1f}Beams_{reqnoise:.1f}SNR"
+                to_be_produced.append(dirstring)
+                beams_to_produce.append(nobeams)
+                galaxy_dir =f"{cfg.general.main_directory}{dirstring}/"
+                galaxy_dir_exists = os.path.isdir(galaxy_dir)
+                if galaxy_dir_exists:
+            # Do we have a cube
+                    galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+
+                    if galaxy_cube_exist:
+                        to_be_produced.remove(dirstring)
+                        beams_to_produce.remove(nobeams)
+                        print(f"The galaxy {dirstring} galaxy appears fully produced")
+
+
+        if len(to_be_produced) == 0.:
+            print(f"All cubes for {name} are produced moving on to the next galaxy")
+            continue
         galaxy_module = importlib.import_module(f'pyHIARD.Resources.Cubes.{name}.{name}')
         Template_All=galaxy_module.get_data()
 
@@ -371,7 +408,6 @@ def ROC(cfg):
 
 
         elif galaxy_module.galaxy_parameters['Original_Model'] == 'Tir':
-            print(rotation)
             rotation = (rotation[:]+rotation2[:])/2.
         if condisp[0] == -1.:
             condisp = [(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))]
@@ -490,6 +526,9 @@ def ROC(cfg):
         Original_z= np.sqrt((1+systemic[0]/c)/(1-systemic[0]/c))
         #Then for each shifting the flux needs to be dimmed and the corresponding noise should be calculated
         for nobeams in Modifications['Beams_Across']:
+            if nobeams not in beams_to_produce:
+                print(f"All galaxies with {name} and {nobeams} across the major axis are  thought to be produced already")
+                continue
             # First we check whether the degration is more than 1.5 beams.
             Def_Template = copy.deepcopy(Template_in)
             if nobeams > max_beams_across/1.25:
@@ -576,6 +615,11 @@ def ROC(cfg):
             Final_Mask[final_clean < np.mean(final_clean[final_clean > 0.]) / 2.] = 0.
             final_clean = []
             for reqnoise in Modifications['SNR']:
+                # Make a new directory
+                dirstring = "{}_{:.1f}Beams_{:.1f}SNR".format(name,nobeams,reqnoise)
+                if dirstring not in to_be_produced:
+                    print(f" The galaxy {dirstring} is thought to be produced already")
+                    continue
                 Current_Template =copy.deepcopy(Shifted_Template)
                 # To keep the same SNR as in AGC we want SNR to be mean(in)/noise
                 if reqnoise == -1:
@@ -687,8 +731,7 @@ def ROC(cfg):
                 hednew["CDELT2"] = Template_Header['CDELT2'] * achieved/fact
                 hednew["CRPIX1"] = (Template_Header['CRPIX1']+Pix_Extend) / achieved
                 hednew["CRPIX2"] = (Template_Header['CRPIX2']+Pix_Extend) / achieved
-                # Make a new directory
-                dirstring = "{}_{:.1f}Beams_{:.1f}SNR".format(name,nobeams,reqnoise)
+
                 galaxy_dir =f"{cfg.general.main_directory}{dirstring}/"
                 galaxy_dir_exists = os.path.isdir(galaxy_dir)
                 if not galaxy_dir_exists:

@@ -99,6 +99,8 @@ def AGC(cfg):
                     number_models = float(split[0])
             except:
                 pass
+    if not "number_models" in locals():
+        number_models = 0
     #Copy a fits file from the WHISP data base to use as template if it is not ther3 yet
     # Check for the existence of a template fits file
     templatethere= os.path.isfile(cfg.general.main_directory+'/Input.fits')
