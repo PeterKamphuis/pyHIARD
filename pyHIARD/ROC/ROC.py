@@ -371,6 +371,7 @@ def ROC(cfg):
 
 
         elif galaxy_module.galaxy_parameters['Original_Model'] == 'Tir':
+            print(rotation)
             rotation = (rotation[:]+rotation2[:])/2.
         if condisp[0] == -1.:
             condisp = [(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))]

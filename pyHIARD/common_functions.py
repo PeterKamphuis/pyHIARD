@@ -709,7 +709,7 @@ please provide one of the following types {', '.join(allowed_types)}:''')
         if type == 'tir':
             variable = str(line.split('=')[0].strip().upper())
             if variable in Variables:
-                Values[variable] = line.split('=')[1].rsplit()
+                Values[variable] = [float(x) for x in line.split('=')[1].rsplit()]
         elif stripped:
             split_line = [x.strip() for x in line.split()]
             if len(split_line) == 0:
