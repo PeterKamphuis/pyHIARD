@@ -150,7 +150,7 @@ def check_input(cfg):
 Please choose from {','.join([x for x in channel_options])}:''')
 
         question_variations = False
-        changes_poss = ['Inclination', 'PA','Beams','Radial_Motions','Flare','Arms','Bar','Channelwidth','SNR','Warp','Mass','Beam_Resolution','Base']
+        changes_poss = ['Inclination', 'PA','Beams','Radial_Motions','Flare','Arms','Dispersion','Bar','Channelwidth','SNR','Warp','Mass','Beam_Resolution','Base']
         changes_poss_lower = [x.lower() for x in changes_poss]
         for i,variables in enumerate(cfg.agc.variables_to_vary):
             while variables.lower() not in changes_poss_lower:

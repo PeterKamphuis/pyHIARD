@@ -196,6 +196,7 @@ def AGC(cfg):
             elif cfg.agc.variables_to_vary[ix] == 'Channelwidth': numloops=len(cfg.agc.channelwidth)
             elif cfg.agc.variables_to_vary[ix] == 'Beam_Resolution': numloops=len(cfg.agc.beam_size)
             elif cfg.agc.variables_to_vary[ix] == 'Radial_Motions': numloops=len(cfg.agc.radial_motions)
+            elif cfg.agc.variables_to_vary[ix] == 'Dispersion': numloops=len(cfg.agc.dispersion)
             elif cfg.agc.variables_to_vary[ix] == 'Mass': numloops=len(cfg.agc.masses)
             else:
                 print("This is not a supported parameter")
@@ -228,6 +229,7 @@ def AGC(cfg):
                     else:
                         Current_Galaxy.Bar = "Bar"
                 elif cfg.agc.variables_to_vary[ix] == 'Radial_Motions': Current_Galaxy.Radial_Motions = cfg.agc.radial_motions[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Dispersion': Current_Galaxy.Dispersion = cfg.agc.dispersion[jx]
                 elif cfg.agc.variables_to_vary[ix] == 'Mass': Current_Galaxy.Mass = cfg.agc.masses[jx]
                 elif cfg.agc.variables_to_vary[ix] == 'Base': pass
                 else:print("This is not a supported parameter")
