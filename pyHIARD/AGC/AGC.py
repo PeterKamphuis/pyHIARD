@@ -185,6 +185,15 @@ def AGC(cfg):
     max_rad = 0.
 
     for base in range(len(cfg.agc.base_galaxies)):
+        # We want to keep the center constant per base galaxy, for easy comparison as well as to be able to investigate how center determination is affected
+        if cfg.agc.corruption_method == 'Gaussian':
+            RAdeg=np.random.uniform()*360
+            DECdeg=(np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
+        else:
+            RAdeg = np.random.uniform()*360
+            DECdeg=-60
+            while DECdeg < -20.:
+                DECdeg = (np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
         # From here we go into a loop to adjust variables over the bases
         for ix in range(len(cfg.agc.variables_to_vary)):
             if cfg.agc.variables_to_vary[ix] == 'Inclination':numloops=len(cfg.agc.inclination)
@@ -234,6 +243,7 @@ def AGC(cfg):
                 elif cfg.agc.variables_to_vary[ix] == 'Base': pass
                 else:print("This is not a supported parameter")
                 Current_Galaxy.Res_Beam[0:1] = np.sort(Current_Galaxy.Res_Beam[0:1])
+                setattr(Current_Galaxy,"Coord",[RAdeg,DECdeg])
                 print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
                 print(f'''This is the galaxy we are creating.''')
                 cf.print_base_galaxy(Current_Galaxy)
@@ -305,14 +315,14 @@ def AGC(cfg):
                 Distance = (Rad_HI/(np.tan(Sky_Size/2.)))/1000.
                 #print("The Distance is {:5.2f} Mpc".format(Distance))
                 vsys = Distance*H_0
-                if cfg.agc.corruption_method == 'Gaussian' or (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) != number_models/5.)):
-                    RAdeg=np.random.uniform()*360
-                    DECdeg=(np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
-                else:
-                    RAdeg = np.random.uniform()*360
-                    DECdeg=-60
-                    while DECdeg < -20.:
-                        DECdeg = (np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
+                #if cfg.agc.corruption_method == 'Gaussian' or (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) != number_models/5.)):
+                #    RAdeg=np.random.uniform()*360
+                #    DECdeg=(np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
+                #else:
+                #    RAdeg = np.random.uniform()*360
+                #    DECdeg=-60
+                #    while DECdeg < -20.:
+                #        DECdeg = (np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
                 RAhr,DEChr= cf.convertRADEC(RAdeg,DECdeg)
                 #print("It's central coordinates are RA={} DEC={} vsys={} km/s".format(RAhr,DEChr,vsys))
                 # Write them to the template

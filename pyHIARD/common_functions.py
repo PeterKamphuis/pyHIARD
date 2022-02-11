@@ -562,7 +562,7 @@ delete_directory.__doc__ =f'''
 
 
 def download_cube(name,url,sizes,new_location):
-    name_in = download_file(url,pkgname='pyHIARD')
+    name_in = download_file(url,pkgname='pyHIARD',timeout=1800)
     cube = cut_input_cube(name_in,sizes)
     fits.writeto(f'{new_location}/{name}.fits',cube[0].data,cube[0].header)
     clear_download_cache(url,pkgname='pyHIARD')
@@ -791,7 +791,9 @@ load_text_model.__doc__=f'''
 #
 
 def print_base_galaxy(Galaxy):
-    print(f'''{'Inclination':15s} = {Galaxy.Inclination:<10.1f}, {'Dispersion':15s} = {Galaxy.Dispersion}
+    RAhr,DEChr= convertRADEC(Galaxy.Coord[0], Galaxy.Coord[1])
+    print(f'''The galaxy has the central coordinates RA= {RAhr}, DEC={DEChr}
+{'Inclination':15s} = {Galaxy.Inclination:<10.1f}, {'Dispersion':15s} = {Galaxy.Dispersion}
 {'Mass':15s} = {Galaxy.Mass:<10.2e}, {'PA':15s} = {Galaxy.PA}
 {'Beams':15s} = {Galaxy.Beams:<10.1f}, {'Warp':15s} = {Galaxy.Warp}
 {'Radial_Motions':15s} = {Galaxy.Radial_Motions:<10.1f}, {'SNR':15s} = {Galaxy.SNR}

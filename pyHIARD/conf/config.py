@@ -26,7 +26,7 @@ class AGC:
     warp: List[float] = field(default_factory=lambda: [
                               [0.15, 0.05], [0.05, 0.2]])
     radial_motions: List[float] = field(default_factory=lambda: [-10., -20.])
-    dispersion: List[float]=field(default_factory=lambda: [[30.0, 8.0]])
+    dispersion: List[float] = field(default_factory=lambda: [[30.0, 8.0]])
     #The flare, arms and bar will be swapped when incuded in the swap lisr
     beams:  List[float] = field(default_factory=lambda: [
                                 2., 4., 6., 7., 8., 10., 12.])
