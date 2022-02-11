@@ -47,7 +47,7 @@ NOTE:
 '''
 
 def get_masks(dir_to_place,sofia_call='sofia2'):
-        '''Get or create the masks for a galaxy'''
+    '''Get or create the masks for a galaxy'''
     name = 'NGC_3198'
     outdir = os.path.dirname(os.path.abspath(__file__))
     try:
