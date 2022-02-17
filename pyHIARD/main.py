@@ -111,7 +111,7 @@ configuration_file = ''')
         AGC(cfg)
 
     if cfg.roc.enable:
-        ROC(cfg)
+        ROC(cfg,path_to_resources)
     Catalogue = f'{cfg.general.main_directory}/Output_Summary.txt'
     # If we are making new models we want to ensure this is a new file
     with open(Catalogue, 'w') as cat:
@@ -127,7 +127,7 @@ configuration_file = ''')
                     except:
                         continue
                     cat.write(line)
-                lastnum += 1
+                #lastnum += 1
         else:
             lastnum = 0.
         if cfg.roc.enable:
@@ -142,8 +142,7 @@ configuration_file = ''')
                         continue
                     cat.write(
                         str(int(lastnum+int(tmp[0])))+'|'+tmp[1]+'|'+tmp[2]+'|'+tmp[3])
-                lastroc = int(tmp[0])+1
+                lastroc = int(tmp[0])
         else:
             lastroc = 0
     print(f"In this pyHIARD run we have created {lastnum} AGC models and {lastroc} ROC cubes. In total this makes this database {int(lastnum+lastroc)} models big")
-    

@@ -12,6 +12,7 @@ requirements = [
     'scipy',
     'astropy',
     'omegaconf',
+    'psutil',
     'matplotlib',
     'future-fstrings',
     'importlib_resources>=3.3.0',

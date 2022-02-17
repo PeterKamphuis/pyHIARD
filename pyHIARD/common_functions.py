@@ -4,23 +4,27 @@
 from astropy.utils.data import download_file,clear_download_cache
 from astropy.io import fits
 from collections import OrderedDict #used in Proper_Dictionary
-import copy # Used in columndensities
-import numpy as np # Used in convertskyangle and columndensity and
-import os
-
 from pyHIARD import Templates as templates
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from pyHIARD.Resources import Cubes as cubes
+from scipy.ndimage import gaussian_filter
+
+import copy # Used in columndensities
+import numpy as np # Used in convertskyangle and columndensity and
+import os
+import re
+import resource
+import signal
+import subprocess
+import time
+import traceback
+
 try:
     import importlib.resources as import_res
 except ImportError:
     # Try backported to PY<37 `importlib_resources`.
     import importlib_resources as import_res
-import re
-import subprocess
-from scipy.ndimage import gaussian_filter
-import signal
-import traceback
+
 
 class SofiaFaintError(Exception):
     pass
@@ -116,21 +120,21 @@ def check_input(cfg):
         #sets = 5  # This is the amount of base galaxies we want, i.e. the number of rotation curves
         question_base = False
         for gals in cfg.agc.base_galaxies:
-            if not 1 <= gals <= 6:
+            if not 1 <= gals <= 7:
                 question_base =True
         if question_base:
             print(f'''Please select the base types you would like to use''')
             for i in range(1,6):
                 print(f'''{i}) Galaxy {i} has the following Base parameters to vary on.''')
-                cf.print_base_galaxy(Base_Galaxy(i))
+                print_base_galaxy(Base_Galaxy(i))
 
-            vals = input(f"Or you can construct you own by selecting 6, default = 6: ")
+            vals = input(f"Or you can construct you own by selecting 7, default = 7: ")
             if vals == '':
-                cfg.agc.base_galaxies = [6]
+                cfg.agc.base_galaxies = [7]
             else:
                 cfg.agc.base_galaxies = [int(x)  for x in re.split("\s+|\s*,\s*|\s+$",vals.strip()) if 1 <=  int(x) <= 6]
                 if len(cfg.agc.base_galaxies) == 0:
-                    cfg.agc.base_galaxies = [6]
+                    cfg.agc.base_galaxies = [7]
         while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian', 'casa_5']:
             cfg.agc.corruption_method = input('Your method of corruption is not acceptable please choose from Casa_Sim, Gaussian, Casa_5 (Default = Gaussian):')
             if cfg.agc.corruption_method == '':
@@ -394,38 +398,48 @@ def create_masks(outdir,working_dir,name,sofia_call='sofia2'):
     # Replace 0. with Nan
 
     #write this to the fits file
-    fits.writeto(f'{working_dir}/tmp.fits', Tmp_Cube, hdr,overwrite=True)
+    fits.writeto(f'{working_dir}/tmp_{name}.fits', Tmp_Cube, hdr,overwrite=True)
     SoFiA_Template = read_template_file('Sofia_Template.par')
-    SoFiA_Template['input.data'.upper()] = f'input.data = {working_dir}/tmp.fits'
+    SoFiA_Template['input.data'.upper()] = f'input.data = {working_dir}/tmp_{name}.fits'
     SoFiA_Template['scfind.threshold'.upper()]= 'scfind.threshold	= 7'
     SoFiA_Template['linker.minSizeZ'.upper()]=  f'linker.minSizeZ = {int(Tmp_Cube.shape[0]/2.)}'
-    with open(f'{working_dir}/tmp_sof.par', 'w') as file:
+    SoFiA_Template['output.filename'.upper()] = f'output.filename = tmp_{name}'
+    with open(f'{working_dir}/tmp_{name}_sof.par', 'w') as file:
         file.writelines([SoFiA_Template[key] + "\n" for key in SoFiA_Template])
-    run_sofia(working_dir,'tmp_sof.par',sofia_call = sofia_call)
-
-    Mask_Outer = fits.open(working_dir + '/tmp_mask.fits')
+    run_sofia(working_dir,f'tmp_{name}_sof.par',sofia_call = sofia_call)
+    #wait half a second to make sure got written
+    #time.sleep(0.5)
+    Mask_Outer = fits.open(f'{working_dir}/tmp_{name}_mask.fits')
     Mask_Outer[0].header['CUNIT3'] = 'KM/S'
     try:
         del Mask_Outer[0].header['HISTORY']
     except:
         pass
-    fits.writeto(f'{outdir}/Outer_{name}_mask.fits',Mask_Outer[0].data,Mask_Outer[0].header,overwrite = True)
-    os.system(f"rm -f {working_dir}/tmp_mask.fits")
+    #fits.writeto(f'{outdir}/Outer_{name}_mask.fits',Mask_Outer[0].data,Mask_Outer[0].header,overwrite = True)
+    os.system(f"rm -f {working_dir}/tmp_{name}_mask.fits")
     # Create the inner mask
     SoFiA_Template['dilation.enable'.upper()]='dilation.enable	=	false'
-    with open(f'{working_dir}/tmp_sof.par', 'w') as file:
+    with open(f'{working_dir}/tmp_{name}_sof.par', 'w') as file:
         file.writelines([SoFiA_Template[key] + "\n" for key in SoFiA_Template])
-    run_sofia(working_dir,'tmp_sof.par',sofia_call = sofia_call)
-
-
-    Mask_Inner = fits.open(working_dir + '/tmp_mask.fits')
+    run_sofia(working_dir,f'tmp_{name}_sof.par',sofia_call = sofia_call)
+    #wait half a second to make sure got written
+    time.sleep(0.5)
+    Mask_Inner = fits.open(f'{working_dir}/tmp_{name}_mask.fits')
     Mask_Inner[0].header['CUNIT3'] = 'KM/S'
     del Mask_Inner[0].header['HISTORY']
-    fits.writeto(f'{outdir}/Inner_{name}_mask.fits',Mask_Inner[0].data,Mask_Inner[0].header,overwrite = True)
-    os.system(f"rm -f {working_dir}/tmp_mask.fits")
-    os.system(f"rm -f {working_dir}/tmp.fits")
-    os.system(f'rm -f {working_dir}/tmp_sof.par')
-    return Mask_Inner,Mask_Outer
+    #fits.writeto(f'{outdir}/Inner_{name}_mask.fits',Mask_Inner[0].data,Mask_Inner[0].header,overwrite = True)
+    os.system(f"rm -f {working_dir}/tmp_{name}_mask.fits")
+    os.system(f"rm -f {working_dir}/tmp_{name}.fits")
+    os.system(f'rm -f {working_dir}/tmp_{name}_sof.par')
+    transform = np.array(copy.deepcopy(Mask_Outer[0].data),dtype=float)
+    transform[transform > 0.] = 1.
+    tmp = gaussian_filter(transform, sigma=(0, 3, 3), order=0)
+    transform =  copy.deepcopy(tmp)
+    tmp =[]
+    transform[Mask_Inner[0].data > 0] = 1.
+    Mask_Outer[0].data = transform
+    Mask_Inner.close()
+    return Mask_Outer
 create_masks.__doc__ =f'''
  NAME:
     create_masks
@@ -613,7 +627,6 @@ def find_program(name,search):
             name = input(f'''You have indicated to use {name} for using {search} but it cannot be found.
 Please provide the correct name : ''')
     return name
-
 find_program.__doc__ =f'''
  NAME:
     find_program
@@ -656,6 +669,78 @@ def get_bool(print_str="Please type True or False",default=True):
             return False
         else:
             print("Error: the answer must be true/false or yes/no.")
+find_program.__doc__ =f'''
+ NAME:
+    find_program
+
+ PURPOSE:
+    check whether a program is available for use.
+
+ CATEGORY:
+    support_functions
+
+ INPUTS:
+    name = command name of the program to run
+    search = Program we are looking for
+ OPTIONAL INPUTS:
+
+ OUTPUTS:
+    the correct command for running the program
+
+ OPTIONAL OUTPUTS:
+
+ PROCEDURES CALLED:
+    Unspecified
+
+ NOTE:
+'''
+
+def get_created_models(Catalogue,delete_existing):
+    if not delete_existing:
+        with open(Catalogue) as cat:
+            lines = cat.readlines()
+        try:
+            split_line = lines[-1].split('|')
+            if len(split_line) > 0:
+                number_models = int(float(split_line[0])+1)
+        except:
+            number_models=0
+    else:
+        with  open(Catalogue, 'w') as cat:
+            cat.write('ID|Distance|Directoryname|Cubename\n')
+        number_models = 0
+    return number_models
+get_created_models.__doc__ =f'''
+ NAME:
+    get_created_models(Catalogue,delete_exiting)
+
+ PURPOSE:
+    check whether a new catalogue should be created if not then the starting number is the end of the catalogue
+
+ CATEGORY:
+    support_functions
+
+ INPUTS:
+    name = command name of the program to run
+    search = Program we are looking for
+ OPTIONAL INPUTS:
+
+ OUTPUTS:
+    the correct command for running the program
+
+ OPTIONAL OUTPUTS:
+
+ PROCEDURES CALLED:
+    Unspecified
+
+ NOTE:
+'''
+
+
+
+def limit_memory(maxsize):
+    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+    resource.setrlimit(resource.RLIMIT_AS, (maxsize, hard))
 
 def load_text_model(filename,type = 'Tirific',  Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR','RADI','VROT',
                  'Z0', 'SBR', 'INCL','PA','XPOS','YPOS','VSYS','SDIS','VROT_2',  'Z0_2','SBR_2',
@@ -826,6 +911,69 @@ print_base_galaxy.__doc__=f''' NAME:
 
  NOTE:
  '''
+
+def scrambled_initial(directory,Model):
+    variables=['VROT','SBR','VRAD','SDIS','PA','INCL','XPOS','YPOS','VSYS','Z0']
+    profile = {}
+
+    for var in variables:
+        if var in Model:
+            ini = [float(x) for x in Model[var].split('=')[1].split()]
+            ini2 =[float(x) for x in Model[f'{var}_2'].split('=')[1].split()]
+            while len(ini) < len(ini2):
+                ini.append(ini[-1])
+            while len(ini) > len(ini2):
+                ini2.append(ini2[-1])
+            if var == 'VROT':
+                profile[var]=np.mean([ini[-5:-1],ini2[-5:-1]])
+            elif var == 'SBR':
+                profile[var] = np.max([ini,ini2])
+            else:
+                profile[var]=np.mean([ini[0],ini2[0]])
+        else:
+            profile[var] = 0.
+
+    svrot = profile['VROT']+np.random.default_rng().uniform(-10., 10.)
+    sincl = profile['INCL']+np.random.default_rng().uniform(-10., 10.)
+    spa =  profile['PA']+np.random.default_rng().uniform(-3., 3.)
+    sz0 = profile['Z0']
+    ssbr = np.random.default_rng().uniform(-1*profile['SBR'], profile['SBR'])
+    ssdis = profile['SDIS']+np.random.default_rng().uniform(-4., 4.)
+    svrad =profile['VRAD']+np.random.default_rng().uniform(-10., 10.)
+    sra =profile['XPOS']+np.random.default_rng().uniform(-10./3600., -10./3600.)
+    sdec =profile['YPOS']+np.random.default_rng().uniform(-10./3600., -10./3600.)
+    svsys = profile['VSYS']+np.random.default_rng().uniform(-4., 4.)
+    with open(f"{directory}Initial_Estimates.txt", 'w') as overview:
+        overview.write(f'''#This file contains the initial estimates.
+#{'VROT':<15s} {'INCL':<15s} {'PA':<15s} {'Z0':<15s} {'SBR':<15s} {'DISP':<15s} {'VRAD':<15s} {'RA':<15s} {'DEC':<15s}  {'VSYS':<15s}
+#{'km/s':<15s} {'Degree':<15s} {'Degree':<15s} {'arcsec':<15s} {'Jy km/s/arcsec^2':<15s} {'km/s':<15s} {'km/s':<15s} {'Degree':<15s} {'Degree':<15s}  {'km/s':<15s}
+{svrot:<15.2f} {sincl:<15.2f} {spa:<15.2f} {sz0:<15.3f} {ssbr:<15.7f} {ssdis:<15.2f} {svrad:<15.2f} {sra:<15.5f} {sdec:<15.5f}  {svsys:<15.2f}''')
+
+scrambled_initial.__doc__ =f'''
+NAME:
+   scrambled_initial(directory,Model)
+
+PURPOSE:
+    Create a file with scrambelled Initial estimates.
+
+CATEGORY:
+   common_functions
+
+INPUTS:
+    directory = the directory where to put the model
+    Model = array with def template with all lines split
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    text file
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 
 def read_casa_template(filename):
     with import_res.open_text(templates, filename) as tmp:

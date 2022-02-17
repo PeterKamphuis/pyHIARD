@@ -3,6 +3,7 @@
 from pyHIARD.common_functions import download_cube,create_masks
 from astropy.io import fits
 import os
+import copy
 
 galaxy_parameters = {'Galaxy': 'UGC_1281', 'DHIkpc': 15.46  ,'Distance': 7.9, 'Original_Model': 'Tir', 'RMS':  0.00043 , 'MHI': 10**8.57  }
 
@@ -55,17 +56,14 @@ def get_masks(dir_to_place,sofia_call='sofia2'):
     '''Get or create the masks for a galaxy'''
     name = 'UGC_1281'
     outdir = os.path.dirname(os.path.abspath(__file__))
-    try:
-        for type in ['inner','outer']:
-            if type == 'inner':
-                Mask_Inner = fits.open(f"{outdir}/Inner_{name}_mask.fits", uint=False,
+    mask_exists = os.path.isfile(f"{outdir}/{name}_mask.fits")
+    if mask_exists:
+        Mask = fits.open(f"{outdir}/{name}_mask.fits", uint=False,
                                do_not_scale_image_data=True, ignore_blank=True)
-            else:
-                Mask_Outer = fits.open(f"{outdir}/Outer_{name}_mask.fits", uint=False,
-                               do_not_scale_image_data=True, ignore_blank=True)
-    except FileNotFoundError:
-        Mask_Inner, Mask_Outer = create_masks(outdir,dir_to_place,name,sofia_call=sofia_call)
-    return Mask_Inner,Mask_Outer
+    else:
+        Mask = create_masks(outdir,dir_to_place,name,sofia_call=sofia_call)
+        fits.writeto(f'{outdir}/{name}_mask.fits',Mask[0].data,Mask[0].header,overwrite = True)
+    return Mask
 get_masks.__doc__=f'''
 NAME:
    get_masks
@@ -83,8 +81,7 @@ OPTIONAL INPUTS:
     sofia_call = command name for sofia
 
 OUTPUTS:
-   Inner Mask = the inner edge mask
-   Outer Mask = the Outer edge mask
+   Mask = the Blurring Mask for the template
 
 OPTIONAL OUTPUTS:
 

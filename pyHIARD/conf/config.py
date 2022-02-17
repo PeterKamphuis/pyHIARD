@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from multiprocessing import cpu_count
 import omegaconf
 from omegaconf import MISSING
 from typing import List, Optional
@@ -63,7 +64,7 @@ class ROC:
 
 @dataclass
 class General:
-    ncpu: int = 6
+    ncpu: int = cpu_count()-1
     main_directory: str = os.getcwd()
     tirific: str = "tirific"  # Command to call tirific
     sofia2: str = "sofia2"  # Command to call sofia 2

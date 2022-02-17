@@ -83,9 +83,11 @@ user_pwv = 0.  # Precipitable Water Vapor in mm
 t_ground = 283.0  # ambient temperature
 seed = 11111  # random number seed
 leakage = 0.0  # cross polarization (interferometer only)
-graphics = 'none'  # display graphics at each stage to [screen|file|both|none]. Have to be off to be able to run in screen.
+# display graphics at each stage to [screen|file|both|none]. Have to be off to be able to run in screen.
+graphics = 'none'
 verbose = False
 overwrite = True  # overwrite files starting with $project
+inp(simobserve)
 simobserve()
 # And invert and clean the visibilities using the pre-determined mask
 default(tclean)
