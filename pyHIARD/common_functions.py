@@ -18,6 +18,13 @@ import signal
 import subprocess
 import time
 import traceback
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import matplotlib
+    matplotlib.use('pdf')
+    import matplotlib.pyplot as plt
 
 try:
     import importlib.resources as import_res
@@ -696,7 +703,8 @@ find_program.__doc__ =f'''
 '''
 
 def get_created_models(Catalogue,delete_existing):
-    if not delete_existing:
+    cat_exists = os.path.isfile(Catalogue)
+    if not delete_existing and cat_exists:
         with open(Catalogue) as cat:
             lines = cat.readlines()
         try:
@@ -875,6 +883,106 @@ load_text_model.__doc__=f'''
  '''
 #
 
+def plot_input(directory,Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.] ,Title = 'EMPTY'):
+    variables_to_plot = ['SBR','VROT','PA','INCL','SDIS','Z0']
+    plots = len(variables_to_plot)
+    units= {'SBR': 'SBR (Jy km s$^{-1}$ arcsec$^-2$)' ,
+            'VROT': 'V$_{rot}$ (km s$^{-1}$)',
+            'PA':'PA ($^{\circ}$)',
+            'INCL': 'INCL ($^{\circ}$)',
+            'SDIS': 'Disp. (km s$^{-1}$)',
+            'Z0': 'Z0 (arcsec)'}
+    plt.figure(2, figsize=(8, 12), dpi=100, facecolor='w', edgecolor='k')
+
+    labelfont= {'family':'Times New Roman',
+                'weight':'normal',
+                'size':18}
+    plt.rc('font', **labelfont)
+    radius = np.array([float(x) for x in Model['RADI'].split('=')[1].split()],dtype=float)
+    bmaj = float(Model['BMAJ'].split('=')[1])
+
+    radius_bmaj = [0]
+    counter = 1.
+    for i,rad in enumerate(radius):
+        if rad < counter*bmaj:
+            pass
+        else:
+            radius_bmaj.append(i)
+            counter += 1.
+    radius_bmaj =np.array(radius_bmaj,dtype=int)
+    rad_unit= 'arcsec'
+    if Distance > 0.:
+        radius = cf.convertskyangle(radius,distance=Distance)
+        rad_unit= 'kpc'
+        units['Z0'] = 'Z0 (kpc)'
+    for i,variable in enumerate(variables_to_plot):
+        plt.subplot(plots, 1, plots-i)
+        var_to_plot =  [float(x) for x in Model[variable].split('=')[1].split()]
+        while len(var_to_plot) < len(radius):
+            var_to_plot.append(var_to_plot[-1])
+        var_to_plot= np.array(var_to_plot,dtype=float)
+        if variable == 'Z0' and Distance != 0.:
+            var_to_plot = cf.convertskyangle(var_to_plot ,distance=Distance)
+        plt.plot(radius, var_to_plot, 'k')
+        plt.plot(radius[radius_bmaj], var_to_plot[radius_bmaj], 'ko')
+        var_to_plot =  [float(x) for x in Model[f'{variable}_2'].split('=')[1].split()]
+        if np.sum(var_to_plot) > 0.:
+            while len(var_to_plot) < len(radius):
+                var_to_plot.append(var_to_plot[-1])
+            var_to_plot= np.array(var_to_plot,dtype=float)
+            if variable == 'Z0' and Distance != 0.:
+                var_to_plot = cf.convertskyangle(var_to_plot ,distance=Distance)
+            plt.plot(radius, var_to_plot, 'r')
+            plt.plot(radius[radius_bmaj], var_to_plot[radius_bmaj], 'ro')
+        if i == 0.:
+            plt.xlabel(f'Radius ({rad_unit})', **labelfont)
+            lab_bottom= True
+        else:
+            lab_bottom = False
+        plt.ylabel(units[variable], **labelfont)
+        plt.margins(x=0., y=0.)
+        plt.tick_params(
+        axis='x',  # changes apply to the x-axis
+        which='both',  # both major and minor ticks are affected
+        direction='in',
+        bottom=True,  # ticks along the bottom edge are off
+        top=False,  # ticks along the top edge are off
+        labelbottom=lab_bottom)  # labels along the bottom edge are off
+    if Title != 'EMPTY':
+        plt.title(Title)
+    plt.savefig(f"{directory}Overview_Input.png", bbox_inches='tight')
+    plt.close()
+plot_input.__doc__ = f'''
+NAME:
+    plot_input(directory,Model,add_sbr = 0, Distance= 0., RHI = [0.,0.,0.] ,Title = 'EMPTY')
+
+PURPOSE:
+    Plot the tirific template as output
+
+CATEGORY:
+   roc
+
+INPUTS:
+    directory = the destination of the plot
+    Model = Tirific Template
+    add_sbr = additional SBR profiles to plot
+    Distance = Distance to have kpc instead of arcsec
+    RHI = The radius corresponding to RHI [symmetric,appr,rec]
+    Warp_Start = radius corresponding to the start of the warp.
+    Title = title string
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    standardized plot for output
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 def print_base_galaxy(Galaxy):
     RAhr,DEChr= convertRADEC(Galaxy.Coord[0], Galaxy.Coord[1])
     print(f'''The galaxy has the central coordinates RA= {RAhr}, DEC={DEChr}

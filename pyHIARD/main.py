@@ -1,16 +1,19 @@
 #!/usr/local/bin/ python3
 # This is the main program to easily create the real and false database
 
+import os
 import pyHIARD
 import pyHIARD.common_functions as cf
+import sys
+
+from omegaconf import OmegaConf, MissingMandatoryValue
 from pyHIARD.AGC.AGC import AGC
 from pyHIARD.ROC.ROC import ROC, add_template, remove_template
 from pyHIARD.conf.config import Config
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from pyHIARD.Resources import Cubes as cubes
-from omegaconf import OmegaConf, MissingMandatoryValue
-import os
-import sys
+
+
 
 
 def main(argv):
