@@ -883,7 +883,7 @@ load_text_model.__doc__=f'''
  '''
 #
 
-def plot_input(directory,Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.] ,Title = 'EMPTY'):
+def plot_input(directory,Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.] ,Title = 'EMPTY',WarpR=[0.,0.]):
     variables_to_plot = ['SBR','VROT','PA','INCL','SDIS','Z0']
     plots = len(variables_to_plot)
     units= {'SBR': 'SBR (Jy km s$^{-1}$ arcsec$^-2$)' ,
@@ -911,8 +911,9 @@ def plot_input(directory,Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.]
             counter += 1.
     radius_bmaj =np.array(radius_bmaj,dtype=int)
     rad_unit= 'arcsec'
+    #if we have a distance we convert all arcsec values to kpc, It is assumed all extra variables come in the right unit
     if Distance > 0.:
-        radius = cf.convertskyangle(radius,distance=Distance)
+        radius = convertskyangle(radius,distance=Distance)
         rad_unit= 'kpc'
         units['Z0'] = 'Z0 (kpc)'
     for i,variable in enumerate(variables_to_plot):
@@ -922,16 +923,16 @@ def plot_input(directory,Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.]
             var_to_plot.append(var_to_plot[-1])
         var_to_plot= np.array(var_to_plot,dtype=float)
         if variable == 'Z0' and Distance != 0.:
-            var_to_plot = cf.convertskyangle(var_to_plot ,distance=Distance)
+            var_to_plot = convertskyangle(var_to_plot ,distance=Distance)
         plt.plot(radius, var_to_plot, 'k')
         plt.plot(radius[radius_bmaj], var_to_plot[radius_bmaj], 'ko')
-        var_to_plot =  [float(x) for x in Model[f'{variable}_2'].split('=')[1].split()]
-        if np.sum(var_to_plot) > 0.:
-            while len(var_to_plot) < len(radius):
-                var_to_plot.append(var_to_plot[-1])
-            var_to_plot= np.array(var_to_plot,dtype=float)
+        var_to_plot2 =  [float(x) for x in Model[f'{variable}_2'].split('=')[1].split()]
+        while len(var_to_plot2) < len(radius):
+            var_to_plot2.append(var_to_plot2[-1])
+        if np.sum(var_to_plot2) > 0. and np.sum([x-y for x,y in zip(var_to_plot,var_to_plot2)]) != 0.:
+            var_to_plot= np.array(var_to_plot2,dtype=float)
             if variable == 'Z0' and Distance != 0.:
-                var_to_plot = cf.convertskyangle(var_to_plot ,distance=Distance)
+                var_to_plot = convertskyangle(var_to_plot ,distance=Distance)
             plt.plot(radius, var_to_plot, 'r')
             plt.plot(radius[radius_bmaj], var_to_plot[radius_bmaj], 'ro')
         if i == 0.:
@@ -939,8 +940,25 @@ def plot_input(directory,Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.]
             lab_bottom= True
         else:
             lab_bottom = False
+        if variable in ['SBR'] and np.sum(add_sbr) != 0:
+            plt.plot(radius, add_sbr[0,:], 'b')
+            plt.plot(radius[radius_bmaj], add_sbr[0,radius_bmaj], 'bo')
+            plt.plot(radius, add_sbr[1,:], 'y')
+            plt.plot(radius[radius_bmaj], add_sbr[1,radius_bmaj], 'yo')
+
         plt.ylabel(units[variable], **labelfont)
-        plt.margins(x=0., y=0.)
+        ymin,ymax=plt.ylim()
+        plt.margins(x=0.,y=0.)
+        if variable in ['SBR','VROT','SDIS','Z0'] and RHI[0] != 0:
+            plt.plot([RHI[0],RHI[0]],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'b')
+            if variable in ['SBR'] and RHI[1] != 0:
+                plt.plot([RHI[1], RHI[1]], [ymin - (ymax - ymin) * 0.1, ymax + (ymax - ymin) * 0.1], 'b--')
+            if variable in ['SBR'] and RHI[2] != 0:
+                plt.plot([RHI[2], RHI[2]], [ymin - (ymax - ymin) * 0.1, ymax + (ymax - ymin) * 0.1], 'b--')
+        if variable in ['INCL','PA'] and np.sum(WarpR) != 0:
+            plt.plot([WarpR[1],WarpR[1]],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'g')
+            if WarpR[0] != 0.:
+                plt.plot([WarpR[0],WarpR[0]],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'g--')
         plt.tick_params(
         axis='x',  # changes apply to the x-axis
         which='both',  # both major and minor ticks are affected

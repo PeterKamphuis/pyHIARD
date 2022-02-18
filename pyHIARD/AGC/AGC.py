@@ -30,7 +30,8 @@ except ImportError:
 
 
 from astropy.io import fits
-from multiprocessing import Pool
+from astropy.io.fits.verify import VerifyWarning
+from multiprocessing import Pool,get_context
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from pyHIARD.constants import G_agc,H_0
 from scipy import interpolate
@@ -101,8 +102,10 @@ def AGC(cfg):
         data = (my_resources / 'Input.fits').read_bytes()
         with open(f"{cfg.general.main_directory}/Input.fits",'w+b') as tmp:
             tmp.write(data)
-       # let's make sure it has BMAJ, BMIN and BPA
-        dummy = fits.open(cfg.general.main_directory+'/Input.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
+        # let's make sure it has BMAJ, BMIN and BPA
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore",category=VerifyWarning)
+            dummy = fits.open(cfg.general.main_directory+'/Input.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
         sizex = 500
         sizey = 500
         sizez= 120
@@ -116,7 +119,7 @@ def AGC(cfg):
         for key,value in header_sets.items():
             dummy[0].header[key] = value
         header_deletes = ['CROTA1','CROTA2','DRVAL3','DTYPE3','DUNIT3','HISTORY',\
-                            'BMMAJ','BMMIN','BMPA','MAPLAB']
+                            'BMMAJ','BMMIN','BMPA','MAPLAB','BLANK']
         for key in header_deletes:
             del dummy[0].header[key]
         # make the cube a typical size
@@ -298,7 +301,7 @@ def AGC(cfg):
                     Casa_Galaxies.append((cfg,Current_Galaxy))
                 All_Galaxies.append(name)
                 if Current_Galaxy.Mass not in set_done:
-                    SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric,no_template=True) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
+                    SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring,molecular_profile = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric,no_template=True) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
                     set_done,max_rad,colors,plot_ax = plot_RC(set_done,Current_Galaxy.Mass,Rad,Vrot,colors,max_rad,sub_ring,plot_ax)
 
                 #print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
@@ -309,11 +312,11 @@ def AGC(cfg):
         #tclean is parallel inmplemented but simobserve is not, need betterhandling in casa for multprocessing
         #The problem is memory limits combined with CPU limits for simobserve. No easy solution
         # Casa recomend 8Gb per CPU so we limit the no processes per 8Gb memory for now.
-        with Pool(processes=no_process) as pool:
+        with get_context("spawn").Pool(processes=no_process) as pool:
             results_casa = pool.starmap(one_galaxy, Casa_Galaxies)
     #Create All Uncoorupted and Gaussian Galaxies
     if len(Gauss_Galaxies) > 0:
-        with Pool(processes=cfg.general.ncpu) as pool:
+        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
             results_gauss = pool.starmap(one_galaxy, Gauss_Galaxies)
     results = ['empty']*len(All_Galaxies)
     if len(Gauss_Galaxies) > 0:
@@ -583,24 +586,19 @@ def build_sbr_prof(Current_Galaxy,symmetric = False,no_template=False):
     #print("This the scale length {} and central brightness {}".format(h_r, I_cen))
     # So our molecular profile is
     Exp = np.zeros([len(a), 2])
-    Exp[:, 0] = I_cen * np.exp(-a / h_r[0])
-    Exp[:, 1] = I_cen * np.exp(-a / h_r[1])
-
-
-    # gaussian2 From Martinsson 2015
     Sig2 = np.zeros([len(a), 2])
-    Sig2[:, 0] = np.exp(-(a - 0.4 * Rhi_p[0]) ** 2 / (2 * (s1[0]) ** 2))
-    Sig2[:, 1] = np.exp(-(a - 0.4 * Rhi_p[1]) ** 2 / (2 * (s1[1]) ** 2))
-    # total
     Sigma = np.zeros([len(a), 2])
-    Sigma = Sig2 - Exp
-    Sigma[Sigma < 0.] = 0.  # for negative sigma max, does not include negative values
-    # scale Sigma such that it is one at HI rad
     new = np.zeros(2)
-    new[0] = 1. / Sigma[Hiradindex[0], 0]
-    new[1] = 1. / Sigma[Hiradindex[1], 1]
-    Sigma[:, 0] = new[0] * Sigma[:, 0]
-    Sigma[:, 1] = new[1] * Sigma[:, 1]
+    for i in [0,1]:
+        Exp[:, i] = I_cen * np.exp(-a / h_r[i])
+        # gaussian2 From Martinsson 2015
+        Sig2[:, i] = np.exp(-(a - 0.4 * Rhi_p[i]) ** 2 / (2 * (s1[i]) ** 2))
+        # total
+        Sigma[:, i] = Sig2[:, i] - Exp[:, i]
+        Sigma[Sigma[:,i] < 0.,i] = 0.  # for negative sigma max, does not include negative values
+        # scale Sigma such that it is one at HI rad
+        new[i] = 1. / Sigma[Hiradindex[i], i]
+        Sigma[:, i] = new[i] * Sigma[:, i]
     Sigma[0:4,0]=(Sigma[0:4,0]+Sigma[0:4,1])/2.
     Sigma[0:4, 1] = Sigma[0:4, 0]
     # get the HI Mass in the profile
@@ -614,14 +612,12 @@ def build_sbr_prof(Current_Galaxy,symmetric = False,no_template=False):
         else:
             s1 = (0.36 + (0.0025 * counter)) * Rhi_p
         # and recalculate the profile
-        Sig2[:, 0] = np.exp(-(a - 0.4 * Rhi_p[0]) ** 2 / (2 * (s1[0]) ** 2))
-        Sig2[:, 1] = np.exp(-(a - 0.4 * Rhi_p[1]) ** 2 / (2 * (s1[1]) ** 2))
-        Sigma = Sig2 - Exp
-        Sigma[Sigma < 0.] = 0.
-        new[0] = 1. / Sigma[Hiradindex[0], 0]
-        new[1] = 1. / Sigma[Hiradindex[1], 1]
-        Sigma[:, 0] = new[0] * Sigma[:, 0]
-        Sigma[:, 1] = new[1] * Sigma[:, 1]
+        for i in [0,1]:
+            Sig2[:, 0] = np.exp(-(a - 0.4 * Rhi_p[0]) ** 2 / (2 * (s1[0]) ** 2))
+            Sigma[:, i] = Sig2[:, i] - Exp[:, i]
+            Sigma[Sigma[:,i] < 0.,i] = 0.
+            new[i] = 1. / Sigma[Hiradindex[i], i]
+            Sigma[:, i] = new[i] * Sigma[:, i]
         Sigma[0:4,0]=(Sigma[0:4,0]+Sigma[0:4,1])/2.
         Sigma[0:4, 1]=Sigma[0:4,0]
         OutHIMass = integrate.simps((np.pi * a) * Sigma[:, 0], a) + integrate.simps((np.pi * a) * Sigma[:, 1], a)
@@ -638,39 +634,19 @@ def build_sbr_prof(Current_Galaxy,symmetric = False,no_template=False):
     if not no_template:
         Template["SBR"] = "SBR = " + " ".join(str(e) for e in sbr_prof[:, 0])
         Template["SBR_2"] = "SBR_2 = " + " ".join(str(e) for e in sbr_prof[:, 1])
-    # And we plot the  profile to an overview plot
-        overview.plot(Rad,sbr_prof[:,0],'k')
-        overview.plot(Rad[0::sub_ring],sbr_prof[0::sub_ring,0],'ko')
-        overview.plot(Rad, sbr_prof[:, 1], 'r')
-        overview.plot(Rad[0::sub_ring], sbr_prof[0::sub_ring, 1], 'ro')
-        overview.plot(Rad,Exp[:,0]*new[0]*1.24756e+20/(conv_column_arsec*1000.),'b')
-        overview.plot(Rad[0::sub_ring],Exp[0::sub_ring,0]*new[0]*1.24756e+20/(conv_column_arsec*1000.),'bo')
-        overview.plot(Rad, Exp[:,1] * new[1] * 1.24756e+20 / (conv_column_arsec * 1000.), 'y')
-        overview.plot(Rad[0::sub_ring], Exp[0::sub_ring,1] * new[1] * 1.24756e+20 / (conv_column_arsec * 1000.), 'yo')
-        ymin,ymax=plt.ylim()
-        plt.margins(x=0., y=0.)
-        labelfont= {'family':'Times New Roman',
-                    'weight':'normal',
-                    'size':18}
-        plt.rc('font',**labelfont)
-        plt.plot([HIrad,HIrad],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'b')
-        plt.plot([Rhi_p[0] / 10 ** 3, Rhi_p[0] / 10 ** 3], [ymin - (ymax - ymin) * 0.1, ymax + (ymax - ymin) * 0.1], 'b--')
-        plt.plot([Rhi_p[1] / 10 ** 3, Rhi_p[1] / 10 ** 3], [ymin - (ymax - ymin) * 0.1, ymax + (ymax - ymin) * 0.1], 'b--')
 
-        #0.,np.max(sbr_prof)],'b')
-        plt.xlabel('Radius (kpc)',**labelfont)
-        plt.ylabel('SBR (Jy km s$^{-1}$ arcsec$^-2$)',**labelfont)
+
     # as the rest on of the code is based on a single SBR profile let's average the value
-    HIrad = np.mean(Rhi_p) / 10 ** 3
-    #print("The average HI radius = {} from {} in the appraoching and {} in the receding side".format(HIrad,
-    #                                                                                                 Rhi_p[0] / 10 ** 3,
-    #                                                                                                 Rhi_p[
-    #                                                                                                     1] / 10 ** 3))
+    HIrad = [np.mean(Rhi_p) / 10 ** 3,Rhi_p[0] / 10 ** 3,Rhi_p[1] / 10 ** 3] #HI radii in kpc mean,appr, rec
+    molecular_profile = []
+    for i in [0,1]:
+        molecular_profile.append(Exp[:,i]*new[i]*1.24756e+20/(conv_column_arsec*1000.)) # Jy/arcsec^2 km/s
+    molecular_profile=np.array(molecular_profile)
     h_r = np.mean(h_r)
     average_sbr_profile = np.zeros(len(sbr_prof[:, 0]))
     for i in range(len(sbr_prof)):
         average_sbr_profile[i] = np.mean(sbr_prof[i, :])
-    return average_sbr_profile,Rad,h_r/1000.,OutHIMass, HIrad,vrot,sub_ring
+    return average_sbr_profile,Rad,h_r/1000.,OutHIMass, HIrad,vrot,sub_ring,molecular_profile
 build_sbr_prof.__doc__ = f'''
 NAME:
    build_sbr_prof
@@ -752,16 +728,18 @@ def create_arms(velocity,Radii,disk_brightness, disk=1,WarpStart=-1,Bar="No_Bar"
 
 
     # From Seigar et al. 2006 we get the relation between shear (S) and pitch angle
-    S = 0.5*(1-Radii/velocity*derivative(Radii,V_Rot))
+    S = 0.5*(1-Radii[1:]/velocity[1:]*derivative(Radii[1:],V_Rot))
     pitch2= 64.25-73.24*S
     #As we assume a constant pitch angle we will take the average between ILR and OLR as the pitch angle
-    tmp = np.where((Radii > ILR) & (Radii < OLR))[0]
+    tmp = np.where((Radii[1:] > ILR) & (Radii[1:] < OLR))[0]
     pitch = np.sum(pitch2[tmp])/len(tmp)
+
     #print("This is the average pitch angle {}".format(pitch))
     #Using Kennicut's prescription.This prescription incorrectly states cot(P) instead of tan(P) see Davis et. al 2012
     # The arms start at the inner Lindblad Resonance and hence the phase is 0 there
-    phase=np.log(Radii/ILR)/np.tan(pitch*np.pi/180.)*180/np.pi
-    phase[0]=phase[1]
+    phase=np.log(Radii[1:]/ILR)/np.tan(pitch*np.pi/180.)*180/np.pi
+    phase=np.hstack((phase[0],phase))
+
     #How many arms do we make
     # with bar it is always a grand design
 
@@ -964,42 +942,7 @@ def create_flare(Radii,velocity,dispersion,flare,Max_Rad,sub_ring,distance=1.):
         sys.exit()
 
     flare[0]=flare[1]
-    plt.figure(2)
-    plt.subplot(6,1,2)
-    labelfont= {'family':'Times New Roman',
-                'weight':'normal',
-                'size':18}
-    plt.rc('font',**labelfont)
-    plt.plot(Radii,disp,'k')
-    plt.plot(Radii[0::sub_ring],disp[0::sub_ring],'ko')
-    ymin,ymax=plt.ylim()
-    plt.plot([Max_Rad,Max_Rad],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'b')
-    plt.margins(x=0., y=0.0)
-    plt.tick_params(
-        axis='x',          # changes apply to the x-axis
-        which='both',      # both major and minor ticks are affected
-        direction = 'in',
-        bottom=True,      # ticks along the bottom edge are off
-        top=False,         # ticks along the top edge are off
-        labelbottom=False) # labels along the bottom edge are off
-    plt.ylabel('Disp. (km s$^{-1}$)',**labelfont)
-    #print("The dispersion runs from {:5.2f} to {:5.2f} km/s".format(disp[0],disp[-1]))
-    plt.subplot(6,1,1)
-    plt.plot(Radii,flare,'k')
-    plt.plot(Radii[0::sub_ring],flare[0::sub_ring],'ko')
-    ymin,ymax=plt.ylim()
-    plt.plot([Max_Rad,Max_Rad],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'b')
-    plt.margins(x=0., y=0.0)
-    plt.tick_params(
-        axis='x',          # changes apply to the x-axis
-        which='both',      # both major and minor ticks are affected
-        direction = 'in',
-        bottom=True,      # ticks along the bottom edge are off
-        top=False,         # ticks along the top edge are off
-        labelbottom=False) # labels along the bottom edge are off
-    plt.ylabel('Scale height (kpc)',labelpad=30,**labelfont)
-    #plt.xticks([])
-    #print("The flare runs from {:10.6f} to {:10.6f} kpc".format(flare[0],flare[-1]) )
+
     # convert the scale heights to arcsec
     h_z_arcsec = cf.convertskyangle(flare,distance=distance,physical = True)
     # and write both to the Template
@@ -1114,43 +1057,7 @@ def create_warp(Radii,
         phirings=np.full(len(Radii),0)
         thetarings=np.full(len(Radii),0)
 
-    if disk == 1:
-        c='k'
-    else:
-        c='r'
-        warnings.filterwarnings("ignore")
-    plt.subplot(6,1,4)
-    labelfont= {'family':'Times New Roman',
-                'weight':'normal',
-                'size':18}
-    plt.rc('font',**labelfont)
-    plt.plot(Radii,PA,c)
-    plt.plot(Radii[0::sub_ring],PA[0::sub_ring],c+'o')
-    ymin,ymax=plt.ylim()
-    plt.plot([warp_radii[1],warp_radii[1]],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'g')
-    plt.margins(x=0., y=0.)
-    plt.tick_params(
-        axis='x',          # changes apply to the x-axis
-        which='both',      # both major and minor ticks are affected
-        direction = 'in',
-        bottom=True,      # ticks along the bottom edge are off
-        top=False,         # ticks along the top edge are off
-        labelbottom=False) # labels along the bottom edge are off
-    plt.ylabel('PA ($^{\circ}$)',**labelfont)
-    plt.subplot(6,1,3)
-    plt.plot(Radii,inc,c)
-    plt.plot(Radii[0::sub_ring],inc[0::sub_ring],c+'o')
-    ymin,ymax=plt.ylim()
-    plt.plot([warp_radii[1],warp_radii[1]],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],'g')
-    plt.margins(x=0., y=0.0)
-    plt.tick_params(
-        axis='x',          # changes apply to the x-axis
-        which='both',      # both major and minor ticks are affected
-        direction = 'in',
-        bottom=True,      # ticks along the bottom edge are off
-        top=False,         # ticks along the top edge are off
-        labelbottom=False) # labels along the bottom edge are off
-    plt.ylabel('Inc. ($^{\circ}$)',**labelfont)
+
 
     #write to our template file
     # let's see if we can retrace intrinsic phi with the formula's from Peters
@@ -1241,6 +1148,7 @@ def create_inhomogeneity(mass,SNR,disks=1.):
     #print("We will create inhomogeneities on top of disk(s) ="+" ".join(str(e) for e in [disks]))
 def create_mask(work_dir,beam,casa=False):
     # First open the model cube
+
     dummy = fits.open(work_dir+'/unconvolved_cube.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
     # Add to the hedear some info
     dummy[0].header.append('RESTFRQ')
@@ -1392,6 +1300,7 @@ def corrupt_casa(work_dir,beam,SNR,casa_call='casa'):
     dummy[0].header['CRPIX2']=dummy[0].header['CRPIX2']-np.floor(dummy[0].header['CRPIX2']-newsize/2.)
     fits.writeto(work_dir+'/Convolved_Cube.fits',newdummy,dummy[0].header, overwrite = True)
     # Also the mask then
+
     dummy = fits.open(work_dir+'/mask.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
     # We cut 20 pixels around the edges
     newsize = int(np.shape(dummy[0].data)[2]-60.)
@@ -1650,24 +1559,16 @@ def one_galaxy(cfg,Current_Galaxy):
     #Template=copy.deepcopy(Template_in)
     os.system(f"cp {cfg.general.main_directory}/Input.fits {cfg.general.main_directory}/{name}/Input.fits  ")
     Template = cf.read_template_file('Template.def')
-    # We also open a figure to plot all info on
-    plt.figure(2, figsize=(8, 12), dpi=100, facecolor='w', edgecolor='k')
-    global overview
-    overview = plt.subplot(6,1,6)
 
      # First set the beam to 0.
     Template["BMAJ"]= "BMAJ = 0."
     Template["BMIN"]= "BMIN = 0."
     Template["BPA"]= "BPA = 0."
-    labelfont= {'family':'Times New Roman',
-                'weight':'normal',
-                'size':22}
-    plt.rc('font',**labelfont)
     #Then we need to build the Surface Brightnes profile
-    SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
+    SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring,molecular_profile = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
     #We need central coordinates the vsys will come from the required distance and hubble flow. The RA and dec should not matter hance it will be the only random component in the code as we do want to test variations of them
     Sky_Size = np.radians(Current_Galaxy.Res_Beam[0]*Current_Galaxy.Beams/3600.)
-    Distance = (Rad_HI/(np.tan(Sky_Size/2.)))/1000.
+    Distance = (Rad_HI[0]/(np.tan(Sky_Size/2.)))/1000.
     #print("The Distance is {:5.2f} Mpc".format(Distance))
     vsys = Distance*H_0
     #if cfg.agc.corruption_method == 'Gaussian' or (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) != number_models/5.)):
@@ -1703,29 +1604,8 @@ def one_galaxy(cfg,Current_Galaxy):
     # Write it to the Template
     Template["VROT"]="VROT = "+" ".join(str(e) for e in Vrot)
     Template["VROT_2"]="VROT_2 = "+" ".join(str(e) for e in Vrot)
-    #and the Overview Figure
-    plt.figure(2)
-    plt.subplot(6,1,5)
-    plt.plot(Rad,Vrot,'k')
-    plt.plot(Rad[0::sub_ring],Vrot[0::sub_ring],'ko')
-    ymin,ymax = plt.ylim()
-    plt.margins(x=0., y=0.)
-    labelfont= {'family':'Times New Roman',
-                'weight':'normal',
-                'size':18}
-    plt.rc('font',**labelfont)
-    plt.tick_params(
-        axis='x',          # changes apply to the x-axis
-        which='both',      # both major and minor ticks are affected
-        direction = 'in',
-        bottom=True,      # ticks along the bottom edge are off
-        top=False,         # ticks along the top edge are off
-        labelbottom=False) # labels along the bottom edge are off
-    plt.plot([Rad_HI,Rad_HI],[ymin-(ymax-ymin)*0.1,ymax+(ymax-ymin)*0.1],c='b')
-    plt.ylabel('V$_{rot}$ (km s$^{-1}$)',labelpad=20,**labelfont)
-    #plt.xticks([])
     # We need a scale height and dispersion for each ring. They are coupled and hence they are both created in create_flare
-    h_z,dispersion=create_flare(Rad,Vrot,Current_Galaxy.Dispersion,Current_Galaxy.Flare,Rad_HI,sub_ring,distance=Distance)
+    h_z,dispersion=create_flare(Rad,Vrot,Current_Galaxy.Dispersion,Current_Galaxy.Flare,Rad_HI[0],sub_ring,distance=Distance)
 
     # Finally we need to set the warping
     PA,inc,phirings = create_warp(Rad,Current_Galaxy.PA,Current_Galaxy.Inclination,Current_Galaxy.Warp,[WarpStart,WarpEnd],sub_ring)
@@ -1767,8 +1647,7 @@ def one_galaxy(cfg,Current_Galaxy):
     Template.insert("INSET","ACTION","ACTION = 1")
     Template["PROGRESSLOG"]="PROGRESSLOG = "
     Template["LOGNAME"]= "LOGNAME= "
-    plt.subplot(6,1,1)
-    plt.title("DM Mass in = {:.2e}".format(Current_Galaxy.Mass))
+
     #-------------------------------This finishes the basic disk the following are optional components----------------------
 
 
@@ -1785,9 +1664,9 @@ def one_galaxy(cfg,Current_Galaxy):
     # we write the def files
     with open(f"{cfg.general.main_directory}{name}/tirific.def", 'w') as file:
         file.writelines([Template[key]+"\n" for key in Template])
-    plt.savefig(f"{cfg.general.main_directory}{name}/Overview_Input.png", bbox_inches='tight')
-    plt.close()
+
     # So we need to  modify the input file to the correct coordinates else we'll get an empty cube
+
     dummy = fits.open(f"{cfg.general.main_directory}{name}/Input.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
     #first we do a check wether the BMAJ
     #is written correctly for the python
@@ -1821,6 +1700,10 @@ def one_galaxy(cfg,Current_Galaxy):
     dummy[0].header['BMIN'] = 0.
     dummy[0].header['OBJECT'] = f'AGC_GALAXY'
     dummy[0].header['INSTRUME'] =f'AGC'
+    try:
+        del  dummy[0].header['BLANK']
+    except:
+        pass
     # make the cube a typical size
     dummy2 = np.zeros((velpix,required_pixels,required_pixels),dtype= np.float32)
     dummy2[int(np.floor(velpix/2.)),int(np.floor(required_pixels/2.)),int(np.floor(required_pixels/2.))] = 5
@@ -1884,6 +1767,9 @@ def one_galaxy(cfg,Current_Galaxy):
     else:
         print("!!!!!!!This corruption method is unknown, leaving the cube uncorrupted and unconvolved!!!!!!!!")
         # We'll create a little text file with an Overview of all the parameters
+    Template['BMAJ'] = f'BMAJ= {Current_Galaxy.Res_Beam[0]}'
+    Template['BMIN'] = f'BMIN= {Current_Galaxy.Res_Beam[1]}'
+
     if cfg.agc.corrupt_models:
         beam_line = f"Major axis beam = {Current_Galaxy.Res_Beam[0]} Minor axis beam= {Current_Galaxy.Res_Beam[1]}."
         corrupt_line = f"The cube was corrupted with the {Current_Galaxy.Corruption} method."
@@ -1914,7 +1800,7 @@ The dispersion = {dispersion[0]:.2f}-{dispersion[1]:.2f}.
 The type of galaxy = {Current_Galaxy.Mass:1e}.
 PA = {Current_Galaxy.PA}.
 Warp = {Current_Galaxy.Warp[0]}-{Current_Galaxy.Warp[1]}.
-Which starts at {WarpStart:.2f} kpc and the 1M/pc^2 radius is {Rad_HI:.2f} kpc.
+Which starts at {WarpStart:.2f} kpc and the 1M/pc^2 radius is {Rad_HI[0]:.2f} kpc.
 Flare = {Current_Galaxy.Flare}.
 Beams across the major axis = {Current_Galaxy.Beams}.
 SNR Requested = {Current_Galaxy.SNR} SNR Achieved = {SNRachieved}.
@@ -1932,7 +1818,11 @@ The final noise level is {sigma} Jy/beam.
 h_z = {h_z[0]:.3f}-{h_z[-1]:.3f} (kpc).''')
 
     # We also want a file that contains initial estimates for all the parameters. We scramble them with gaussian variations
-    cf.scrambled_initial(f"{cfg.general.main_directory}{name}",Template)
+    cf.scrambled_initial(f"{cfg.general.main_directory}{name}/",Template)
+    cf.plot_input(f"{cfg.general.main_directory}{name}/",Template, \
+                Title=f'DM Mass in = {Current_Galaxy.Mass:.2e}',RHI=Rad_HI
+                ,add_sbr=molecular_profile, WarpR=[WarpStart,WarpEnd],Distance=Distance )
+
     Template.clear()
 
 

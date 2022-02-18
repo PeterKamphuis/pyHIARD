@@ -560,7 +560,14 @@ h_z =  {float(Galaxy_Template['Galaxy_Model']['Z0'].split('=')[1].split()[0]):.2
 
     # And an overview plot
     #print("Start plotting")
-    cf.plot_input(galaxy_dir,Galaxy_Template['Galaxy_Model'],Title=f'{Galaxy_Template["Name"]} with {Galaxy_Template["Beams"]} Beams')
+    # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
+    R_HI=[10**(0.506*np.log10(Galaxy_Template['MHI'])-3.293)/2.,0.,0.]
+    #Profiles are fitted by an exponential with scale length 0.2*RHI i.e. SigHI = C*exp(-R/(0.2*RHI)) so that weay we get the Warp end at Sigma = 0.5
+    Warp = [0,np.log(0.5*np.exp(-1./0.2))*-0.2*R_HI[0]]
+    cf.plot_input(galaxy_dir,Galaxy_Template['Galaxy_Model']
+                ,Title=f'{Galaxy_Template["Name"]} with {Galaxy_Template["Beams"]} Beams'
+                ,Distance= Galaxy_Template['Distance'],RHI=R_HI,WarpR=Warp
+                )
     # And a file with scrambled initial estimates
     cf.scrambled_initial(galaxy_dir,Galaxy_Template['Galaxy_Model'])
 
