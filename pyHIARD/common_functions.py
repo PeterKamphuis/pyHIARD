@@ -929,10 +929,10 @@ def plot_input(directory,Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.]
         var_to_plot2 =  [float(x) for x in Model[f'{variable}_2'].split('=')[1].split()]
         while len(var_to_plot2) < len(radius):
             var_to_plot2.append(var_to_plot2[-1])
+        if variable == 'Z0' and Distance != 0.:
+                var_to_plot2 = convertskyangle(var_to_plot2 ,distance=Distance)
         if np.sum(var_to_plot2) > 0. and np.sum([x-y for x,y in zip(var_to_plot,var_to_plot2)]) != 0.:
             var_to_plot= np.array(var_to_plot2,dtype=float)
-            if variable == 'Z0' and Distance != 0.:
-                var_to_plot = convertskyangle(var_to_plot ,distance=Distance)
             plt.plot(radius, var_to_plot, 'r')
             plt.plot(radius[radius_bmaj], var_to_plot[radius_bmaj], 'ro')
         if i == 0.:

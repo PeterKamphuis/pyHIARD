@@ -613,8 +613,8 @@ def build_sbr_prof(Current_Galaxy,symmetric = False,no_template=False):
             s1 = (0.36 + (0.0025 * counter)) * Rhi_p
         # and recalculate the profile
         for i in [0,1]:
-            Sig2[:, 0] = np.exp(-(a - 0.4 * Rhi_p[0]) ** 2 / (2 * (s1[0]) ** 2))
-            Sigma[:, i] = Sig2[:, i] - Exp[:, i]
+            Sig2[:, i] = np.exp(-(a - 0.4 * Rhi_p[i]) ** 2 / (2 * (s1[i]) ** 2))
+            Sigma[:,i] = Sig2[:, i] - Exp[:, i]
             Sigma[Sigma[:,i] < 0.,i] = 0.
             new[i] = 1. / Sigma[Hiradindex[i], i]
             Sigma[:, i] = new[i] * Sigma[:, i]

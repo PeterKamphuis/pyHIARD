@@ -242,7 +242,7 @@ def beam_templates(beam,Galaxy_Template):
     #And we can now update our model input
     radius= [float(x) for x in Def_Template['RADI'].split('=')[1].split()]
     conv_radi = cf.convertskyangle(
-        radius, distance=Galaxy_Template['Distance'], physical=True)
+        radius, distance=Distance, physical=True)
     Def_Template['RADI'] = 'RADI = '+' '.join([str(e) for e in conv_radi])
 
     scaleheight =  [float(x) for x in Def_Template['Z0'].split('=')[1].split()]
@@ -291,6 +291,7 @@ def beam_templates(beam,Galaxy_Template):
         Ext_Template, sigma=(0, sig_min, sig_maj), order=0)
     # Preserve surface brightness
     final_clean = final_clean * pixperbeamnew / Galaxy_Template['Galaxy_Beam'][2]
+
     Final_Mean = np.mean(
         final_clean[final_clean > np.mean(final_clean[final_clean > 0.])/2.])
     # Let's make a mask from this smoothed cube to calculated the things we achieve
@@ -306,6 +307,7 @@ def beam_templates(beam,Galaxy_Template):
                            'Shifted_Beam':[*sigma_new,pixperbeamnew],'Shift_Factor':fact,\
                            'Beam_Shift':[sig_maj,sig_min],'New_Beam': [newbmaj,newbmin],\
                            'Noise': Galaxy_Template['Noise'],'Mean_Flux':Final_Mean,\
+                           'DHI_kpc':Galaxy_Template['DHI_kpc'],\
                            'z':New_z,'Original_z': Galaxy_Template['z'],'Distance': Distance,\
                            'Requested_SNR' :Galaxy_Template['Requested_SNR'],'Disclaimer':Galaxy_Template['Disclaimer'],
                           }
@@ -561,7 +563,7 @@ h_z =  {float(Galaxy_Template['Galaxy_Model']['Z0'].split('=')[1].split()[0]):.2
     # And an overview plot
     #print("Start plotting")
     # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
-    R_HI=[10**(0.506*np.log10(Galaxy_Template['MHI'])-3.293)/2.,0.,0.]
+    R_HI=[Galaxy_Template['DHI_kpc']/2.,0.,0.]
     #Profiles are fitted by an exponential with scale length 0.2*RHI i.e. SigHI = C*exp(-R/(0.2*RHI)) so that weay we get the Warp end at Sigma = 0.5
     Warp = [0,np.log(0.5*np.exp(-1./0.2))*-0.2*R_HI[0]]
     cf.plot_input(galaxy_dir,Galaxy_Template['Galaxy_Model']
@@ -633,7 +635,7 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
 
     systemic =  float(Model_Template['VSYS'].split('=')[1].split()[0])
     # This means we have created the unshifted template model
-    beamarea=(np.pi*abs((Template_Header["BMAJ"]*Template_Header["BMAJ"])*3600.**2))/(4.*np.log(2.))
+    beamarea=(np.pi*abs((Template_Header["BMAJ"]*Template_Header["BMIN"])*3600.**2))/(4.*np.log(2.))
     pixperbeam=beamarea/(abs(Template_Header['CDELT1']*3600.)*abs(Template_Header['CDELT2']*3600.))
     DHIarcsec=cf.convertskyangle(galaxy_module.galaxy_parameters['DHIkpc'],distance=galaxy_module.galaxy_parameters['Distance'],physical=True)
         #The minimum degradation is if we require more beams across the degradation is skipped
@@ -677,12 +679,14 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     Original_z= np.sqrt((1+systemic/c_kms)/(1-systemic/c_kms))
     sigma = [(Template_Header["BMAJ"] / abs(Template_Header['CDELT1'])) / (2 * np.sqrt(2 * np.log(2))),
              (Template_Header["BMIN"] / abs(Template_Header['CDELT2'])) / (2 * np.sqrt(2 * np.log(2)))]
+    
     Template_Dictionary = {'Name':name,'Galaxy_Template':Template_Cube,'Galaxy_Template_Header':Template_Header,\
                            'Galaxy_Model':Model_Template,'Galaxy_Mask':Boundary_Mask,\
                            'Noise': galaxy_module.galaxy_parameters["RMS"],'Mean_Flux':Original_Mean,\
                            'z':Original_z, 'Vsys':systemic,'Max_Beams_Across':max_beams_across,\
                            'Distance': galaxy_module.galaxy_parameters["Distance"],\
                            'DHIarcsec': DHIarcsec, 'Total_Flux_In': Total_Flux_In,\
+                           'DHI_kpc': galaxy_module.galaxy_parameters["DHIkpc"],\
                            'Galaxy_Beam':[*sigma,pixperbeam], 'Disclaimer':galaxy_module.place_disclaimer,\
                            'MHI':galaxy_module.galaxy_parameters['MHI']}
     return Template_Dictionary
@@ -1108,7 +1112,7 @@ def ROC(cfg,path_to_resources):
             if line != 'EMPTY':
                 cat.write(f"{number_models}|{line}")
                 number_models += 1
-    print(f"We created {number_models-1} models")
+    print(f"We created {number_models} models")
 
 
 
