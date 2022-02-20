@@ -7,7 +7,7 @@ from collections import OrderedDict #used in Proper_Dictionary
 from pyHIARD import Templates as templates
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from pyHIARD.Resources import Cubes as cubes
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter,rotate
 
 import copy # Used in columndensities
 import numpy as np # Used in convertskyangle and columndensity and
@@ -1178,6 +1178,40 @@ def read_template_file(filename,package_file = True):
         # python is really annoying with needing endlines. Let's strip them here and add them when writing
         Template_in[tmp.split('=',1)[0].strip().upper()]=tmp.rstrip()
     return Template_in
+
+def rotateCube(Cube, angle, pivot):
+    padX = [int(Cube.shape[2] - pivot[0]), int(pivot[0])]
+    padY = [int(Cube.shape[1] - pivot[1]), int(pivot[1])]
+    imgP = np.pad(Cube, [[0, 0], padY, padX], 'constant')
+    imgR = rotate(imgP, angle, axes=(2, 1), reshape=False)
+    return imgR[:, padY[0]: -padY[1], padX[0]: -padX[1]]
+rotateCube.__doc__ =f'''
+ NAME:
+    rotateCube(Cube, angle, pivot)
+
+ PURPOSE:
+    rotate a cube in the image plane
+
+ CATEGORY:
+    common_functions
+
+ INPUTS:
+    Cube = the cube data array
+    angle = the angle to rotate under
+    pivot = the point around which to rotate
+
+ OPTIONAL INPUTS:
+
+ OUTPUTS:
+    the rotated cube
+
+ OPTIONAL OUTPUTS:
+
+ PROCEDURES CALLED:
+    Unspecified
+
+ NOTE:
+'''
 
 def run_sofia(working_dir,parameter_file,sofia_call = 'sofia2'):
     sfrun = subprocess.Popen([sofia_call,parameter_file],cwd=working_dir, stdout = subprocess.PIPE, stderr = subprocess.PIPE)

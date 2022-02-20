@@ -215,7 +215,7 @@ def beam_templates(beam,Galaxy_Template):
     # Update the def template
     Def_Template['BMAJ'] = f'BMAJ= {newbmaj}'
     Def_Template['BMIN'] = f'BMIN= {newbmin}'
-    Def_Template['BPA'] = f'BPA= 0.' #Neeed to sort this out
+    Def_Template['BPA'] = f'BPA= {Template_Header["BPA"]}' #Neeed to sort this out
     Def_Template['DISTANCE'] = 'DISTANCE = '+str(Distance)
     # And we need to adjust the header for our new cube
 
@@ -288,7 +288,7 @@ def beam_templates(beam,Galaxy_Template):
     Ext_Template[:, Pix_Extend:Template_Header['NAXIS2'] + Pix_Extend,
         Pix_Extend:Template_Header['NAXIS1'] + Pix_Extend] = Shifted_Template
     final_clean = scipy.ndimage.gaussian_filter(
-        Ext_Template, sigma=(0, sig_min, sig_maj), order=0)
+        Ext_Template, sigma=(0, sig_maj, sig_min), order=0)
     # Preserve surface brightness
     final_clean = final_clean * pixperbeamnew / Galaxy_Template['Galaxy_Beam'][2]
 
@@ -305,7 +305,7 @@ def beam_templates(beam,Galaxy_Template):
                            'Galaxy_Model':Def_Template,'Galaxy_Mask':Galaxy_Template['Galaxy_Mask'],\
                            'Galaxy_Beam':Galaxy_Template['Galaxy_Beam'],'MHI':Galaxy_Template['MHI'],\
                            'Shifted_Beam':[*sigma_new,pixperbeamnew],'Shift_Factor':fact,\
-                           'Beam_Shift':[sig_maj,sig_min],'New_Beam': [newbmaj,newbmin],\
+                           'Beam_Shift':[sig_maj,sig_min],'New_Beam': [newbmaj,newbmin,Template_Header["BPA"]],\
                            'Noise': Galaxy_Template['Noise'],'Mean_Flux':Final_Mean,\
                            'DHI_kpc':Galaxy_Template['DHI_kpc'],\
                            'z':New_z,'Original_z': Galaxy_Template['z'],'Distance': Distance,\
@@ -422,19 +422,33 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template):
             Galaxy_Template['Galaxy_Template_Header']['NAXIS2'] + 2 * Pix_Extend,
             Galaxy_Template['Galaxy_Template_Header']['NAXIS1'] + 2 * Pix_Extend))
         Final_Template = scipy.ndimage.gaussian_filter(Ext_Template, sigma=(0,
-             Galaxy_Template['Shifted_Beam'][1],
-             Galaxy_Template['Shifted_Beam'][0]),order=0)
+             Galaxy_Template['Shifted_Beam'][0],
+             Galaxy_Template['Shifted_Beam'][1]),order=0)
         CHANNEL1 = Final_Template[0:2, :, :]
         New_Noise = np.std(CHANNEL1[np.isfinite(CHANNEL1)])
         print("We got a noise cube with an rms of {} {} {}".format(New_Noise, Final_Noise, Pix_Noise))
-    # then we constuct a noise cube at the resolution of the galaxy
+    # then we constuct a noise cube at the resolution of the galaxyBPA
+        #As we are going to rotatet the cube we should first extend it
+    #if our beam BPA is not 0 we need to rotate the galaxy
+    if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
+        Galaxy_Template['Galaxy_Template'] = cf.rotateCube(Galaxy_Template['Galaxy_Template'],\
+            -1*(Galaxy_Template['Galaxy_Template_Header']['BPA']-90),\
+            [Galaxy_Template['Galaxy_Template_Header']['CRPIX1'],
+            Galaxy_Template['Galaxy_Template_Header']['CRPIX2']])
+
+        shift = int(abs(np.sin(np.radians(Galaxy_Template['Galaxy_Template_Header']['BPA']-90.))) \
+                        *(Galaxy_Template['Galaxy_Template_Header']['NAXIS1']/2.+Pix_Extend)+5)
+        Pix_Extend= int(Pix_Extend+shift)
+
     Ext_Template = np.random.normal(scale=Pix_Noise, size=(
         Galaxy_Template['Galaxy_Template_Header']['NAXIS3'],
         Galaxy_Template['Galaxy_Template_Header']['NAXIS2'] + 2 * Pix_Extend,
         Galaxy_Template['Galaxy_Template_Header']['NAXIS1'] + 2 * Pix_Extend))
+
+
     Final_Template = scipy.ndimage.gaussian_filter(Ext_Template, sigma=(0,
-         Galaxy_Template['Galaxy_Beam'][1],
-         Galaxy_Template['Galaxy_Beam'][0]),order=0)
+         Galaxy_Template['Galaxy_Beam'][0],
+         Galaxy_Template['Galaxy_Beam'][1]),order=0)
     # Which means that the noise we require at this resolution is
     CHANNEL1 = Final_Template[0:2, :, :]
     Temp_Noise = np.std(CHANNEL1[np.isfinite(CHANNEL1)])
@@ -468,8 +482,8 @@ We continue with the next SNR value.''')
                 Galaxy_Template['Galaxy_Template_Header']['NAXIS2'],
                 Galaxy_Template['Galaxy_Template_Header']['NAXIS1']))
             Noise_Template = scipy.ndimage.gaussian_filter(Ext_Template, sigma=(0,
-                Galaxy_Template['Galaxy_Beam'][1],
-                Galaxy_Template['Galaxy_Beam'][0]), order=0)
+                Galaxy_Template['Galaxy_Beam'][0],
+                Galaxy_Template['Galaxy_Beam'][1]), order=0)
             CHANNEL1 = Noise_Template[0:2, :, :]
             New_Noise = np.std(CHANNEL1[np.isfinite(CHANNEL1)])
             print("We got a difference noise cube with an rms of {}".format(New_Noise))
@@ -498,9 +512,20 @@ We continue with the next SNR value.''')
         + Pix_Extend,Pix_Extend:Galaxy_Template['Galaxy_Template_Header']['NAXIS1'] +\
          Pix_Extend] = Galaxy_Template['Galaxy_Template']
     #print("Starting to smooth final")
-    final = scipy.ndimage.gaussian_filter(Final_Template, sigma=(0, Galaxy_Template['Beam_Shift'][1], Galaxy_Template['Beam_Shift'][0]), order=0)
+    final = scipy.ndimage.gaussian_filter(Final_Template, sigma=(0, Galaxy_Template['Beam_Shift'][0], Galaxy_Template['Beam_Shift'][1]), order=0)
     #print("Finished to smooth final")
+    print(final.shape,Pix_Extend,shift)
+    if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
+        final_tmp = cf.rotateCube(final,\
+        (Galaxy_Template['Galaxy_Template_Header']['BPA']-90),\
+        [Galaxy_Template['Galaxy_Template_Header']['CRPIX1']+Pix_Extend,
+        Galaxy_Template['Galaxy_Template_Header']['CRPIX2']+Pix_Extend])
+        #And remove the shift
+        final = copy.deepcopy(final_tmp[:, \
+            shift:Galaxy_Template['Galaxy_Template_Header']['NAXIS2'] +int(2.*Pix_Extend-shift) \
+            ,shift:Galaxy_Template['Galaxy_Template_Header']['NAXIS1']+int(2.*Pix_Extend-shift)])
     # Preserve brightness temperature means to scale to the new area
+    print(final.shape,Galaxy_Template['Final_Mask'].shape)
     final = final * Galaxy_Template['Shifted_Beam'][2]/Galaxy_Template['Galaxy_Beam'][2]
     Achieved_SNR = np.mean(final[Galaxy_Template['Final_Mask'] > 0])/np.std(final[0:2,:,:])
     Achieved_Noise = np.std(final[0:2,:,:])
@@ -627,6 +652,9 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
         Template_Header['CDELT3'] = Template_Header['CDELT3'] / 1000.
         Template_Header['CUNIT3'] = 'km/s'
         Template_Header['CRVAL3'] = Template_Header['CRVAL3'] / 1000.
+    # ensure we have a BPA
+    if 'BPA' not in Template_Header:
+        Template_Header['BPA'] = 0.
 
         #We assume the cubes to be centered
     #Obtain the model
@@ -643,6 +671,8 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     #Obtain our Boundary Mask
 
     Mask = galaxy_module.get_masks(work_directory,sofia_call=sofia2_call)
+    Mask[0].header['CRVAL3'] =  Mask[0].header['CRVAL3']/1000.
+    Mask[0].header['CDELT3'] =  Mask[0].header['CDELT3']/1000.
     fits.writeto(f'{work_directory}/{name}_mask.fits',Mask[0].data,Mask[0].header,overwrite = True)
     Boundary_Mask = Mask[0].data
     Mask.close()
@@ -679,7 +709,7 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     Original_z= np.sqrt((1+systemic/c_kms)/(1-systemic/c_kms))
     sigma = [(Template_Header["BMAJ"] / abs(Template_Header['CDELT1'])) / (2 * np.sqrt(2 * np.log(2))),
              (Template_Header["BMIN"] / abs(Template_Header['CDELT2'])) / (2 * np.sqrt(2 * np.log(2)))]
-    
+
     Template_Dictionary = {'Name':name,'Galaxy_Template':Template_Cube,'Galaxy_Template_Header':Template_Header,\
                            'Galaxy_Model':Model_Template,'Galaxy_Mask':Boundary_Mask,\
                            'Noise': galaxy_module.galaxy_parameters["RMS"],'Mean_Flux':Original_Mean,\

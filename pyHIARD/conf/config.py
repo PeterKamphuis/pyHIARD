@@ -36,7 +36,7 @@ class AGC:
     # These  are average signal to noise ratios
     channelwidth: List[float] = field(default_factory=lambda: [2.])
 
-    beam_size: List[float] = field(default_factory=lambda: [[5., 5.]])
+    beam_size: List[float] = field(default_factory=lambda: [[5., 5., 0.]])
     #Resolution of the beam in arcsec
     masses:  List[float] = field(default_factory=lambda: [2.5e11])
     # The channel dependency

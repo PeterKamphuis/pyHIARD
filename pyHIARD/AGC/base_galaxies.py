@@ -32,7 +32,7 @@ class Base_Galaxy:
             self.Beams= 12. #18 #16.
             self.SNR= 8.0
             self.Channelwidth = 4.
-            self.Res_Beam = [20.,20.]
+            self.Res_Beam = [20.,20.,0.]
             self.Arms = "Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
@@ -46,7 +46,7 @@ class Base_Galaxy:
             self.Beams= 14. #17 #16
             self.SNR= 8.
             self.Channelwidth = 4.
-            self.Res_Beam = [15.,15.]
+            self.Res_Beam = [15.,15.,0.]
             self.Arms = "Arms"
             self.Bar = "Bar"
             self.Radial_Motions= 0.
@@ -60,7 +60,7 @@ class Base_Galaxy:
             self.Beams= 16. #16
             self.SNR= 7.
             self.Channelwidth = 5.4
-            self.Res_Beam = [25.,25.]
+            self.Res_Beam = [25.,25.,0.]
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
@@ -74,7 +74,7 @@ class Base_Galaxy:
             self.Beams= 15.
             self.SNR= 6.
             self.Channelwidth = 8.
-            self.Res_Beam = [15.,10.]
+            self.Res_Beam = [15.,10.,0.]
             self.Arms = "No_Arms"
             self.Bar = "Bar"
             self.Radial_Motions= 0.
@@ -89,7 +89,7 @@ class Base_Galaxy:
             self.Beams= 14.
             self.SNR= 8.
             self.Channelwidth = 6.
-            self.Res_Beam = [12.5,10.]
+            self.Res_Beam = [12.5,10.,17.]
             self.Arms = "No_Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.
@@ -104,7 +104,7 @@ class Base_Galaxy:
             self.Beams= 12 #18 #16.
             self.SNR= 8
             self.Channelwidth = 4.
-            self.Res_Beam = [20.,20.]
+            self.Res_Beam = [20.,20.,0.]
             self.Arms = "Arms"
             self.Bar = "No_Bar"
             self.Radial_Motions= 0.

@@ -182,6 +182,7 @@ def AGC(cfg):
     Gauss_Galaxies = []
     Casa_Galaxies = []
     created = []
+
     for base in range(len(cfg.agc.base_galaxies)):
         base_defined=False
         # We want to keep the center constant per base galaxy, for easy comparison as well as to be able to investigate how center determination is affected
@@ -236,7 +237,7 @@ def AGC(cfg):
                 elif cfg.agc.variables_to_vary[ix] == 'Beams':Current_Galaxy.Beams = cfg.agc.beams[jx]
                 elif cfg.agc.variables_to_vary[ix] == 'SNR': Current_Galaxy.SNR = cfg.agc.snr[jx]
                 elif cfg.agc.variables_to_vary[ix] == 'Channelwidth': Current_Galaxy.Channelwidth = cfg.agc.channelwidth[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Beam_Resolution': Current_Galaxy.Res_Beam = [cfg.agc.beam_size[jx][0],cfg.agc.beam_size[jx][1]]
+                elif cfg.agc.variables_to_vary[ix] == 'Beam_Resolution': Current_Galaxy.Res_Beam = [cfg.agc.beam_size[jx][0],cfg.agc.beam_size[jx][1],cfg.agc.beam_size[jx][2]]
                 elif cfg.agc.variables_to_vary[ix] == 'Arms':
                     if Current_Galaxy.Arms == 'Arms':
                         Current_Galaxy.Arms = "No_Arms"
@@ -309,6 +310,8 @@ def AGC(cfg):
     if len(Casa_Galaxies) > 0:
         available_memory = psutil.virtual_memory().total/2**30
         no_process = int(np.floor(available_memory/8.))
+        if no_process > len(Casa_Galaxies):
+            no_process =  len(Casa_Galaxies)
         #tclean is parallel inmplemented but simobserve is not, need betterhandling in casa for multprocessing
         #The problem is memory limits combined with CPU limits for simobserve. No easy solution
         # Casa recomend 8Gb per CPU so we limit the no processes per 8Gb memory for now.
@@ -316,7 +319,10 @@ def AGC(cfg):
             results_casa = pool.starmap(one_galaxy, Casa_Galaxies)
     #Create All Uncoorupted and Gaussian Galaxies
     if len(Gauss_Galaxies) > 0:
-        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+        no_process = cfg.general.ncpu
+        if no_process > len(Gauss_Galaxies):
+            no_process =  len(Gauss_Galaxies)
+        with get_context("spawn").Pool(processes=no_process) as pool:
             results_gauss = pool.starmap(one_galaxy, Gauss_Galaxies)
     results = ['empty']*len(All_Galaxies)
     if len(Gauss_Galaxies) > 0:
@@ -1176,7 +1182,8 @@ def create_mask(work_dir,beam,casa=False):
     # correct the cutoff for the smoothing
     cutoff=cutoff/(0.5*(2*np.sqrt(np.pi)*sigma[0]+sigma[1]*np.sqrt(np.pi)*2.))
     # smooth the image
-    smooth = ndimage.gaussian_filter(dummy[0].data, sigma=(0,sigma[1], sigma[0]), order=0)
+    #our BPA is set to 0 which means the major axis smoothing should be in DEC axis and the minor on the RA
+    smooth = ndimage.gaussian_filter(dummy[0].data, sigma=(0,sigma[0], sigma[1]), order=0)
 
     # We want the mean signal in the smoothed cube
     # !!!!! This one is not correct for conserved surface brightness temperature but we want it to estimate the noise per pixel!!!!!!!!
@@ -1358,18 +1365,39 @@ def corrupt_gauss(work_dir,beam,SNR):
 
     noisescl=(mean_signal/SNR*sigma[0]*2*np.sqrt(np.pi))
     #print("This our mean signal {} and noise {} in Jy/pixel. ".format(mean_signal,noisescl))
+
+    if beam[2] !=0. :
+        #As we are going to rotatet the cube we should first extend it
+        shift = int(abs(np.sin(np.radians(beam[2]-90.)))*hdr['NAXIS1']/2.+5)
+        Pix_Extend= [shift,shift]
+        data = np.pad(data, [[0, 0], Pix_Extend, Pix_Extend], 'constant')
+        data = cf.rotateCube(data,-1*(beam[2]-90),[hdr['CRPIX1']+shift,hdr['CRPIX2']+shift])
+
     cuberms = np.random.normal(scale=noisescl,size=np.shape(data))
     # combine the two cubes
+
     noisedcube=data+cuberms
     # Smooth to the requred resolution
-    #print("The beam in pixels {} x {}".format(sigma[0]*(2.*np.sqrt(2*np.log(2))),sigma[1]*(2.*np.sqrt(2*np.log(2)))))
-    final = ndimage.gaussian_filter(noisedcube, sigma=(0,sigma[1], sigma[0]), order=0)
+
+    #our BPA is set to 0 which means the major axis smoothing should be in DEC axis and the minor on the RA
+    final = ndimage.gaussian_filter(noisedcube, sigma=(0,sigma[0], sigma[1]), order=0)
+
+    if beam[2] != 0.:
+        #rotate back
+        final_tmp = cf.rotateCube(final,(beam[2]-90),[hdr['CRPIX1']+shift,hdr['CRPIX2']+shift])
+        final = copy.deepcopy(final_tmp[:, \
+            shift:hdr['NAXIS2'] + \
+            shift,shift:hdr['NAXIS1']\
+             + shift])
+        final_tmp =[]
+
     # to preserve brightness temperature this should be multiplied with the increase in beam area
     # which is the same as the amount of pixels in the beam as we go from 1 pixel area to an area the size of the beam which is assuming two gaussians so we need to correct with a difference factor of the area of the. Last factor is to correct for the fact that the unconvolved cube hassquare pixels not a circular beam.
     final=final*pixperbeam
     # And write this final cube to the directory
     hdr['BMAJ']=beam[0]/3600.
     hdr['BMIN']=beam[1]/3600.
+    hdr['BPA'] = beam[2]
     fits.writeto(work_dir+'/Convolved_Cube.fits',final,hdr, overwrite = True)
 corrupt_gauss.__doc__=f'''
 NAME:
@@ -1564,6 +1592,8 @@ def one_galaxy(cfg,Current_Galaxy):
     Template["BMAJ"]= "BMAJ = 0."
     Template["BMIN"]= "BMIN = 0."
     Template["BPA"]= "BPA = 0."
+
+
     #Then we need to build the Surface Brightnes profile
     SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring,molecular_profile = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
     #We need central coordinates the vsys will come from the required distance and hubble flow. The RA and dec should not matter hance it will be the only random component in the code as we do want to test variations of them
@@ -1650,7 +1680,6 @@ def one_galaxy(cfg,Current_Galaxy):
 
     #-------------------------------This finishes the basic disk the following are optional components----------------------
 
-
     # The possible arms
     if Current_Galaxy.Arms == 'Arms':
         phase,arm_brightness,arm_width = create_arms(Vrot,Rad,SBRprof,WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
@@ -1676,7 +1705,8 @@ def one_galaxy(cfg,Current_Galaxy):
     size = 2.*Rad_arcsec[-1] +(Current_Galaxy.Res_Beam[0])
     if  Current_Galaxy.Beams < 6.:
         size = 2.*Rad_arcsec[-1] +(6.*Current_Galaxy.Res_Beam[0])
-    pix_size = (Rad_arcsec[1]-Rad_arcsec[0])
+    #pix_size = (Rad_arcsec[1]-Rad_arcsec[0])
+    pix_size = Current_Galaxy.Res_Beam[1]/5.
     if Current_Galaxy.Corruption =='Casa_Sim':
         size += 60*pix_size
     required_pixels=int(np.ceil(size/pix_size))
@@ -1734,6 +1764,8 @@ def one_galaxy(cfg,Current_Galaxy):
         os.chdir(cfg.general.main_directory)
         mask = fits.open(f"{cfg.general.main_directory}{name}/mask.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
         Cube = fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+        #Here we have no control over the BPA it is what it is.
+        Current_Galaxy.Res_Beam[2]=Cube[0].header['BPA']
         maskr = mask[0].data[1:]
         sigma = (np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
         Cube_Clean = Cube[0].data
@@ -1757,21 +1789,20 @@ def one_galaxy(cfg,Current_Galaxy):
         Cube_Clean = Cube[0].data
         Cube_Clean[maskr < 0.5] = 0.
         beamarea=(np.pi*abs(Cube[0].header['BMAJ']*3600.*Cube[0].header['BMIN']*3600.))/(4.*np.log(2.))
-
-
         pixperbeam=beamarea/(abs(Cube[0].header['CDELT1']*3600.)*abs(Cube[0].header['CDELT2']*3600.))
         totalsignal = np.sum(Cube_Clean)/pixperbeam
         mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
         mean_signal = np.mean(Cube_Clean[maskr > 0.5])
         SNRachieved = mean_signal/(sigma)
+        #if we have
     else:
         print("!!!!!!!This corruption method is unknown, leaving the cube uncorrupted and unconvolved!!!!!!!!")
         # We'll create a little text file with an Overview of all the parameters
     Template['BMAJ'] = f'BMAJ= {Current_Galaxy.Res_Beam[0]}'
     Template['BMIN'] = f'BMIN= {Current_Galaxy.Res_Beam[1]}'
-
+    Template['BPA'] = f'BPA= {Current_Galaxy.Res_Beam[2]}'
     if cfg.agc.corrupt_models:
-        beam_line = f"Major axis beam = {Current_Galaxy.Res_Beam[0]} Minor axis beam= {Current_Galaxy.Res_Beam[1]}."
+        beam_line = f"Major axis beam = {Current_Galaxy.Res_Beam[0]}, Minor axis beam= {Current_Galaxy.Res_Beam[1]}, Beam PA = {Current_Galaxy.Res_Beam[2]}."
         corrupt_line = f"The cube was corrupted with the {Current_Galaxy.Corruption} method."
         if Current_Galaxy.Corruption == 'Casa_Sim':
             catalog_cube_name = 'Convolved_Cube_CS'
