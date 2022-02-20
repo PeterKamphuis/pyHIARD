@@ -795,11 +795,11 @@ def get_main_template(name,Template_Header,galaxy_module):
         if any([x != -1 for x in scaleheight]):
             scaleheight_kpc = cf.convertskyangle([x for x in scaleheight if x != -1.],distance=galaxy_module.galaxy_parameters['Distance'])
         else:
-            scaleheight_kpc = 0.
+            scaleheight_kpc = [0.]
         if any([x != -1 for x in scaleheight2]):
             scaleheight2_kpc = cf.convertskyangle([x for x in scaleheight2 if x != -1.], distance=galaxy_module.galaxy_parameters['Distance'])
         else:
-            scaleheight2_kpc = 0.
+            scaleheight2_kpc = [0.]
         #Everything that is constant can be written to our the Template def file
         #Read the default template
         Template_Model = cf.read_template_file('Template.def')
