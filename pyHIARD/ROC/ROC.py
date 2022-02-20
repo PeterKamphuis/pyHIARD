@@ -432,11 +432,11 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template):
     #if our beam BPA is not 0 we need to rotate the galaxy
     if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
         Galaxy_Template['Galaxy_Template'] = cf.rotateCube(Galaxy_Template['Galaxy_Template'],\
-            -1*(Galaxy_Template['Galaxy_Template_Header']['BPA']-90),\
+            (Galaxy_Template['Galaxy_Template_Header']['BPA']),\
             [Galaxy_Template['Galaxy_Template_Header']['CRPIX1'],
             Galaxy_Template['Galaxy_Template_Header']['CRPIX2']])
 
-        shift = int(abs(np.sin(np.radians(Galaxy_Template['Galaxy_Template_Header']['BPA']-90.))) \
+        shift = int(abs(np.sin(np.radians(Galaxy_Template['Galaxy_Template_Header']['BPA']))) \
                         *(Galaxy_Template['Galaxy_Template_Header']['NAXIS1']/2.+Pix_Extend)+5)
         Pix_Extend= int(Pix_Extend+shift)
 
@@ -514,10 +514,10 @@ We continue with the next SNR value.''')
     #print("Starting to smooth final")
     final = scipy.ndimage.gaussian_filter(Final_Template, sigma=(0, Galaxy_Template['Beam_Shift'][0], Galaxy_Template['Beam_Shift'][1]), order=0)
     #print("Finished to smooth final")
-    print(final.shape,Pix_Extend,shift)
+
     if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
         final_tmp = cf.rotateCube(final,\
-        (Galaxy_Template['Galaxy_Template_Header']['BPA']-90),\
+        (-1.*Galaxy_Template['Galaxy_Template_Header']['BPA']),\
         [Galaxy_Template['Galaxy_Template_Header']['CRPIX1']+Pix_Extend,
         Galaxy_Template['Galaxy_Template_Header']['CRPIX2']+Pix_Extend])
         #And remove the shift
@@ -525,7 +525,7 @@ We continue with the next SNR value.''')
             shift:Galaxy_Template['Galaxy_Template_Header']['NAXIS2'] +int(2.*Pix_Extend-shift) \
             ,shift:Galaxy_Template['Galaxy_Template_Header']['NAXIS1']+int(2.*Pix_Extend-shift)])
     # Preserve brightness temperature means to scale to the new area
-    print(final.shape,Galaxy_Template['Final_Mask'].shape)
+
     final = final * Galaxy_Template['Shifted_Beam'][2]/Galaxy_Template['Galaxy_Beam'][2]
     Achieved_SNR = np.mean(final[Galaxy_Template['Final_Mask'] > 0])/np.std(final[0:2,:,:])
     Achieved_Noise = np.std(final[0:2,:,:])

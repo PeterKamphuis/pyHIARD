@@ -1368,10 +1368,10 @@ def corrupt_gauss(work_dir,beam,SNR):
 
     if beam[2] !=0. :
         #As we are going to rotatet the cube we should first extend it
-        shift = int(abs(np.sin(np.radians(beam[2]-90.)))*hdr['NAXIS1']/2.+5)
+        shift = int(abs(np.sin(np.radians(beam[2])))*hdr['NAXIS1']/2.+5)
         Pix_Extend= [shift,shift]
         data = np.pad(data, [[0, 0], Pix_Extend, Pix_Extend], 'constant')
-        data = cf.rotateCube(data,-1*(beam[2]-90),[hdr['CRPIX1']+shift,hdr['CRPIX2']+shift])
+        data = cf.rotateCube(data,beam[2],[hdr['CRPIX1']+shift,hdr['CRPIX2']+shift])
 
     cuberms = np.random.normal(scale=noisescl,size=np.shape(data))
     # combine the two cubes
@@ -1384,7 +1384,7 @@ def corrupt_gauss(work_dir,beam,SNR):
 
     if beam[2] != 0.:
         #rotate back
-        final_tmp = cf.rotateCube(final,(beam[2]-90),[hdr['CRPIX1']+shift,hdr['CRPIX2']+shift])
+        final_tmp = cf.rotateCube(final,-1*(beam[2]),[hdr['CRPIX1']+shift,hdr['CRPIX2']+shift])
         final = copy.deepcopy(final_tmp[:, \
             shift:hdr['NAXIS2'] + \
             shift,shift:hdr['NAXIS1']\
