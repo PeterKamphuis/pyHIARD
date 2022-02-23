@@ -435,16 +435,17 @@ Creating the noise cube. The Noise in the final cube should be {Final_Noise} Jy/
     # then we constuct a noise cube at the resolution of the galaxyBPA
         #As we are going to rotatet the cube we should first extend it
     #if our beam BPA is not 0 we need to extend the template a bit more
+    #if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
+    #    Galaxy_Template['Galaxy_Template']= cf.rotateCube(Galaxy_Template['Galaxy_Template'],\
+    #    (Galaxy_Template['Galaxy_Template_Header']['BPA']),\
+    #    [Galaxy_Template['Galaxy_Template_Header']['CRPIX1'],
+    #    Galaxy_Template['Galaxy_Template_Header']['CRPIX2']])
+    #    if required_noise != 0.5:
+
+
+    #        compare = copy.deepcopy(Galaxy_Template['Galaxy_Template'])*Galaxy_Template['Shifted_Beam'][2]/Galaxy_Template['Galaxy_Beam'][2]
+    #        fits.writeto('Test.fits',compare,Galaxy_Template['Galaxy_Template_Header'],overwrite=True)
     if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
-        Galaxy_Template['Galaxy_Template']= cf.rotateCube(Galaxy_Template['Galaxy_Template'],\
-        (Galaxy_Template['Galaxy_Template_Header']['BPA']),\
-        [Galaxy_Template['Galaxy_Template_Header']['CRPIX1'],
-        Galaxy_Template['Galaxy_Template_Header']['CRPIX2']])
-        if required_noise != 0.5:
-
-
-            compare = copy.deepcopy(Galaxy_Template['Galaxy_Template'])*Galaxy_Template['Shifted_Beam'][2]/Galaxy_Template['Galaxy_Beam'][2]
-            fits.writeto('Test.fits',compare,Galaxy_Template['Galaxy_Template_Header'],overwrite=True)
         shift = int(abs(np.sin(np.radians(Galaxy_Template['Galaxy_Template_Header']['BPA'])))*\
                     (Galaxy_Template['Galaxy_Template_Header']['NAXIS1']/2.+Pix_Extend)+3.)
         Pix_Extend= int(Pix_Extend+shift)
@@ -724,16 +725,17 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     Original_Mean = cf.get_mean_flux(Template_Cube)
     print(f'''The mean as determined from the template = {Original_Mean}
 The noise is {galaxy_module.galaxy_parameters["RMS"]}'''    )
+    if Template_Header['BPA'] != 0.:
         #PA is anticlockwise while rotate works clockwise so to rotate back means rotate by BPA
-    #    Template_Cube =cf.rotateCube(Template_Cube,\
-    #        (Template_Header['BPA']),\
-    #        [Template_Header['CRPIX1'],
-    #        Template_Header['CRPIX2']])
-    #    Boundary_Mask =cf.rotateCube(Boundary_Mask,\
-    #        (Template_Header['BPA']),\
-    #        [Template_Header['CRPIX1'],
-    #        Template_Header['CRPIX2']])
-        #
+        Template_Cube =cf.rotateCube(Template_Cube,\
+            (Template_Header['BPA']),\
+            [Template_Header['CRPIX1'],
+            Template_Header['CRPIX2']])
+        Boundary_Mask =cf.rotateCube(Boundary_Mask,\
+            (Template_Header['BPA']),\
+            [Template_Header['CRPIX1'],
+            Template_Header['CRPIX2']])
+
         #shift = int(abs(np.sin(np.radians(Template_Header['BPA']))) \
         #                *(Template_Header['NAXIS1']/2.+Pix_Extend)+5)
     #fits.writeto('After_the_Rot.fits',Template_Cube,Template_Header,overwrite=True)

@@ -1320,7 +1320,7 @@ def rotateCube(Cube, angle, pivot):
     padY= [int(Cube.shape[1] - pivot[1]), int(pivot[1])]
     imgP= np.pad(Cube, [[0, 0], padY, padX], 'constant')
     #Use nearest neighbour as it is exact enough and doesn't mess up the 0. and is a lot faster
-    imgR = rotate(imgP, angle, axes =(2, 1), reshape=False)
+    imgR = rotate(imgP, angle, axes =(2, 1), reshape=False,order=0.)
     return imgR[:, padY[0]: -padY[1], padX[0]: -padX[1]]
 rotateCube.__doc__=f'''
  NAME:
