@@ -4,8 +4,7 @@ from pyHIARD.common_functions import download_cube,create_masks
 from astropy.io import fits
 import os
 
-galaxy_parameters = {'Galaxy': 'M_83', 'DHIkpc': 58.09 ,'Distance': 4.9, 'Original_Model': 'RC', 'RMS': 0.0025 , 'MHI': 10**9.91   }
-
+galaxy_parameters  =  {'Galaxy': 'M_83', 'DHIkpc': 58.09 ,'Distance': 4.9, 'Original_Model': 'RC', 'RMS': 0.0025 , 'MHI': 10**9.91   }
 
 def get_data():
     '''Download the data for this galaxy and prepare the cube for usage'''

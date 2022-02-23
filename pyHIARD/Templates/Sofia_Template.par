@@ -96,9 +96,9 @@ reliability.enable         =  false
 # Mask dilation
 
 dilation.enable            =  true
-dilation.iterationsXY      =  5
+dilation.iterationsXY      =  10
 dilation.iterationsZ       =  1
-dilation.threshold         =  0.000001
+dilation.threshold         =  0.1
 
 
 # Parameterisation

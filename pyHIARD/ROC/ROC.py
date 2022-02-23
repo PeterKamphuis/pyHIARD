@@ -190,12 +190,14 @@ NOTE:
 
 def beam_templates(beam,Galaxy_Template):
 
-
+    fits.writeto(f'Input_Template{beam}.fits',Galaxy_Template['Galaxy_Template'],Galaxy_Template['Galaxy_Template_Header'],overwrite=True)
     # first we need to calculate the shift to  apply
     print(f"We are working on {beam} beam")
     Template_Header = Galaxy_Template['Galaxy_Template_Header']
     Def_Template = Galaxy_Template['Galaxy_Model']
      # The new beam we want = the normalsize/the beams across
+
+
     newbmaj = (Galaxy_Template['DHIarcsec'])/beam
 
     #which means we reduce everything by a factor of the ratio of the old and new beam
@@ -227,6 +229,8 @@ def beam_templates(beam,Galaxy_Template):
                         Template_Header['CDELT3'] + \
                             Template_Header['CRPIX3']-1
     Template_Header["CRVAL3"] = New_Systemic
+
+
     # This is actually 1+z
     New_z = np.sqrt((1 + New_Systemic / c_kms) / (1 - New_Systemic / c_kms))
     # And we want to extend our input template by an amount of pixels to account for the required smoothin
@@ -238,7 +242,8 @@ def beam_templates(beam,Galaxy_Template):
     # And our dimmed z factor relates to tolman surface brightness dimming
     Shifted_Template = copy.deepcopy(
         Galaxy_Template['Galaxy_Template'])/(fact**2)*((Galaxy_Template['z']**4)/(New_z**4))
-    Current_Mean = np.mean(Shifted_Template[Shifted_Template > 0.])
+    Current_Mean = cf.get_mean_flux(Shifted_Template)
+
     #And we can now update our model input
     radius= [float(x) for x in Def_Template['RADI'].split('=')[1].split()]
     conv_radi = cf.convertskyangle(
@@ -275,12 +280,12 @@ def beam_templates(beam,Galaxy_Template):
         FWHM_conv_maj, FWHM_conv_min))
     # and in terms of pixels the sigmas
     sig_maj = (FWHM_conv_maj / np.sqrt(8 * np.log(2))) / \
-               abs(Template_Header['CDELT1'] * 3600.)
-    sig_min = (FWHM_conv_min / np.sqrt(8 * np.log(2))) / \
                abs(Template_Header['CDELT2'] * 3600.)
+    sig_min = (FWHM_conv_min / np.sqrt(8 * np.log(2))) / \
+               abs(Template_Header['CDELT1'] * 3600.)
     # Then we want to make the cubes for the required signal to noise ratios
-    sigma_new = [(newbmaj / abs(Template_Header['CDELT1']*3600.)) / (2 * np.sqrt(2 * np.log(2))),
-             (newbmin / abs(Template_Header['CDELT2']*3600.)) / (2 * np.sqrt(2 * np.log(2)))]
+    sigma_new = [(newbmaj / abs(Template_Header['CDELT2']*3600.)) / (2 * np.sqrt(2 * np.log(2))),
+             (newbmin / abs(Template_Header['CDELT1']*3600.)) / (2 * np.sqrt(2 * np.log(2)))]
     Ext_Template = np.zeros((
         Template_Header['NAXIS3'], Template_Header['NAXIS2']
             + 2 * Pix_Extend,
@@ -291,15 +296,14 @@ def beam_templates(beam,Galaxy_Template):
         Ext_Template, sigma=(0, sig_maj, sig_min), order=0)
     # Preserve surface brightness
     final_clean = final_clean * pixperbeamnew / Galaxy_Template['Galaxy_Beam'][2]
-
-    Final_Mean = np.mean(
-        final_clean[final_clean > np.mean(final_clean[final_clean > 0.])/2.])
     # Let's make a mask from this smoothed cube to calculated the things we achieve
-    Final_Mask = final_clean
-    Final_Mask[final_clean > np.mean(final_clean[final_clean > 0.])/2.] = 1
+    Final_Mask = copy.deepcopy(final_clean)
+    Final_Mask[final_clean > np.mean(final_clean[final_clean > 0.])/2.] = 1.
     Final_Mask[final_clean < np.mean(
         final_clean[final_clean > 0.]) / 2.] = 0.
+    Final_Mean = cf.get_mean_flux(final_clean,Mask=Final_Mask)
     final_clean = []
+    fits.writeto(f'Beam_Template{beam}.fits',Shifted_Template,Template_Header,overwrite=True)
     Template_Dictionary = {'Name': Galaxy_Template['Name'],'Beams':beam,'Galaxy_Template':Shifted_Template,\
                            'Galaxy_Template_Header':Template_Header, 'Final_Mask': Final_Mask,\
                            'Galaxy_Model':Def_Template,'Galaxy_Mask':Galaxy_Template['Galaxy_Mask'],\
@@ -395,7 +399,8 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template):
     # The noise in the final cube should be
     Final_Noise = Galaxy_Template['Mean_Flux']/required_noise
     # We first find the noise in pixels that matches this
-    print("Creating the noise cube. The Noise in the final cube should be {} Jy/beam.".format(Final_Noise))
+    print(f''' We are requesting a SNR of {required_noise} and the mean Flux in the shifted template is = {Galaxy_Template['Mean_Flux']}
+Creating the noise cube. The Noise in the final cube should be {Final_Noise} Jy/beam.''')
     New_Noise = 0.
     #As we will be adding to the uncorrected cube we need to convert the noise back to its uncorrected value.
     Final_Noise = Final_Noise * Galaxy_Template['Galaxy_Beam'][2]/Galaxy_Template['Shifted_Beam'][2]
@@ -429,15 +434,19 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template):
         print("We got a noise cube with an rms of {} {} {}".format(New_Noise, Final_Noise, Pix_Noise))
     # then we constuct a noise cube at the resolution of the galaxyBPA
         #As we are going to rotatet the cube we should first extend it
-    #if our beam BPA is not 0 we need to rotate the galaxy
+    #if our beam BPA is not 0 we need to extend the template a bit more
     if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
-        Galaxy_Template['Galaxy_Template'] = cf.rotateCube(Galaxy_Template['Galaxy_Template'],\
-            (Galaxy_Template['Galaxy_Template_Header']['BPA']),\
-            [Galaxy_Template['Galaxy_Template_Header']['CRPIX1'],
-            Galaxy_Template['Galaxy_Template_Header']['CRPIX2']])
+        Galaxy_Template['Galaxy_Template']= cf.rotateCube(Galaxy_Template['Galaxy_Template'],\
+        (Galaxy_Template['Galaxy_Template_Header']['BPA']),\
+        [Galaxy_Template['Galaxy_Template_Header']['CRPIX1'],
+        Galaxy_Template['Galaxy_Template_Header']['CRPIX2']])
+        if required_noise != 0.5:
 
-        shift = int(abs(np.sin(np.radians(Galaxy_Template['Galaxy_Template_Header']['BPA']))) \
-                        *(Galaxy_Template['Galaxy_Template_Header']['NAXIS1']/2.+Pix_Extend)+5)
+
+            compare = copy.deepcopy(Galaxy_Template['Galaxy_Template'])*Galaxy_Template['Shifted_Beam'][2]/Galaxy_Template['Galaxy_Beam'][2]
+            fits.writeto('Test.fits',compare,Galaxy_Template['Galaxy_Template_Header'],overwrite=True)
+        shift = int(abs(np.sin(np.radians(Galaxy_Template['Galaxy_Template_Header']['BPA'])))*\
+                    (Galaxy_Template['Galaxy_Template_Header']['NAXIS1']/2.+Pix_Extend)+3.)
         Pix_Extend= int(Pix_Extend+shift)
 
     Ext_Template = np.random.normal(scale=Pix_Noise, size=(
@@ -524,38 +533,46 @@ We continue with the next SNR value.''')
         final = copy.deepcopy(final_tmp[:, \
             shift:Galaxy_Template['Galaxy_Template_Header']['NAXIS2'] +int(2.*Pix_Extend-shift) \
             ,shift:Galaxy_Template['Galaxy_Template_Header']['NAXIS1']+int(2.*Pix_Extend-shift)])
+        Pix_Extend -= shift
     # Preserve brightness temperature means to scale to the new area
 
     final = final * Galaxy_Template['Shifted_Beam'][2]/Galaxy_Template['Galaxy_Beam'][2]
-    Achieved_SNR = np.mean(final[Galaxy_Template['Final_Mask'] > 0])/np.std(final[0:2,:,:])
+    if required_noise != 0.5:
+        fits.writeto(f"Test_ungrid_final.fits", final, Galaxy_Template['Galaxy_Template_Header'] ,
+                 overwrite=True)#ANd write to our directory
     Achieved_Noise = np.std(final[0:2,:,:])
     Galaxy_Template['Galaxy_Model']['RMS'] = f"RMS = {str(Achieved_Noise)}"
-    Achieved_Mean = np.mean(final[Galaxy_Template['Final_Mask'] > 0])
+    Achieved_Mean = cf.get_mean_flux(final,Mask=Galaxy_Template['Final_Mask'])
+    Achieved_SNR = Achieved_Mean/Achieved_Noise
     # Regrid to 5 pix per beam
     print(" Which results in the new dimensions {} x {}".format(int(Galaxy_Template['Galaxy_Template_Header']['NAXIS2'] / New_Pixel_Size),
                                                                 int(Galaxy_Template['Galaxy_Template_Header']['NAXIS1'] / New_Pixel_Size)))
-    regrid = Regrid_Array(final, Out_Shape=(
+    regrid = cf.regrid_array(final, Out_Shape=(
         int(Galaxy_Template['Galaxy_Template_Header']['NAXIS3']),
         int(Galaxy_Template['Galaxy_Template_Header']['NAXIS2'] / New_Pixel_Size),
         int(Galaxy_Template['Galaxy_Template_Header']['NAXIS1'] / New_Pixel_Size)))
     #also the mask Used
-    regrid_mask = Regrid_Array(Galaxy_Template['Final_Mask'], Out_Shape=(
+    regrid_mask =  cf.regrid_array(Galaxy_Template['Final_Mask'], Out_Shape=(
         int(Galaxy_Template['Galaxy_Template_Header']['NAXIS3']),
         int(Galaxy_Template['Galaxy_Template_Header']['NAXIS2'] / New_Pixel_Size),
         int(Galaxy_Template['Galaxy_Template_Header']['NAXIS1'] / New_Pixel_Size)))
     #print("Finished Regridding")
     # We have to update the header
     achieved = final.shape[1] / regrid.shape[1]
-    Galaxy_Template['Galaxy_Template_Header']["CDELT1"] = Galaxy_Template['Galaxy_Template_Header']['CDELT1'] * achieved/Galaxy_Template['Shift_Factor']
-    Galaxy_Template['Galaxy_Template_Header']["CDELT2"] = Galaxy_Template['Galaxy_Template_Header']['CDELT2'] * achieved/Galaxy_Template['Shift_Factor']
-    Galaxy_Template['Galaxy_Template_Header']["CRPIX1"] = (Galaxy_Template['Galaxy_Template_Header']['CRPIX1']+Pix_Extend) / achieved
-    Galaxy_Template['Galaxy_Template_Header']["CRPIX2"] = (Galaxy_Template['Galaxy_Template_Header']['CRPIX2']+Pix_Extend) / achieved
+    for ext  in ['1','2']:
+        #Only adjust the cdelts at the end as all the smoothing is based on the original pixel size
+        Galaxy_Template['Galaxy_Template_Header'][f"CDELT{ext}"] = Galaxy_Template['Galaxy_Template_Header'][f'CDELT{ext}'] * achieved/Galaxy_Template["Shift_Factor"]
+        Galaxy_Template['Galaxy_Template_Header'][f"CRPIX{ext}"] = (Galaxy_Template['Galaxy_Template_Header'][f'CRPIX{ext}']+Pix_Extend) / achieved
 
+    Galaxy_Template['Galaxy_Template_Header']['DATAMAX'] = np.max(regrid)
+    Galaxy_Template['Galaxy_Template_Header']['DATAMIN'] = np.min(regrid)
 
     #ANd write to our directory
     #print("Start writing")
     fits.writeto(f"{galaxy_dir}Convolved_Cube.fits", regrid, Galaxy_Template['Galaxy_Template_Header'] ,
                  overwrite=True)#ANd write to our directory
+    Galaxy_Template['Galaxy_Template_Header']['DATAMAX'] = np.max(regrid_mask)
+    Galaxy_Template['Galaxy_Template_Header']['DATAMIN'] = np.min(regrid_mask)
     fits.writeto(f"{galaxy_dir}mask.fits", regrid_mask, Galaxy_Template['Galaxy_Template_Header'] ,
                  overwrite=True)
     #print("Finished writing")
@@ -673,12 +690,12 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     Mask = galaxy_module.get_masks(work_directory,sofia_call=sofia2_call)
     Mask[0].header['CRVAL3'] =  Mask[0].header['CRVAL3']/1000.
     Mask[0].header['CDELT3'] =  Mask[0].header['CDELT3']/1000.
-    fits.writeto(f'{work_directory}/{name}_mask.fits',Mask[0].data,Mask[0].header,overwrite = True)
+    #fits.writeto(f'{work_directory}/{name}_mask.fits',Mask[0].data,Mask[0].header,overwrite = True)
     Boundary_Mask = Mask[0].data
     Mask.close()
     #Should we create this every time? Leave for now
     #We mask all values that fall outside the outer mask
-    Template_Cube[Boundary_Mask < 0.05] = 0.
+    Template_Cube[Boundary_Mask <= 0.] = 0.
     Template_Cube[np.isnan(Template_Cube)] = 0.
 
         #as we have now cut the cubes to a minimal size we want to make them square and add the size across
@@ -701,15 +718,40 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     tmp[:,min_ext_y:min_ext_y+Boundary_Mask.shape[1],min_ext_x:min_ext_x+Boundary_Mask.shape[2]] = Boundary_Mask[:,:,:]
     Boundary_Mask = copy.deepcopy(tmp)
     tmp = []
+    #Now that they are square if we have a BPA we want to rotate the mask and the template
+    Total_Flux_In = np.sum(Template_Cube[Template_Cube > 0.])/pixperbeam * Template_Header['CDELT3']#
+    # To calculate the mean of all values in the mask is too sensitive to very small variations in the mask
+    Original_Mean = cf.get_mean_flux(Template_Cube)
+    print(f'''The mean as determined from the template = {Original_Mean}
+The noise is {galaxy_module.galaxy_parameters["RMS"]}'''    )
+        #PA is anticlockwise while rotate works clockwise so to rotate back means rotate by BPA
+    #    Template_Cube =cf.rotateCube(Template_Cube,\
+    #        (Template_Header['BPA']),\
+    #        [Template_Header['CRPIX1'],
+    #        Template_Header['CRPIX2']])
+    #    Boundary_Mask =cf.rotateCube(Boundary_Mask,\
+    #        (Template_Header['BPA']),\
+    #        [Template_Header['CRPIX1'],
+    #        Template_Header['CRPIX2']])
+        #
+        #shift = int(abs(np.sin(np.radians(Template_Header['BPA']))) \
+        #                *(Template_Header['NAXIS1']/2.+Pix_Extend)+5)
+    #fits.writeto('After_the_Rot.fits',Template_Cube,Template_Header,overwrite=True)
+    #fits.writeto('After_the_Rot_Mask.fits',Boundary_Mask,Template_Header,overwrite=True)
+    #print(np.mean(Template_Cube[Template_Cube > 0.]))
+    #exit()
     #And then calculate the total flux in the input cube
-    Total_Flux_In = np.sum(Template_Cube[Template_Cube > 0.])/pixperbeam * Template_Header['CDELT3']# In Jy
+    #Total_Flux_In = np.sum(Template_Cube[Template_Cube > 0.])/pixperbeam * Template_Header['CDELT3']# In Jy
     # and the the original SNR is the mean signal in the masked cube / by the noise
-    Original_Mean=np.mean(Template_Cube[Template_Cube > 0.])
+    #Original_Mean=np.mean(Template_Cube[Template_Cube > 0.])
     #This is here defined as 1
     Original_z= np.sqrt((1+systemic/c_kms)/(1-systemic/c_kms))
     sigma = [(Template_Header["BMAJ"] / abs(Template_Header['CDELT1'])) / (2 * np.sqrt(2 * np.log(2))),
              (Template_Header["BMIN"] / abs(Template_Header['CDELT2'])) / (2 * np.sqrt(2 * np.log(2)))]
-
+    #noise = galaxy_module.galaxy_parameters["RMS"]
+    #if 'Scale_Factor' in  galaxy_module.galaxy_parameters:
+    #    noise= noise*galaxy_module.galaxy_parameters['Scale_Factor']
+    #Template_Header['BPA'] = 0.
     Template_Dictionary = {'Name':name,'Galaxy_Template':Template_Cube,'Galaxy_Template_Header':Template_Header,\
                            'Galaxy_Model':Model_Template,'Galaxy_Mask':Boundary_Mask,\
                            'Noise': galaxy_module.galaxy_parameters["RMS"],'Mean_Flux':Original_Mean,\
@@ -894,68 +936,6 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-# function to properly regrid the cube after smoothing
-def Regrid_Array(Array_In, Out_Shape):
-    #print("Starting Regrid")
-    Array_In = np.asarray(Array_In, dtype=np.double)
-    In_Shape = Array_In.shape
-    if len(In_Shape) != len(Out_Shape):
-        print("You are regridding to different dimensions not different sizes. This won't work")
-        exit()
-    #print("Obtaining Shapes")
-    multipliers = []  # multipliers for the final coarsegraining
-    for i in range(len(In_Shape)):
-        if Out_Shape[i] < In_Shape[i]:
-            multipliers.append(int(np.ceil(In_Shape[i] / Out_Shape[i])))
-        else:
-            multipliers.append(1)
-    # shape to which to blow up
-    tmp_shape = tuple([i * j for i, j in zip(Out_Shape, multipliers)])
-
-    # stupid zoom doesn't accept the final shape. Carefully crafting the
-    # multipliers to make sure that it will work.
-    zoomMultipliers = np.array(tmp_shape) / np.array(In_Shape) + 0.0000001
-    assert zoomMultipliers.min() >= 1
-    #print("Regridding")
-    # applying scipy.ndimage.zoom
-    regridded = scipy.ndimage.zoom(Array_In, zoomMultipliers)
-    #print("Doing some other things")
-    for ind, mult in enumerate(multipliers):
-        if mult != 1:
-            sh = list(regridded.shape)
-            assert sh[ind] % mult == 0
-            newshape = sh[:ind] + [sh[ind] // mult, mult] + sh[ind + 1:]
-            regridded.shape = newshape
-            regridded = np.mean(regridded, axis=ind + 1)
-    if regridded.shape != Out_Shape:
-        print("Something went wrong when regridding.")
-    return regridded
-Regrid_Array.__doc__ = f'''
-NAME:
-    Regrid_Array
-
-PURPOSE:
-    regrid an array into a different shape
-
-CATEGORY:
-   roc
-
-INPUTS:
-    Array_In = original array
-    Out_Shape = shape of the final array
-
-OPTIONAL INPUTS:
-
-OUTPUTS:
-    the array with the new shape
-
-OPTIONAL OUTPUTS:
-
-PROCEDURES CALLED:
-   Unspecified
-
-NOTE:
-'''
 def remove_template(galaxy_to_remove,path_to_resources,existing_galaxies):
     existing_galaxies_low = [x.lower() for x in existing_galaxies]
     to_remove = existing_galaxies[existing_galaxies_low.index(galaxy_to_remove.lower())]

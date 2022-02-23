@@ -1187,14 +1187,16 @@ def create_mask(work_dir,beam,casa=False):
 
     # We want the mean signal in the smoothed cube
     # !!!!! This one is not correct for conserved surface brightness temperature but we want it to estimate the noise per pixel!!!!!!!!
-    mean_signal= np.mean(smooth[smooth > cutoff])
+    #But tcorrection is applied to the final cube so we need this one
+    smooth[smooth < cutoff]=0
+    mean_signal = cf.get_mean_flux(smooth)
+    #mean_signal= np.mean(smooth[smooth > cutoff])
     # let's check that the minimum is less than the noise.
     #if np.min(smooth) < mean_signal/SNR*-3:
     #    print(np.min(smooth),mean_signal/SNR*-3)
     #    exit()
     #print("This is the minimum signal {} and comparable noise {}".format( np.min(smooth),mean_signal/SNR*-3))
     # Then create the mask
-    smooth[smooth < cutoff]=0
     smooth[smooth > cutoff]=1
     # Write mask
     fits.writeto(work_dir+'/mask.fits',smooth,dummy[0].header, overwrite = True)
@@ -1246,6 +1248,7 @@ def corrupt_casa(work_dir,beam,SNR,casa_call='casa'):
     # In order to corrupt we need to know the average signal.
     # we do this taking the mean in each chaneel above a tenth of the max and then take the mean of that profile
     # This is the noise in the final cube
+    #!!!! Is this correct or should we conserve for brightness??
     noise=mean_signal/SNR
     #*(abs(dummy[0].header['CDELT1']*3600.)*abs(dummy[0].header['CDELT2']*3600.))/1.1330900354567984
 
@@ -1774,11 +1777,12 @@ def one_galaxy(cfg,Current_Galaxy):
         pixperbeam=beamarea/(abs(Cube[0].header['CDELT1']*3600.)*abs(Cube[0].header['CDELT2']*3600.))
         totalsignal = np.sum(Cube_Clean)/pixperbeam
         mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
-        totsig=np.zeros(len(Cube_Clean[:]))
-        for j in range(len(totsig)):
-            if  len(Cube_Clean[j][Cube_Clean[j] > 0.]) > 0:
-                totsig[j]=np.mean(Cube_Clean[j][Cube_Clean[j] > 0.])
-        mean_signal = np.median(totsig[totsig > 0.])
+        #totsig=np.zeros(len(Cube_Clean[:]))
+        #for j in range(len(totsig)):
+        #    if  len(Cube_Clean[j][Cube_Clean[j] > 0.]) > 0:
+        #        totsig[j]=np.mean(Cube_Clean[j][Cube_Clean[j] > 0.])
+        #mean_signal = np.median(totsig[totsig > 0.])
+        mean_signal=cf.get_mean_flux(Cube_Clean)
         SNRachieved = mean_signal/(sigma)
     elif  Current_Galaxy.Corruption == 'Gaussian':
         corrupt_gauss(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam,Current_Galaxy.SNR)
@@ -1792,7 +1796,8 @@ def one_galaxy(cfg,Current_Galaxy):
         pixperbeam=beamarea/(abs(Cube[0].header['CDELT1']*3600.)*abs(Cube[0].header['CDELT2']*3600.))
         totalsignal = np.sum(Cube_Clean)/pixperbeam
         mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
-        mean_signal = np.mean(Cube_Clean[maskr > 0.5])
+        #mean_signal = np.mean(Cube_Clean[maskr > 0.5])
+        mean_signal = cf.get_mean_flux(Cube_Clean)
         SNRachieved = mean_signal/(sigma)
         #if we have
     else:
