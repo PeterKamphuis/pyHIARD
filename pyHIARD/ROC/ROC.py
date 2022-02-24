@@ -201,9 +201,27 @@ def beam_templates(beam,Galaxy_Template):
     newbmaj = (Galaxy_Template['DHIarcsec'])/beam
 
     #which means we reduce everything by a factor of the ratio of the old and new beam
-    fact = newbmaj /(Template_Header['BMAJ'] * 3600.)
+    initial_factor = newbmaj /(Template_Header['BMAJ'] * 3600.)
+    Distance = initial_factor *Galaxy_Template['Distance']
+    New_Systemic = Galaxy_Template['Vsys'] * initial_factor
+    max_factor =1.5
+
+    if initial_factor > max_factor:
+        smooth_factor = initial_factor/max_factor
+        new_cube,new_hdr,new_mask = smooth_and_regrid(Galaxy_Template['Galaxy_Template'],\
+            Galaxy_Template['Galaxy_Template_Header'],Mask = Galaxy_Template['Galaxy_Mask'],\
+            factor= smooth_factor)
+
+        Galaxy_Template['Galaxy_Template'] = new_cube
+        Template_Header = new_hdr
+        Galaxy_Template['Galaxy_Mask'] = new_mask
+        new_factor = newbmaj /(Template_Header['BMAJ'] * 3600.)
+
+    else:
+        new_factor =initial_factor
+        #if the fact is > 5 we are going to pre smoot and pre_regrid the cube
     # bmin changes by the same factor
-    newbmin = Template_Header['BMIN'] * 3600. * fact
+    newbmin = Template_Header['BMIN'] * 3600. * new_factor
     # And thus the new beam area is
     beamareanew = (np.pi * abs(newbmaj * newbmin)) / (4. * np.log(2.))
     # And in pixels
@@ -213,24 +231,24 @@ def beam_templates(beam,Galaxy_Template):
 
     # We want to regrid to 5 pixels per beam which means
     # Our new distance is
-    Distance = fact *Galaxy_Template['Distance']
+
     # Update the def template
-    Def_Template['BMAJ'] = f'BMAJ= {newbmaj}'
-    Def_Template['BMIN'] = f'BMIN= {newbmin}'
-    Def_Template['BPA'] = f'BPA= {Template_Header["BPA"]}' #Neeed to sort this out
-    Def_Template['DISTANCE'] = 'DISTANCE = '+str(Distance)
+    Def_Template['BMAJ'] = f'BMAJ= {newbmaj/initial_factor:.2f}'
+    Def_Template['BMIN'] = f'BMIN= {newbmin/initial_factor:.2f}'
+    Def_Template['BPA'] = f'BPA= {Template_Header["BPA"]:.2f}' #Neeed to sort this out
+    Def_Template['DISTANCE'] = f'DISTANCE = {Distance:.2f}'
     # And we need to adjust the header for our new cube
 
     # the new vsys on the hubble flow
     # First we fix the crval vaUNIlue to the actual pixel systemic is at
-    New_Systemic = Galaxy_Template['Vsys'] * fact
+
 
     Template_Header['CRPIX3'] = ( Galaxy_Template['Vsys']-Template_Header['CRVAL3']) / \
                         Template_Header['CDELT3'] + \
                             Template_Header['CRPIX3']-1
     Template_Header["CRVAL3"] = New_Systemic
-
-
+    Template_Header['BMAJ'] = newbmaj/(3600.*initial_factor)
+    Template_Header['BMIN'] = newbmin/(3600.*initial_factor)
     # This is actually 1+z
     New_z = np.sqrt((1 + New_Systemic / c_kms) / (1 - New_Systemic / c_kms))
     # And we want to extend our input template by an amount of pixels to account for the required smoothin
@@ -238,10 +256,10 @@ def beam_templates(beam,Galaxy_Template):
                      / abs(Template_Header['CDELT1'] * 3600.))
 
     # Which means the new total flux value after adjusting the flux and the dimming factor
-    Current_Flux = Galaxy_Template['Total_Flux_In']/(fact**2)
+    Current_Flux = Galaxy_Template['Total_Flux_In']/(initial_factor**2)
     # And our dimmed z factor relates to tolman surface brightness dimming
     Shifted_Template = copy.deepcopy(
-        Galaxy_Template['Galaxy_Template'])/(fact**2)*((Galaxy_Template['z']**4)/(New_z**4))
+        Galaxy_Template['Galaxy_Template'])/(initial_factor**2)*((Galaxy_Template['z']**4)/(New_z**4))
     Current_Mean = cf.get_mean_flux(Shifted_Template)
 
     #And we can now update our model input
@@ -308,7 +326,7 @@ def beam_templates(beam,Galaxy_Template):
                            'Galaxy_Template_Header':Template_Header, 'Final_Mask': Final_Mask,\
                            'Galaxy_Model':Def_Template,'Galaxy_Mask':Galaxy_Template['Galaxy_Mask'],\
                            'Galaxy_Beam':Galaxy_Template['Galaxy_Beam'],'MHI':Galaxy_Template['MHI'],\
-                           'Shifted_Beam':[*sigma_new,pixperbeamnew],'Shift_Factor':fact,\
+                           'Shifted_Beam':[*sigma_new,pixperbeamnew],'Shift_Factor':[initial_factor,new_factor],\
                            'Beam_Shift':[sig_maj,sig_min],'New_Beam': [newbmaj,newbmin,Template_Header["BPA"]],\
                            'Noise': Galaxy_Template['Noise'],'Mean_Flux':Final_Mean,\
                            'DHI_kpc':Galaxy_Template['DHI_kpc'],\
@@ -432,19 +450,7 @@ Creating the noise cube. The Noise in the final cube should be {Final_Noise} Jy/
         CHANNEL1 = Final_Template[0:2, :, :]
         New_Noise = np.std(CHANNEL1[np.isfinite(CHANNEL1)])
         print("We got a noise cube with an rms of {} {} {}".format(New_Noise, Final_Noise, Pix_Noise))
-    # then we constuct a noise cube at the resolution of the galaxyBPA
-        #As we are going to rotatet the cube we should first extend it
-    #if our beam BPA is not 0 we need to extend the template a bit more
-    #if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
-    #    Galaxy_Template['Galaxy_Template']= cf.rotateCube(Galaxy_Template['Galaxy_Template'],\
-    #    (Galaxy_Template['Galaxy_Template_Header']['BPA']),\
-    #    [Galaxy_Template['Galaxy_Template_Header']['CRPIX1'],
-    #    Galaxy_Template['Galaxy_Template_Header']['CRPIX2']])
-    #    if required_noise != 0.5:
 
-
-    #        compare = copy.deepcopy(Galaxy_Template['Galaxy_Template'])*Galaxy_Template['Shifted_Beam'][2]/Galaxy_Template['Galaxy_Beam'][2]
-    #        fits.writeto('Test.fits',compare,Galaxy_Template['Galaxy_Template_Header'],overwrite=True)
     if Galaxy_Template['Galaxy_Template_Header']['BPA'] != 0.:
         shift = int(abs(np.sin(np.radians(Galaxy_Template['Galaxy_Template_Header']['BPA'])))*\
                     (Galaxy_Template['Galaxy_Template_Header']['NAXIS1']/2.+Pix_Extend)+3.)
@@ -465,7 +471,7 @@ Creating the noise cube. The Noise in the final cube should be {Final_Noise} Jy/
     # If this noise differs significantly from the Original noise in the cube then we want to add noise to the emission part as well.
 
     Diff_Noise = Temp_Noise - Galaxy_Template['Noise']/\
-                (Galaxy_Template['Shift_Factor']**2)*\
+                (Galaxy_Template['Shift_Factor'][0]**2)*\
                 ((Galaxy_Template['Original_z']**4)/(Galaxy_Template['z']**4))
     # If this difference is less than 10 % we will ignore it
     if abs(Diff_Noise) < Temp_Noise/10.:
@@ -475,7 +481,7 @@ Creating the noise cube. The Noise in the final cube should be {Final_Noise} Jy/
     if Diff_Noise < 0:
         with open(f"{galaxy_dir}Why_This_Galaxy_Is_Not_There.txt",'w') as file:
             file.write(f'''Your requested noise is lower than the input noise hence the emission would be too noisy please lower SNR.
-The requested noise is {Temp_Noise} and the Original noise is {Galaxy_Template['Noise']/(Galaxy_Template['Shift_Factor']**2)}.
+The requested noise is {Temp_Noise} and the Original noise is {Galaxy_Template['Noise']/(Galaxy_Template['Shift_Factor'][0]**2)}.
 We continue with the next SNR value.''')
         return "EMPTY"
 
@@ -562,7 +568,7 @@ We continue with the next SNR value.''')
     achieved = final.shape[1] / regrid.shape[1]
     for ext  in ['1','2']:
         #Only adjust the cdelts at the end as all the smoothing is based on the original pixel size
-        Galaxy_Template['Galaxy_Template_Header'][f"CDELT{ext}"] = Galaxy_Template['Galaxy_Template_Header'][f'CDELT{ext}'] * achieved/Galaxy_Template["Shift_Factor"]
+        Galaxy_Template['Galaxy_Template_Header'][f"CDELT{ext}"] = Galaxy_Template['Galaxy_Template_Header'][f'CDELT{ext}'] * achieved/Galaxy_Template["Shift_Factor"][0]
         Galaxy_Template['Galaxy_Template_Header'][f"CRPIX{ext}"] = (Galaxy_Template['Galaxy_Template_Header'][f'CRPIX{ext}']+Pix_Extend) / achieved
 
     Galaxy_Template['Galaxy_Template_Header']['DATAMAX'] = np.max(regrid)
@@ -1144,6 +1150,93 @@ INPUTS:
     cfg = OmegaConf Configuration file
 
 OPTIONAL INPUTS:
+
+OUTPUTS:
+    A set of real galaxies in a setup ready for FAT fitting
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
+
+def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = [-1.]):
+    Cube=copy.deepcopy(Cube_In)
+    hdr=copy.deepcopy(hdr_In)
+    Mask_Use = copy.deepcopy(Mask)
+    #first calculate the required beams
+    new_beam = []
+    smooth_beam = []
+    sig_pix = []
+    for val in ['BMAJ','BMIN']:
+        new_beam.append(hdr[val]*factor)
+        #Which means we need to smoothe with
+        smooth_beam.append(np.sqrt(new_beam[-1] ** 2 -  (hdr[val])** 2))
+        # which in pixels is a dispersion of
+        if val == 'BMAJ':
+            #the major axis is oriented along the declination axis
+            pix_size= abs(hdr['CDELT2'])
+        else:
+            pix_size= abs(hdr['CDELT1'])
+        sig_pix.append((smooth_beam[-1] / np.sqrt(8 * np.log(2))) / abs(pix_size))
+
+
+    smoothed_cube = scipy.ndimage.gaussian_filter(Cube, sigma=(0, *sig_pix), order=0)
+    #Preserve surface brightness
+    beams  = [[*new_beam],[hdr['BMAJ'],hdr['BMIN']]]
+    new_pix_perbeam = []
+    for beam in beams:
+        beam_area = (np.pi * abs(beam[0] * beam[1])) / (4. * np.log(2.))
+        new_pix_perbeam.append(beam_area/(abs(hdr['CDELT1'])* abs(hdr['CDELT2'])))
+    smoothed_cube=smoothed_cube*new_pix_perbeam[0]/new_pix_perbeam[1]
+    #now regird to 5 pixels across the minor axis
+    pixel_factor = (new_beam[1] / 5.) / abs(hdr['CDELT1'])
+    regrid = cf.regrid_array(smoothed_cube,(int(hdr['NAXIS3']),
+        int(hdr['NAXIS2'] /  pixel_factor),int(hdr['NAXIS1'] / pixel_factor)))
+    #also the mask Used
+    if np.sum(Mask_Use) != -1:
+        regrid_mask = cf.regrid_array(Mask, (int(hdr['NAXIS3']),
+            int(hdr['NAXIS2'] /  pixel_factor),int(hdr['NAXIS1'] /  pixel_factor)))
+    #print("Finished Regridding")
+    # We have to update the header
+    if update_header:
+        hdr['BMAJ']=new_beam[0]
+        hdr['BMIN']=new_beam[1]
+        for ext in ['1','2']:
+            achieved_regrid = smoothed_cube.shape[int(ext)] / regrid.shape[int(ext)]
+            hdr[f'CDELT{ext}'] = hdr[f'CDELT{ext}']*achieved_regrid
+            hdr[f'CRPIX{ext}'] = hdr[f'CRPIX{ext}']/achieved_regrid
+            hdr[f'NAXIS{ext}'] = regrid.shape[int(ext)]
+
+    if np.sum(Mask_Use) != -1:
+        return regrid,hdr,regrid_mask
+    else:
+        return regrid,hdr
+
+smooth_and_regrid.__doc__ = f'''
+NAME:
+    smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = ['EMPTY'])
+
+PURPOSE:
+    Shift and degrade real galaxies.
+
+CATEGORY:
+    roc
+
+INPUTS:
+    Cube_In = Cube to smooth and regrid
+    hdr_In = hdr of the input cube
+    factor=1.5 factor to smooth the beam by
+
+OPTIONAL INPUTS:
+    update_header=True
+    booelean to indicate whether the header should be updated
+
+    Mask = ['EMPTY']
+    mask that corresponds to cube that should still correspond after regridding.
+
 
 OUTPUTS:
     A set of real galaxies in a setup ready for FAT fitting
