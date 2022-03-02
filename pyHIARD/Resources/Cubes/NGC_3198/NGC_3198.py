@@ -16,8 +16,18 @@ def get_data():
         url = 'https://zenodo.org/record/3715549/files/NGC3198-HR-cube.fits'
         name = 'NGC_3198'
         sizes=[[1,92],[320,730],[380,670]]
-        Cube = download_cube(name,url,sizes,outdir)
-
+        try:
+            Cube = fits.open(f"{outdir}/{name}_Original.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+        except:
+            Cube = download_cube(f'{name}_Original',url,sizes,outdir)
+        Clean_Cube,hdr = select_emission(Cube[0].data,Cube[0].header,name,work_dir,sofia_call=sofia_call)
+        fits.writeto(f"{outdir}/{name}.fits",Clean_Cube,hdr,overwrite = False)
+        Cube[0].data=Clean_Cube
+        Cube[0].header=hdr
+        if url != '':
+            os.system(f"rm -f {outdir}/{name}_Original.fits")
+        del Clean_Cube
+        del hdr
     #place_disclaimer(dir_to_place)
     return Cube
 get_data.__doc__=f'''
@@ -37,45 +47,6 @@ OPTIONAL INPUTS:
 
 OUTPUTS:
    Cube = Cube in astropy format
-
-OPTIONAL OUTPUTS:
-
-PROCEDURES CALLED:
-   Unspecified
-
-NOTE:
-'''
-
-def get_masks(dir_to_place,sofia_call='sofia2'):
-    '''Get or create the masks for a galaxy'''
-    name = 'NGC_3198'
-    outdir = os.path.dirname(os.path.abspath(__file__))
-    mask_exists = os.path.isfile(f"{outdir}/{name}_mask.fits")
-    if mask_exists:
-        Mask = fits.open(f"{outdir}/{name}_mask.fits", uint=False,
-                               do_not_scale_image_data=True, ignore_blank=True)
-    else:
-        Mask = create_masks(outdir,dir_to_place,name,sofia_call=sofia_call)
-        fits.writeto(f'{outdir}/{name}_mask.fits',Mask[0].data,Mask[0].header,overwrite = True)
-    return Mask
-get_masks.__doc__=f'''
-NAME:
-   get_masks
-
-PURPOSE:
-   Get or create the masks for a galaxy
-
-CATEGORY:
-   agc
-
-INPUTS:
-    dir_to_place = The directory where the galaxy is to be created.
-
-OPTIONAL INPUTS:
-    sofia_call = command name for sofia
-
-OUTPUTS:
-   Mask = the Blurring Mask for the template
 
 OPTIONAL OUTPUTS:
 

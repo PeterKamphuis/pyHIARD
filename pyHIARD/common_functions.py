@@ -35,6 +35,8 @@ except ImportError:
 
 class SofiaFaintError(Exception):
     pass
+class InputError(Exception):
+    pass
 
 
 class SofiaRunError(Exception):
@@ -231,6 +233,16 @@ replace with:''')
 
             cfg.roc.variables_to_vary[i] = changes_poss[changes_poss_lower.index(
                 variables.lower())]
+        if cfg.roc.minimum_degradation_factor < 1.1:
+            print(f'''Your minimum degration factor is less than 1.1 ({cfg.roc.minimum_degradation_factor}).
+That wil create a mess. We will abort this run.''')
+            raise InputError(f'''Your minimum degradation factor is too small''')
+
+
+        if cfg.roc.minimum_degradation_factor > cfg.roc.max_degradation_factor:
+            print(f'''Your max degradation factor is less than the mimimum ({cfg.roc.max_degradation_factor} vs { cfg.roc.minimum_degradation_factor}).
+We have equalized them for you. Your welcome.''')
+            cfg.roc.max_degradation_factor = cfg.roc.minimum_degradation_factor
     if cfg.roc.enable and cfg.roc.delete_existing:
         to_delete = f'''rm -R {' '.join([f"{cfg.general.main_directory}{x}_*Beams_*SNR" for x in cfg.roc.base_galaxies])}'''
         print("All previous models of the requested base galaxies will be removed prior to the build. \n")
@@ -270,7 +282,7 @@ check_input.__doc__ = f'''
 '''
 
 
-def columndensity(levels, systemic=100., beam=[1., 1.], channel_width=1., column=False, arcsquare=False, solar_mass=False):
+def unused_columndensity(levels, systemic=100., beam=[1., 1.], channel_width=1., column=False, arcsquare=False, solar_mass=False):
     #set solar_mass to indicate the output should be M_solar/pc**2 or if column = True the input is
     f0 = 1.420405751786E9  # Hz rest freq
     c = 299792.458  # light speed in km / s
@@ -280,7 +292,7 @@ def columndensity(levels, systemic=100., beam=[1., 1.], channel_width=1., column
 
     if systemic > 10000:
         systemic = systemic/1000.
-    f = f0 * (1 - (vsys / c))  # Systemic frequency
+    f = f0 * (1 - (systemic / c))  # Systemic frequency
     if arcsquare:
         HIconv = 605.7383 * 1.823E18 * (2. * np.pi / (np.log(256.)))
         if column:
@@ -417,13 +429,31 @@ def convertskyangle(angle, distance=1., unit='arcsec', distance_unit='Mpc', phys
         kpc = float(kpc[0])
     return kpc
 
+def select_emission(data,hdr,name,work_dir,sofia_call='sofia_call'):
+    #get a mask
+    Mask_Data = create_masks(data,hdr, work_dir, name, sofia_call=sofia_call)
+    try:
+        Vel_Units = hdr['CUNIT3'].lower()
+    except KeyError:
+        if hdr['CDELT3'] > 150.:
+            hdr.set("CUNIT3", 'M/S', before="CTYPE3")
+        else:
+            hdr.set("CUNIT3", 'KM/S', before="CTYPE3")
+    if hdr['CUNIT3'].lower() == 'm/s' or hdr['CDELT3'] > 150.:
+        hdr['CDELT3'] = hdr['CDELT3'] / 1000.
+        hdr['CUNIT3'] = 'km/s'
+        hdr['CRVAL3'] = hdr['CRVAL3'] / 1000.
+    # ensure we have a BPA
+    if 'BPA' not in hdr:
+        hdr['BPA'] = 0.
+    #Apply the mask to Template
+    data[Mask_Data <= 0.] = 0.
+    data[np.isnan(data)] = 0.
+    return data,hdr
 
-def create_masks(outdir, working_dir, name, sofia_call='sofia2'):
-    Cube = fits.open(f"{outdir}/{name}.fits", uint=False,
-                     do_not_scale_image_data=True, ignore_blank=True)
-    data = Cube[0].data
-    hdr = Cube[0].header
-    Cube.close()
+def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
+    data = copy.deepcopy(data_in)
+    hdr = copy.deepcopy(hdr_in)
     # First we smooth our template
     # We smooth this to 1.25 the input beam
     bmaj = hdr["BMAJ"]*3600.
@@ -486,10 +516,12 @@ def create_masks(outdir, working_dir, name, sofia_call='sofia2'):
     transform = gaussian_filter(transform, sigma=(0, 1, 1), order=0)
 
     transform[transform < 0.1] = 0.
-
-    Mask_Outer[0].data = transform
+    del data
+    del hdr
+    Mask_Outer.close()
     Mask_Inner.close()
-    return Mask_Outer
+
+    return transform
 
 
 create_masks.__doc__ = f'''
@@ -751,6 +783,38 @@ find_program.__doc__=f'''
  NOTE:
 '''
 
+
+def get_beam_area_in_pixels(Template_Header, beam= [-1,-1.]):
+    if np.sum(beam) == -2.:
+        beam = [Template_Header["BMAJ"],Template_Header["BMIN"]]
+    beamarea=(np.pi*abs((beam[0]*beam[1])))/(4.*np.log(2.))
+    return beamarea/(abs(Template_Header['CDELT1'])*abs(Template_Header['CDELT2']))
+get_beam_area_in_pixels.__doc__=f'''
+NAME:
+    get_beam_in_pixels(Template_Header, beam= [-1,-1.])
+
+PURPOSE:
+    calculate the area of the beam in pixels
+
+CATEGORY:
+    common_functions
+
+INPUTS:
+    name = basename of template
+    beams = the requested beam in degrees, if unset it assumed that the beam is in the header.
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    the beam area in pixels
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
 # Function to input a boolean answer
 def get_bool(print_str = "Please type True or False", default = True):
     invalid_input=True
@@ -767,30 +831,34 @@ def get_bool(print_str = "Please type True or False", default = True):
             return False
         else:
             print("Error: the answer must be true/false or yes/no.")
-find_program.__doc__=f'''
- NAME:
-    find_program
+get_bool.__doc__=f'''
+NAME:
+    get_bool
 
- PURPOSE:
-    check whether a program is available for use.
+PURPOSE:
+    get a versatile boolean response from the user
 
- CATEGORY:
-    support_functions
+CATEGORY:
+    common_functions
 
- INPUTS:
-    name = command name of the program to run
-    search = Program we are looking for
- OPTIONAL INPUTS:
+INPUTS:
 
- OUTPUTS:
-    the correct command for running the program
+OPTIONAL INPUTS:
+    print_str = "Please type True or False"
+    The question to ask the user
 
- OPTIONAL OUTPUTS:
+    default = True
+    The default answer will correspond to the default
 
- PROCEDURES CALLED:
-    Unspecified
+OUTPUTS:
+    The corresponding boolean
 
- NOTE:
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+Unspecified
+
+NOTE:
 '''
 
 def get_created_models(Catalogue, delete_existing):
@@ -834,6 +902,19 @@ get_created_models.__doc__=f'''
 
  NOTE:
 '''
+
+def get_mask(Cube_In):
+    Mask = copy.deepcopy(Cube_In)
+    Top_Cube = Cube_In[Cube_In > 0.9*np.max(Cube_In)]
+    Sorted_Cube = Top_Cube[np.argsort(Top_Cube)]
+    Max_Flux = np.mean(Sorted_Cube[-20:])
+    Mask[Cube_In > 0.005*Max_Flux] = 1.
+    Mask[Cube_In < 0.005*Max_Flux] = 0.
+    Mask =  gaussian_filter(Mask,sigma=(0,0.5,0.5),order=0)
+    Mask[Mask > 0.95] = 1.
+    Mask[Mask < 0.05] = 0.
+    return Mask
+
 def get_mean_flux(Cube_In,Mask=[-1]):
 
     #As python is really the dumbest language ever invented there is different behaviour for passing np.arrays and lists
@@ -1194,17 +1275,17 @@ def scrambled_initial(directory, Model):
                 profile[var]=np.mean([ini[0], ini2[0]])
         else:
             profile[var]= 0.
-
-    svrot= profile['VROT']+np.random.default_rng().uniform(-10., 10.)
-    sincl= profile['INCL']+np.random.default_rng().uniform(-10., 10.)
-    spa=  profile['PA']+np.random.default_rng().uniform(-3., 3.)
+    rng = np.random.default_rng()
+    svrot= profile['VROT']+rng.uniform(-10., 10.)
+    sincl= profile['INCL']+rng.uniform(-10., 10.)
+    spa=  profile['PA']+rng.uniform(-3., 3.)
     sz0= profile['Z0']
-    ssbr= np.random.default_rng().uniform(-1*profile['SBR'], profile['SBR'])
-    ssdis= profile['SDIS']+np.random.default_rng().uniform(-4., 4.)
-    svrad=profile['VRAD']+np.random.default_rng().uniform(-10., 10.)
-    sra=profile['XPOS']+np.random.default_rng().uniform(-10./3600., -10./3600.)
-    sdec=profile['YPOS']+np.random.default_rng().uniform(-10./3600., -10./3600.)
-    svsys= profile['VSYS']+np.random.default_rng().uniform(-4., 4.)
+    ssbr= rng.uniform(-1*profile['SBR'], profile['SBR'])
+    ssdis= profile['SDIS']+rng.uniform(-4., 4.)
+    svrad=profile['VRAD']+rng.uniform(-10., 10.)
+    sra=profile['XPOS']+rng.uniform(-10./3600., -10./3600.)
+    sdec=profile['YPOS']+rng.uniform(-10./3600., -10./3600.)
+    svsys= profile['VSYS']+rng.uniform(-4., 4.)
     with open(f"{directory}Initial_Estimates.txt", 'w') as overview:
         overview.write(f'''#This file contains the initial estimates.
 #{'VROT':<15s} {'INCL':<15s} {'PA':<15s} {'Z0':<15s} {'SBR':<15s} {'DISP':<15s} {'VRAD':<15s} {'RA':<15s} {'DEC':<15s}  {'VSYS':<15s}
@@ -1315,12 +1396,12 @@ def read_template_file(filename, package_file = True):
         Template_in[tmp.split('=', 1)[0].strip().upper()]=tmp.rstrip()
     return Template_in
 
-def rotateCube(Cube, angle, pivot):
+def rotateCube(Cube, angle, pivot,order=0):
     padX= [int(Cube.shape[2] - pivot[0]), int(pivot[0])]
     padY= [int(Cube.shape[1] - pivot[1]), int(pivot[1])]
     imgP= np.pad(Cube, [[0, 0], padY, padX], 'constant')
     #Use nearest neighbour as it is exact enough and doesn't mess up the 0. and is a lot faster
-    imgR = rotate(imgP, angle, axes =(2, 1), reshape=False,order=0)
+    imgR = rotate(imgP, angle, axes =(2, 1), reshape=False,order=order)
     return imgR[:, padY[0]: -padY[1], padX[0]: -padX[1]]
 rotateCube.__doc__=f'''
  NAME:
@@ -1356,6 +1437,7 @@ def regrid_array(Array_In, Out_Shape):
     Array_In = np.asarray(Array_In, dtype =np.double)
     In_Shape= Array_In.shape
     if len(In_Shape) != len(Out_Shape):
+        print(f"The in cube = {In_Shape} and the Out Cube = {Out_Shape}")
         print("You are regridding to different dimensions not different sizes. This won't work")
         exit()
     #print("Obtaining Shapes")
