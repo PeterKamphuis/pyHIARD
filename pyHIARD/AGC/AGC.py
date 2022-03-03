@@ -137,24 +137,12 @@ def AGC(cfg):
         print(" The Input Template is NOT found !!! ABORTING")
         sys.exit()
 
-
-    #Read a template def file, We typically read them from the FAT installation
-
-    #tmp = open('/Users/Peter/GitHub/FAT-GDL-Beta/Support/2ndfit.def','r')
-
-    #If we want to corrupt in the casa way we'd need to read the file corruption file
-    #if (cfg.agc.corruption_method == 'Casa_Sim') or (cfg.agc.corruption_method == 'Casa_5') :
-    #    Template_Casa_In = cf.read_casa_template('Template_Casa.py')
     # start a loop over the various base galaxies
     set_done= [1024]
     plot_ax =[]
-    #if 7 in cfg.agc.base_galaxies:
-    #    print(f''' Please define your personal base galaxy now. \n''')
-    #    User_Defined = Base_Galaxy(7)
-    #    print(f'''You have defined the following Base Galaxy''')
-    #    cf.print_base_galaxy(User_Defined)
 
-        # If we make new models delete everything in the directory
+
+    # If we make new models delete everything in the directory
     if cfg.agc.delete_existing:
         masses_to_delete= []
         if 'Mass' in cfg.agc.variables_to_vary:
@@ -308,22 +296,35 @@ def AGC(cfg):
                 #print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
 
     if len(Casa_Galaxies) > 0:
-        available_memory = psutil.virtual_memory().total/2**30
-        no_process = int(np.floor(available_memory/8.))
-        if no_process > len(Casa_Galaxies):
-            no_process =  len(Casa_Galaxies)
-        #tclean is parallel inmplemented but simobserve is not, need betterhandling in casa for multprocessing
-        #The problem is memory limits combined with CPU limits for simobserve. No easy solution
-        # Casa recomend 8Gb per CPU so we limit the no processes per 8Gb memory for now.
-        with get_context("spawn").Pool(processes=no_process) as pool:
-            results_casa = pool.starmap(one_galaxy, Casa_Galaxies)
+        if cfg.general.multiprocessing:
+            available_memory = psutil.virtual_memory().total/2**30
+            no_process = int(np.floor(available_memory/8.))
+            if no_process > len(Casa_Galaxies):
+                no_process =  len(Casa_Galaxies)
+            #tclean is parallel inmplemented but simobserve is not, need betterhandling in casa for multprocessing
+            #The problem is memory limits combined with CPU limits for simobserve. No easy solution
+            # Casa recomend 8Gb per CPU so we limit the no processes per 8Gb memory for now.
+            with get_context("spawn").Pool(processes=no_process) as pool:
+                results_casa = pool.starmap(one_galaxy, Casa_Galaxies)
+        else:
+            results_casa = []
+            for the_galaxy in Casa_Galaxies:
+                single_result = one_galaxy(*the_galaxy)
+                results_casa.append(single_result)
     #Create All Uncoorupted and Gaussian Galaxies
     if len(Gauss_Galaxies) > 0:
-        no_process = cfg.general.ncpu
-        if no_process > len(Gauss_Galaxies):
-            no_process =  len(Gauss_Galaxies)
-        with get_context("spawn").Pool(processes=no_process) as pool:
-            results_gauss = pool.starmap(one_galaxy, Gauss_Galaxies)
+        if cfg.general.multiprocessing:
+            no_process = cfg.general.ncpu
+            if no_process > len(Gauss_Galaxies):
+                no_process =  len(Gauss_Galaxies)
+            with get_context("spawn").Pool(processes=no_process) as pool:
+                results_gauss = pool.starmap(one_galaxy, Gauss_Galaxies)
+        else:
+            results_gauss = []
+            for the_galaxy in Gauss_Galaxies:
+                single_result = one_galaxy(*the_galaxy)
+                results_gauss.append(single_result)
+
     results = ['empty']*len(All_Galaxies)
     if len(Gauss_Galaxies) > 0:
         results= sort_results(All_Galaxies,results_gauss,results)

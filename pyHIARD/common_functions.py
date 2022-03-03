@@ -128,6 +128,9 @@ def check_input(cfg):
     #if we want the full database default we check that the user wants this
     if cfg.general.main_directory[-1] != '/':
         cfg.general.main_directory = f"{cfg.general.main_directory}/"
+    # if we only have a single cpu turn multiprocessing of
+    if cfg.general.ncpu == 1:
+        cfg.general.multiprocessing = False
 
     if cfg.agc.enable:
         cfg.general.tirific = find_program(cfg.general.tirific, 'TiRiFiC')
@@ -910,7 +913,7 @@ def get_mask(Cube_In):
     Max_Flux = np.mean(Sorted_Cube[-20:])
     Mask[Cube_In > 0.005*Max_Flux] = 1.
     Mask[Cube_In < 0.005*Max_Flux] = 0.
-    Mask =  gaussian_filter(Mask,sigma=(0,0.5,0.5),order=0)
+    Mask =  gaussian_filter(Mask,sigma=(0,0.75,0.75),order=0)
     Mask[Mask > 0.95] = 1.
     Mask[Mask < 0.05] = 0.
     return Mask

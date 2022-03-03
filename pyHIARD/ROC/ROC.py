@@ -217,6 +217,7 @@ def beam_templates(beam_req, Galaxy_Template, max_degradation_factor,main_direct
             factor=smooth_factor)
         del extended_template_cube
         del extended_template_header
+
         del Galaxy_Template['Galaxy_Template_Cube']
         del Galaxy_Template['Galaxy_Template_Header']
 
@@ -362,6 +363,7 @@ def beam_templates(beam_req, Galaxy_Template, max_degradation_factor,main_direct
                            'Final_Distance': new_distance,\
                            'Requested_SNR': Galaxy_Template['Requested_SNR'], 'Disclaimer': Galaxy_Template['Disclaimer']
                           }
+
     del Galaxy_Template
     return Template_Dictionary
 beam_templates.__doc__ = f'''
@@ -516,6 +518,7 @@ We continue with the next SNR value.''')
 
     Galaxy_Template['Shifted_Template_Cube'] = Galaxy_Template['Shifted_Template_Cube']*Galaxy_Template['Shifted_Mask']+noise_template*(1.-Galaxy_Template['Shifted_Mask'])
     del noise_template
+
     del Galaxy_Template['Shifted_Mask']
     #
     final_cube, final_hdr,final_mask = smooth_and_regrid(Galaxy_Template['Shifted_Template_Cube'],
@@ -554,7 +557,7 @@ We continue with the next SNR value.''')
     final_hdr['CRPIX2'] = final_hdr['CRPIX2'] -pixel_shift
 
     #FINALLY WE REGRID
-    pixel_factor = (final_hdr['BMAJ'] / 5.) / abs(final_hdr['CDELT2'])
+    pixel_factor = (final_hdr['BMIN'] / 5.) / abs(final_hdr['CDELT2'])
     if pixel_factor >   1.1:
         old_shape = final_cube.shape
         final_cube = cf.regrid_array(final_cube, Out_Shape=((int(final_hdr['NAXIS3']),
@@ -1111,19 +1114,25 @@ def ROC(cfg,path_to_resources):
 
 
 
-    needed_templates = [[x,path_to_resources,cfg.general.main_directory,cfg.general.sofia2,] for x in Galaxies]
+    needed_templates = [[x,path_to_resources,cfg.general.main_directory,cfg.general.sofia2] for x in Galaxies]
     if len(needed_templates) == 0:
         print(f"Seems like the ROC has nothing to do.")
         return
     #check for the templates
-    with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
-        results = pool.starmap(check_templates, needed_templates)
-
-    #Then we setup the templates for all beam iterations we wants
-    with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
-        All_Galaxy_Templates = pool.starmap(galaxy_template, needed_templates)
+    if cfg.general.multiprocessing:
+        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+            results = pool.starmap(check_templates, needed_templates)
+        del results
+        #Then we setup the templates for all beam iterations we wants
+        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+            All_Galaxy_Templates = pool.starmap(galaxy_template, needed_templates)
+    else:
+        All_Galaxy_Templates = []
+        for to_check in needed_templates:
+            result = check_templates(*to_check)
+            template = galaxy_template(*to_check)
+            All_Galaxy_Templates.append(template)
     #clean arrays
-    del results
     del needed_templates
     #All_Galaxy_Templates returns a list of dictionaries that should be complete for constructing all the different beam templates
     #We need to make a list with all the different beams
@@ -1167,14 +1176,25 @@ def ROC(cfg,path_to_resources):
                 #    reqnoise = galaxy['Original_Mean_Flux']/galaxy['Original_Noise']
                 #    galaxy['Requested_SNR'] = [reqnoise if x == -1. else x for x in galaxy['Requested_SNR']]
                 different_beams.append((x[0],galaxy,cfg.roc.max_degradation_factor,cfg.general.main_directory))
-    All_Galaxy_Templates = []
+    del All_Galaxy_Templates
     if len(different_beams) == 0:
         print(f"Seems like the ROC has nothing to do.")
         return
     #Now Contruct all the beam templates
-    with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
-        All_Beam_Templates = pool.starmap(beam_templates,different_beams)
-    different_beams = []
+
+    if cfg.general.multiprocessing:
+        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+            All_Beam_Templates = pool.starmap(beam_templates,different_beams)
+    else:
+        All_Beam_Templates = []
+        for single_template in different_beams:
+            #If we are doing one by one the the galaxy templates are not reinitialized and dus the np.arrays and dictionaries are shared.
+            #So make a single copy before input
+            input = copy.deepcopy(single_template)
+            one_beam_template = beam_templates(*input)
+            All_Beam_Templates.append(one_beam_template)
+
+    del different_beams
 
 
 
@@ -1183,9 +1203,16 @@ def ROC(cfg,path_to_resources):
     for galaxy in All_Beam_Templates:
         for value in galaxy['Requested_SNR']:
             all_noise.append((value,cfg.general.main_directory,galaxy))
-
-    with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
-        results = pool.starmap(create_final_cube, all_noise)
+    if cfg.general.multiprocessing:
+        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+            results = pool.starmap(create_final_cube, all_noise)
+    else:
+        results = []
+        for single_template in all_noise:
+            input = copy.deepcopy(single_template)
+            out = create_final_cube(*input)
+            results.append(out)
+    del all_noise
 
     with open(Catalogue, 'a') as cat:
         for line in results:
