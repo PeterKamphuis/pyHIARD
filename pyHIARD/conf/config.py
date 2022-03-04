@@ -74,7 +74,7 @@ class General:
     tirific: str = "tirific"  # Command to call tirific
     sofia2: str = "sofia2"  # Command to call sofia 2
     casa: str = "casa"  # Command to call sofia 2
-
+    multiprocessing: bool = True
 
 @dataclass
 class Config:

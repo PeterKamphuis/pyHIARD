@@ -128,6 +128,9 @@ def check_input(cfg):
     #if we want the full database default we check that the user wants this
     if cfg.general.main_directory[-1] != '/':
         cfg.general.main_directory = f"{cfg.general.main_directory}/"
+    # if we only have a single cpu turn multiprocessing of
+    if cfg.general.ncpu == 1:
+        cfg.general.multiprocessing = False
 
     if cfg.agc.enable:
         cfg.general.tirific = find_program(cfg.general.tirific, 'TiRiFiC')
