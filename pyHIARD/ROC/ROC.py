@@ -449,8 +449,8 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template):
     # The noise in the final cube should be
     final_req_noise = Galaxy_Template['Final_Mean_Flux']/required_noise
 
-    fits.writeto(f"{galaxy_dir}Template_Cube.fits",Galaxy_Template['Shifted_Template_Cube'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
-    fits.writeto(f"{galaxy_dir}Template_Mask.fits",Galaxy_Template['Shifted_Mask'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
+    #fits.writeto(f"{galaxy_dir}Template_Cube.fits",Galaxy_Template['Shifted_Template_Cube'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
+    #fits.writeto(f"{galaxy_dir}Template_Mask.fits",Galaxy_Template['Shifted_Mask'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
 
 
 
@@ -532,11 +532,11 @@ We continue with the next SNR value.''')
         final_cube = cf.rotateCube(final_cube,\
         (-1.*final_hdr['BPA']),\
         [final_hdr['CRPIX1'],
-        final_hdr['CRPIX2']],order=3)
+        final_hdr['CRPIX2']],order=1)
         final_mask = cf.rotateCube(final_mask,\
         (-1.*final_hdr['BPA']),\
         [final_hdr['CRPIX1'],
-        final_hdr['CRPIX2']],order=3)
+        final_hdr['CRPIX2']],order=1)
 
     #And regrid
 
@@ -794,7 +794,7 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
         Template_Cube =cf.rotateCube(Template_Cube,\
             (Template_Header['BPA']),\
             [Template_Header['CRPIX1'],
-            Template_Header['CRPIX2']])
+            Template_Header['CRPIX2']],order=1)
 
 
     # Obtain the tilted ring model that corresponds to this observation
@@ -1120,11 +1120,14 @@ def ROC(cfg,path_to_resources):
         return
     #check for the templates
     if cfg.general.multiprocessing:
-        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+        processes = cfg.general.ncpu
+        if len(needed_templates) < processes:
+            processes = len(needed_templates)
+        with get_context("spawn").Pool(processes=processes) as pool:
             results = pool.starmap(check_templates, needed_templates)
         del results
         #Then we setup the templates for all beam iterations we wants
-        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+        with get_context("spawn").Pool(processes=processes) as pool:
             All_Galaxy_Templates = pool.starmap(galaxy_template, needed_templates)
     else:
         All_Galaxy_Templates = []
@@ -1183,7 +1186,10 @@ def ROC(cfg,path_to_resources):
     #Now Contruct all the beam templates
 
     if cfg.general.multiprocessing:
-        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+        processes = cfg.general.ncpu
+        if len(different_beams) < processes:
+            processes = len(different_beams)
+        with get_context("spawn").Pool(processes=processes) as pool:
             All_Beam_Templates = pool.starmap(beam_templates,different_beams)
     else:
         All_Beam_Templates = []
@@ -1204,7 +1210,10 @@ def ROC(cfg,path_to_resources):
         for value in galaxy['Requested_SNR']:
             all_noise.append((value,cfg.general.main_directory,galaxy))
     if cfg.general.multiprocessing:
-        with get_context("spawn").Pool(processes=cfg.general.ncpu) as pool:
+        processes = cfg.general.ncpu
+        if len(all_noise) < processes:
+            processes = len(all_noise)
+        with get_context("spawn").Pool(processes=processes) as pool:
             results = pool.starmap(create_final_cube, all_noise)
     else:
         results = []

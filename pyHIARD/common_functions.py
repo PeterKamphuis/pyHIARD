@@ -7,7 +7,7 @@ from collections import OrderedDict  # used in Proper_Dictionary
 from pyHIARD import Templates as templates
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from pyHIARD.Resources import Cubes as cubes
-from scipy.ndimage import gaussian_filter, rotate, zoom
+from scipy.ndimage import gaussian_filter, rotate, zoom,map_coordinates
 
 import copy  # Used in columndensities
 import numpy as np  # Used in convertskyangle and columndensity and
@@ -1371,7 +1371,7 @@ def read_template_file(filename, package_file = True):
         Template_in[tmp.split('=', 1)[0].strip().upper()]=tmp.rstrip()
     return Template_in
 
-def rotateCube(Cube, angle, pivot,order=0):
+def rotateCube(Cube, angle, pivot,order=1):
     padX= [int(Cube.shape[2] - pivot[0]), int(pivot[0])]
     padY= [int(Cube.shape[1] - pivot[1]), int(pivot[1])]
     imgP= np.pad(Cube, [[0, 0], padY, padX], 'constant')
@@ -1405,9 +1405,48 @@ rotateCube.__doc__=f'''
 
  NOTE:
 '''
+def regrid_array(oldarray, Out_Shape):
+    oldshape = np.array(oldarray.shape)
+    newshape = np.array(Out_Shape, dtype=float)
+    ratios = oldshape/newshape
+        # calculate new dims
+    nslices = [ slice(0,j) for j in list(newshape) ]
+    #make a list with new coord
+    new_coordinates = np.mgrid[nslices]
+    #scale the new coordinates
+    for i in range(len(ratios)):
+        new_coordinates[i] *= ratios[i]
+    #create our regridded array
+    newarray = map_coordinates(oldarray, new_coordinates,order=1)
+    if any([x != y for x,y in zip(newarray.shape,newshape)]):
+        print("Something went wrong when regridding.")
+    return newarray
+regrid_array.__doc__ =f'''
+ NAME:
+regridder
+ PURPOSE:
+Regrid an array into a new shape through the ndimage module
+ CATEGORY:
+    fits_functions
 
+ INPUTS:
+    oldarray = the larger array
+    newshape = the new shape that is requested
+
+ OPTIONAL INPUTS:
+
+ OUTPUTS:
+    newarray = regridded array
+
+ OPTIONAL OUTPUTS:
+
+ PROCEDURES CALLED:
+    scipy.ndimage.map_coordinates, np.array, np.mgrid
+
+ NOTE:
+'''
 # function to properly regrid the cube after smoothing
-def regrid_array(Array_In, Out_Shape):
+def old_regrid_array(Array_In, Out_Shape):
     #print("Starting Regrid")
     Array_In = np.asarray(Array_In, dtype =np.double)
     In_Shape= Array_In.shape
@@ -1443,7 +1482,7 @@ def regrid_array(Array_In, Out_Shape):
     if regridded.shape != Out_Shape:
         print("Something went wrong when regridding.")
     return regridded
-regrid_array.__doc__= f'''
+old_regrid_array.__doc__= f'''
 NAME:
     Regrid_Array
 
