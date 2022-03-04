@@ -1,6 +1,6 @@
 
 
-from pyHIARD.common_functions import download_cube,create_masks
+from pyHIARD.common_functions import download_cube,create_masks,select_emission
 from astropy.io import fits
 import os
 import copy
