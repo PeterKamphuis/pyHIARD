@@ -8,7 +8,7 @@ import os
 galaxy_parameters = {'Galaxy': 'ESO_223_G009', 'DHIkpc': 21.72 ,'Distance': 6.49, 'Original_Model': 'RC', 'RMS': 0.001781 , 'MHI': 1.02e+09   }
 
 
-def get_data():
+def get_data(work_dir,sofia_call='sofia2'):
     '''Download the data for this galaxy and prepare the cube for usage'''
     succes= False
     outdir = os.path.dirname(os.path.abspath(__file__))

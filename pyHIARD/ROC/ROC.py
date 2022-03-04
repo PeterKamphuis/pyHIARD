@@ -230,7 +230,7 @@ def beam_templates(beam_req, Galaxy_Template, max_degradation_factor,main_direct
         template_noise = Galaxy_Template['Original_Noise']
     #fits.writeto('After_Regrid.fits', template_cube,
     #             template_hdr, overwrite=True)
-    template_mask = cf.get_mask(template_cube)
+    template_mask = cf.get_mask(template_cube,factor = initial_factor)
     #fits.writeto('After_Regrid_Mask.fits', template_mask,
     #             template_hdr, overwrite=True)
 
@@ -447,7 +447,8 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template):
     # The noise in the final cube should be
     final_req_noise = Galaxy_Template['Final_Mean_Flux']/required_noise
 
-
+    fits.writeto(f"{galaxy_dir}Template_Cube.fits",Galaxy_Template['Shifted_Template_Cube'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
+    fits.writeto(f"{galaxy_dir}Template_Mask.fits",Galaxy_Template['Shifted_Mask'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
 
 
 
@@ -697,7 +698,7 @@ def extend_cube(cube_in, hdr_in, new_beam=0., Mask=[-1., -1.], rotation_pa=0.):
     Mask_Use = copy.deepcopy(Mask)
 
     #caculate the buffers
-    pixel_buffer = [int(2.*new_beam/abs(hdr['CDELT2']))]
+    pixel_buffer = [int(3.*new_beam/abs(hdr['CDELT2']))]
     pixel_buffer.append(int(abs(np.sin(np.radians(rotation_pa))) *\
                     ((hdr['NAXIS1']+pixel_buffer[0])/2.)+3.))
 
@@ -766,11 +767,9 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     Template_Cube = Template_All[0].data
     Template_All.close()
 
-    #We add a set of pixels (Corresponding to 2*beams ) to the side an ensure that the Template is square
-    #calculate the required buffer
-    pixel_buffer = 2.*Template_Header["BMAJ"]/np.mean([abs(Template_Header['CDELT1']),abs(Template_Header['CDELT2'])])
+    #We ensure that the Template is square
     #and the new size of the spatial axes
-    new_size = int(np.max(Template_Cube.shape[1:2])+pixel_buffer)
+    new_size = int(np.max(Template_Cube.shape[1:2]))
     # create a new area with only zeros
     tmp = np.zeros([Template_Cube.shape[0],new_size,new_size])
     # calculate the shift on each axis
@@ -886,6 +885,7 @@ def get_main_template(name,Template_Header,galaxy_module):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 input_wcs = WCS(Template_Header).celestial
+
             xpos,ypos = zip(*[input_wcs.wcs_pix2world(x,y,1) for x,y in zip(xpos,ypos)])
             xpos2=xpos
             ypos2=ypos

@@ -467,7 +467,8 @@ def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
                abs(hdr["CDELT2"] * 3600.)
     #We replace zeros with NAN
     data[data == 0.] = float('NaN')
-    Tmp_Cube = gaussian_filter(data, sigma=(0, sig_min, sig_maj), order=0)
+    Tmp_Cube=data
+    #Tmp_Cube = gaussian_filter(data, sigma=(0, sig_min, sig_maj), order=0)
     # Replace 0. with Nan
 
     #write this to the fits file
@@ -476,7 +477,7 @@ def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
     SoFiA_Template = read_template_file('Sofia_Template.par')
     SoFiA_Template['input.data'.upper(
     )] = f'input.data = {working_dir}/tmp_{name}.fits'
-    SoFiA_Template['scfind.threshold'.upper()] = 'scfind.threshold	= 5'
+    SoFiA_Template['scfind.threshold'.upper()] = 'scfind.threshold	= 3'
     SoFiA_Template['linker.minSizeZ'.upper(
     )] = f'linker.minSizeZ = {int(Tmp_Cube.shape[0]/2.)}'
     SoFiA_Template['output.filename'.upper()] = f'output.filename = tmp_{name}'
@@ -486,6 +487,7 @@ def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
     #wait half a second to make sure got written
     #time.sleep(0.5)
     Mask_Outer = fits.open(f'{working_dir}/tmp_{name}_mask.fits')
+    Mask_Outer[0].data[Tmp_Cube < 0.] = 0.
     #Mask_Outer[0].header['CUNIT3'] = 'KM/S'
     try:
         del Mask_Outer[0].header['HISTORY']
@@ -495,6 +497,7 @@ def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
     os.system(f"rm -f {working_dir}/tmp_{name}_mask.fits")
     # Create the inner mask
     SoFiA_Template['dilation.enable'.upper()] = 'dilation.enable	=	false'
+    SoFiA_Template['scfind.threshold'.upper()] = 'scfind.threshold	= 5'
     with open(f'{working_dir}/tmp_{name}_sof.par', 'w') as file:
         file.writelines([SoFiA_Template[key] + "\n" for key in SoFiA_Template])
     run_sofia(working_dir, f'tmp_{name}_sof.par', sofia_call=sofia_call)
@@ -589,46 +592,8 @@ def cut_input_cube(file_in, sizes, name='EMPTY', debug=False):
         exit()
     elif hdr['BITPIX'] > -32:
         hdr['BITPIX'] = 32
+    # Do not regid the original cubes if we do this we do this then we mess up the barollo and rc files
 
-    if hdr['BMIN']/abs(hdr['CDELT1']) > 5.5:
-        #We should regrid the cube to have 5 pixels per minor axis
-        new_pixel_size = (hdr['BMIN']/5.5)/abs(hdr['CDELT1'])
-        original_shape = np.array(new_data.shape[1:2], dtype=float)
-        new_data = regrid_array(new_data, Out_Shape=(
-                int(hdr['NAXIS3']),
-                int(hdr['NAXIS2'] / new_pixel_size),
-                int(hdr['NAXIS1'] / new_pixel_size)))
-        achieved = np.mean(
-            original_shape / np.array(new_data.shape[1:2], dtype=float))
-        hdr["CDELT1"] = hdr['CDELT1'] * achieved
-        hdr["CDELT2"] = hdr['CDELT2'] * achieved
-        hdr["CRPIX1"] = (hdr['CRPIX1']) / achieved
-        hdr["CRPIX2"] = (hdr['CRPIX2']) / achieved
-        # if we do this we also need to update the noise estimate
-        '''
-        if name != 'EMPTY':
-            path_to_resources = os.path.dirname(
-                os.path.abspath(cubes.__file__))
-            with open(f'{path_to_resources}/{name}/{name}.py') as pyth_file:
-                change=pyth_file.readlines()
-            for i, lines in enumerate(change):
-                line=lines.split('=')
-                if line[0].strip().lower() == 'galaxy_parameters':
-                    #remove the end bracket
-                    removed=False
-                    while not removed:
-                        last=line[1][-1]
-                        print(line[1],last)
-                        line [1]= line[1][:-1]
-                        print(line[1],last)
-                        if last == '}':
-                            removed=True
-                    newline=f"{line[0]} = {line[1]}, 'Scale_Factor': {achieved} }}"
-                    change[i]=newline
-                    break
-            with open(f'{path_to_resources}/{name}/{name}.py','w') as pyth_file:
-                pyth_file.writelines(change)
-        '''
 
 
     cube[0].header=hdr
@@ -903,14 +868,21 @@ get_created_models.__doc__=f'''
  NOTE:
 '''
 
-def get_mask(Cube_In):
+def get_mask(Cube_In, factor = 5.2):
     Mask = copy.deepcopy(Cube_In)
     Top_Cube = Cube_In[Cube_In > 0.9*np.max(Cube_In)]
     Sorted_Cube = Top_Cube[np.argsort(Top_Cube)]
     Max_Flux = np.mean(Sorted_Cube[-20:])
     Mask[Cube_In > 0.005*Max_Flux] = 1.
     Mask[Cube_In < 0.005*Max_Flux] = 0.
-    Mask =  gaussian_filter(Mask,sigma=(0,0.5,0.5),order=0)
+    # If we have a lot of pixels and stuff we need smooth more
+    #So we take the inverse of the initial factor with a standard of 0.75 minimum of 0.5 and a maximum of 1.25
+    pix_smooth = 3.9/factor
+    if pix_smooth < 0.5:
+        pix_smooth=0.5
+    if pix_smooth > 3:
+        pix_smooth=3.
+    Mask =  gaussian_filter(Mask,sigma=(0.,pix_smooth,pix_smooth),order=0)
     Mask[Mask > 0.95] = 1.
     Mask[Mask < 0.05] = 0.
     return Mask

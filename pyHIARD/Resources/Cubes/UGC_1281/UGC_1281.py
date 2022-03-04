@@ -10,7 +10,7 @@ galaxy_parameters = {'Galaxy': 'UGC_1281', 'DHIkpc': 15.46  ,'Distance': 7.9, 'O
 
 class PackageError(Exception):
     pass
-def get_data():
+def get_data(work_dir,sofia_call='sofia2'):
     '''Download the data for this galaxy and prepare the cube for usage'''
     succes= False
     outdir = os.path.dirname(os.path.abspath(__file__))

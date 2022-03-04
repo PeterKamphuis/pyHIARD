@@ -98,7 +98,7 @@ reliability.enable         =  false
 dilation.enable            =  true
 dilation.iterationsXY      =  10
 dilation.iterationsZ       =  1
-dilation.threshold         =  0.1
+dilation.threshold         =  0.02
 
 
 # Parameterisation
