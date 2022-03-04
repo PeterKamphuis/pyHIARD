@@ -25,8 +25,8 @@ def get_data(work_dir,sofia_call='sofia2'):
         fits.writeto(f"{outdir}/{name}.fits",Clean_Cube,hdr,overwrite = False)
         Cube[0].data=Clean_Cube
         Cube[0].header=hdr
-        #if url != '':
-        #    os.system(f"rm -f {outdir}/{name}_Original.fits")
+        if url != '':
+            os.system(f"rm -f {outdir}/{name}_Original.fits")
         del Clean_Cube
         del hdr
     #place_disclaimer(dir_to_place)
