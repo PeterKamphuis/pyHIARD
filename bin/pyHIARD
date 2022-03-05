@@ -7,5 +7,5 @@ import sys
 #The main is required here when multiprocessing
 if __name__ == '__main__':
     from viztracer import VizTracer
-    with VizTracer(output_file="Test_run.json",min_duration=500,include_files=['/home/peter/GitHub/pyHIARD/']) as tracer:
+    with VizTracer(output_file="Test_ROC_run.json",min_duration=500,include_files=['/home/peter/GitHub/pyHIARD/']) as tracer:
         main.main(sys.argv[1:])

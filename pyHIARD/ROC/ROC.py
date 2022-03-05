@@ -188,7 +188,8 @@ NOTE:
 '''
 
 
-def beam_templates(beam_req, Galaxy_Template, max_degradation_factor,main_directory):
+def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_directory):
+    Galaxy_Template = copy.deepcopy(Galaxy_Template_In)
     # first we need to calculate the shift to  apply
     print(
         f"We are working on a template with {beam_req} beams across the major axis.")
@@ -431,7 +432,8 @@ PROCEDURES CALLED:
 
 NOTE:
 '''
-def create_final_cube(required_noise,main_directory,Galaxy_Template):
+def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
+    Galaxy_Template = copy.deepcopy(Galaxy_Template_In)
     # Make a new directory
     native_noise = False
     if required_noise == -1.:
@@ -772,7 +774,7 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
 
     #We ensure that the Template is square
     #and the new size of the spatial axes
-    new_size = int(np.max(Template_Cube.shape[1:2]))
+    new_size = int(np.max(Template_Cube.shape[1:]))
     # create a new area with only zeros
     tmp = np.zeros([Template_Cube.shape[0],new_size,new_size])
     # calculate the shift on each axis
