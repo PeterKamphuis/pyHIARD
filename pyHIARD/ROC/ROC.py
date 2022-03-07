@@ -12,6 +12,7 @@ import copy
 import importlib
 import numpy as np
 import os
+import psutil
 import pyHIARD.common_functions as cf
 import scipy.ndimage
 import sys
@@ -381,6 +382,61 @@ INPUTS:
     cfg=  input configuration
     path_to_resources = path to the resources cube directory
     existing_galaxies = list of existing templates
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    template is added inside the package
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
+
+def calculate_processes(templates,beams,SNR):
+    available_memory = psutil.virtual_memory().total/2**30
+    max_no_process = int(np.floor(available_memory/3.0)) # A single process run peaked at 7 Gb so this should suffice
+    no_SNR_process = len(SNR)
+    no_beam_process = 1
+    no_template_process = 1
+    if no_SNR_process > (max_no_process-2):
+        no_SNR_process = max_no_process-2
+    if (max_no_process-1) > 2.*no_SNR_process:
+        if len(beams)*no_SNR_process > max_no_process:
+            left_process =  max_no_process-no_SNR_process-1
+            while left_process > no_SNR_process:
+                no_beam_process +=1
+                left_process -= no_SNR_process
+        else:
+            no_beam_process = len(beams)
+    if max_no_process > 2.*no_SNR_process*no_beam_process:
+        if len(templates)*no_beam_process*no_SNR_process > max_no_process:
+            left_process =  max_no_process-(no_SNR_process*no_beam_process)
+            while left_process > no_SNR_process*no_beam_process:
+                no_template_process +=1
+                left_process -= no_SNR_process*no_beam_process
+        else:
+            no_template_process = len(templates)
+    return no_template_process,no_beam_process,no_SNR_process
+
+
+calculate_processes.__doc__ = f'''
+NAME:
+    calculate_processes(templates,beams,SNR)
+
+PURPOSE:
+    calculate the number of processes in each pool and limit the total to not go beyond the maximum memory
+
+CATEGORY:
+   roc
+
+INPUTS:
+    templates = templates to process
+    beams = beams for each template
+    SNR = all SNRs to process
 
 OPTIONAL INPUTS:
 
@@ -1084,9 +1140,9 @@ def ROC(cfg,path_to_resources):
         cfg.roc.beams = np.roll(np.array(cfg.roc.beams),-1).tolist()
     else:
         cfg.roc.beams = list(cfg.roc.beams)
-    #if we have a lot of models to create we should split up in chunks?
+    #if we have a lot of models to create we should split up in chunks
 
-    Galaxies = {}
+    All_Galaxies = {}
     for name in cfg.roc.base_galaxies:
         #Check whether we need to construct this
         beams_to_produce = []
@@ -1112,118 +1168,171 @@ def ROC(cfg,path_to_resources):
             else:
                 combined.append([nobeams,noise_to_produce])
         if len(beams_to_produce) > 0:
-            Galaxies[name] = {'name':name, 'iterations': combined}
+            All_Galaxies[name] = {'name':name, 'iterations': combined}
 
-
-
-    needed_templates = [[x,path_to_resources,cfg.general.main_directory,cfg.general.sofia2] for x in Galaxies]
-    if len(needed_templates) == 0:
+    if len(All_Galaxies) == 0:
         print(f"Seems like the ROC has nothing to do.")
         return
-    #check for the templates
     if cfg.general.multiprocessing:
+
+        #first we check that all templates are processed
+        needed_templates = [[x,path_to_resources,cfg.general.main_directory,cfg.general.sofia2] for x in All_Galaxies]
         processes = cfg.general.ncpu
         if len(needed_templates) < processes:
             processes = len(needed_templates)
         with get_context("spawn").Pool(processes=processes) as pool:
             results = pool.starmap(check_templates, needed_templates)
         del results
-        #Then we setup the templates for all beam iterations we wants
-        with get_context("spawn").Pool(processes=processes) as pool:
-            All_Galaxy_Templates = pool.starmap(galaxy_template, needed_templates)
-    else:
-        All_Galaxy_Templates = []
-        for to_check in needed_templates:
-            result = check_templates(*to_check)
-            template = galaxy_template(*to_check)
-            All_Galaxy_Templates.append(template)
-    #clean arrays
-    del needed_templates
-    #All_Galaxy_Templates returns a list of dictionaries that should be complete for constructing all the different beam templates
-    #We need to make a list with all the different beams
+        #calculate the amount of allowed processes
+        no_template_processes,no_beam_processes,no_snr_processes = \
+            calculate_processes(All_Galaxies,cfg.roc.beams,cfg.roc.snr)
 
-    different_beams= []
-    for galaxy in All_Galaxy_Templates:
-        key = galaxy['Name']
-        beams_and_noise = [x for x in Galaxies[key]['iterations']]
-        for x in beams_and_noise:
-            if x[0] > galaxy['Max_Beams_Across']/cfg.roc.minimum_degradation_factor:
-                print(f"You requested {x[0]} beams across. However this galaxy originally only has {galaxy['Max_Beams_Across']} beams across.")
-                print(f"There needs to be a degradation in size for this code to work. Please just use the Original Cube for testing. Or use less than {galaxy['Max_Beams_Across']/cfg.roc.minimum_degradation_factor:.1f} beams across.")
-                print("Continuing to the next beam sizes. If you only want different signal to noise with minimal degradation please set the beams to -1")
-                continue
-            elif x[0] == -1.:
-                #We could not check before whether these exist
-                nobeams = galaxy['Max_Beams_Across']/cfg.roc.minimum_degradation_factor
-                noise_to_produce=[]
-                for reqnoise in cfg.roc.snr:
-                    #if reqnoise == -1:
-                    #    reqnoise= galaxy['Original_Mean_Flux']/galaxy['Original_Noise']
-                    dirstring = f"{key}_{nobeams:.1f}Beams_{reqnoise:.1f}SNR"
-                    noise_to_produce.append(reqnoise)
-                    galaxy_dir =f"{cfg.general.main_directory}{dirstring}/"
-                    galaxy_dir_exists = os.path.isdir(galaxy_dir)
-                    if galaxy_dir_exists:
-                # Do we have a cube
-                        galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
-
-                        if galaxy_cube_exist:
-                            noise_to_produce.remove(reqnoise)
-                            print(f"The galaxy {dirstring} galaxy appears fully produced")
-                if len(noise_to_produce) == 0:
-                    print(f"All galaxies with {name} and {nobeams} across the major axis are  thought to be produced already")
-                else:
-                    galaxy['Requested_SNR'] = noise_to_produce
-                    different_beams.append((nobeams,galaxy,cfg.roc.max_degradation_factor,cfg.general.main_directory))
-            else:
-                galaxy['Requested_SNR'] = x[1]
-                #if -1. in galaxy['Requested_SNR']:
-                #    reqnoise = galaxy['Original_Mean_Flux']/galaxy['Original_Noise']
-                #    galaxy['Requested_SNR'] = [reqnoise if x == -1. else x for x in galaxy['Requested_SNR']]
-                different_beams.append((x[0],galaxy,cfg.roc.max_degradation_factor,cfg.general.main_directory))
-    del All_Galaxy_Templates
-    if len(different_beams) == 0:
-        print(f"Seems like the ROC has nothing to do.")
-        return
-    #Now Contruct all the beam templates
-
-    if cfg.general.multiprocessing:
-        processes = cfg.general.ncpu
-        if len(different_beams) < processes:
-            processes = len(different_beams)
-        with get_context("spawn").Pool(processes=processes) as pool:
-            All_Beam_Templates = pool.starmap(beam_templates,different_beams)
-    else:
-        All_Beam_Templates = []
-        for single_template in different_beams:
-            #If we are doing one by one the the galaxy templates are not reinitialized and dus the np.arrays and dictionaries are shared.
-            #So make a single copy before input
-            input = copy.deepcopy(single_template)
-            one_beam_template = beam_templates(*input)
-            All_Beam_Templates.append(one_beam_template)
-
-    del different_beams
-
-
-
-    # now setup a an array with the required noise input
-    all_noise = []
-    for galaxy in All_Beam_Templates:
-        for value in galaxy['Requested_SNR']:
-            all_noise.append((value,cfg.general.main_directory,galaxy))
-    if cfg.general.multiprocessing:
-        processes = cfg.general.ncpu
-        if len(all_noise) < processes:
-            processes = len(all_noise)
-        with get_context("spawn").Pool(processes=processes) as pool:
-            results = pool.starmap(create_final_cube, all_noise)
-    else:
+        #list with templates to still process
+        templates = [x for x in All_Galaxies]
         results = []
-        for single_template in all_noise:
-            input = copy.deepcopy(single_template)
-            out = create_final_cube(*input)
-            results.append(out)
-    del all_noise
+        while len(templates) > 0:
+
+            #break templates up to process
+            proc_templates = [[x,path_to_resources,cfg.general.main_directory,cfg.general.sofia2] for x in templates[:no_template_processes]]
+
+            processes = cfg.general.ncpu
+            if len(proc_templates) < processes:
+                processes = len(proc_templates)
+            #Then we setup the templates for all beam iterations we wants
+            with get_context("spawn").Pool(processes=processes) as pool:
+                All_Galaxy_Templates = pool.starmap(galaxy_template, proc_templates)
+
+            del proc_templates
+        #All_Galaxy_Templates returns a list of dictionaries that should be complete for constructing all the different beam templates
+        #We need to make a list with all the different beams
+
+            different_beams= []
+            for galaxy in All_Galaxy_Templates:
+                key = galaxy['Name']
+                beams_and_noise = [x for x in All_Galaxies[key]['iterations']]
+                for x in beams_and_noise:
+                    if x[0] > galaxy['Max_Beams_Across']/cfg.roc.minimum_degradation_factor:
+                        print(f"You requested {x[0]} beams across. However this galaxy originally only has {galaxy['Max_Beams_Across']} beams across.")
+                        print(f"There needs to be a degradation in size for this code to work. Please just use the Original Cube for testing. Or use less than {galaxy['Max_Beams_Across']/cfg.roc.minimum_degradation_factor:.1f} beams across.")
+                        print("Continuing to the next beam sizes. If you only want different signal to noise with minimal degradation please set the beams to -1")
+                        continue
+                    elif x[0] == -1.:
+                        #We could not check before whether these exist
+                        nobeams = galaxy['Max_Beams_Across']/cfg.roc.minimum_degradation_factor
+                        noise_to_produce=[]
+                        for reqnoise in cfg.roc.snr:
+                            #if reqnoise == -1:
+                            #    reqnoise= galaxy['Original_Mean_Flux']/galaxy['Original_Noise']
+                            dirstring = f"{key}_{nobeams:.1f}Beams_{reqnoise:.1f}SNR"
+                            noise_to_produce.append(reqnoise)
+                            galaxy_dir =f"{cfg.general.main_directory}{dirstring}/"
+                            galaxy_dir_exists = os.path.isdir(galaxy_dir)
+                            if galaxy_dir_exists:
+                        # Do we have a cube
+                                galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+
+                                if galaxy_cube_exist:
+                                    noise_to_produce.remove(reqnoise)
+                                    print(f"The galaxy {dirstring} galaxy appears fully produced")
+                        if len(noise_to_produce) == 0:
+                            print(f"All galaxies with {name} and {nobeams} across the major axis are  thought to be produced already")
+                        else:
+                            galaxy['Requested_SNR'] = noise_to_produce
+                            different_beams.append((nobeams,galaxy,cfg.roc.max_degradation_factor,cfg.general.main_directory))
+                    else:
+                        galaxy['Requested_SNR'] = x[1]
+                        #if -1. in galaxy['Requested_SNR']:
+                        #    reqnoise = galaxy['Original_Mean_Flux']/galaxy['Original_Noise']
+                        #    galaxy['Requested_SNR'] = [reqnoise if x == -1. else x for x in galaxy['Requested_SNR']]
+                        different_beams.append((x[0],galaxy,cfg.roc.max_degradation_factor,cfg.general.main_directory))
+            # if we have more than one template we know that all beams and SNR fit in the pool
+            if len(different_beams) == 0:
+                print(f"Seems like the ROC has nothing to do on this batch.")
+                continue
+            del All_Galaxy_Templates
+
+            while len(different_beams) > 0:
+                current_different_beams = different_beams[:int(no_beam_processes*no_template_processes)]
+                #Now Contruct all the beam templates of the current batch
+                processes = cfg.general.ncpu
+                if len(current_different_beams) < processes:
+                    processes = len(current_different_beams)
+                with get_context("spawn").Pool(processes=processes) as pool:
+                    All_Beam_Templates = pool.starmap(beam_templates,current_different_beams)
+                del current_different_beams
+                # now setup a an array with the required noise input
+                all_noise = []
+                for galaxy in All_Beam_Templates:
+                    for value in galaxy['Requested_SNR']:
+                        all_noise.append((value,cfg.general.main_directory,galaxy))
+
+                while len(all_noise) > 0:
+                    current_noise= all_noise[:int(no_snr_processes*no_beam_processes*no_template_processes)]
+                    processes = cfg.general.ncpu
+                    if len(current_noise) < processes:
+                        processes = len(current_noise)
+                    with get_context("spawn").Pool(processes=processes) as pool:
+                        tmp_result = pool.starmap(create_final_cube, all_noise)
+                    all_noise = all_noise[int(no_snr_processes*no_beam_processes*no_template_processes):]
+                    results = results+tmp_result
+                del all_noise
+                different_beams = different_beams[int(no_beam_processes*no_template_processes):]
+            templates = templates[no_template_processes:]
+    else:
+        #No MP processing
+        for galaxy in All_Galaxies:
+            result = check_templates(galaxy,path_to_resources,cfg.general.main_directory,cfg.general.sofia2)
+        results = []
+        for key in All_Galaxies:
+            galaxy_template_out = galaxy_template(key,path_to_resources,cfg.general.main_directory,cfg.general.sofia2)
+            for beam_n_noise in All_Galaxies[key]['iterations']:
+                print(beam_n_noise)
+                print(f"Temp")
+                if beam_n_noise[0] > galaxy_template_out['Max_Beams_Across']/cfg.roc.minimum_degradation_factor:
+                    print(f"You requested {beam_n_noise[0]} beams across. However this galaxy originally only has {galaxy_template_out['Max_Beams_Across']} beams across.")
+                    print(f"There needs to be a degradation in size for this code to work. Please just use the Original Cube for testing. Or use less than {galaxy_template_out['Max_Beams_Across']/cfg.roc.minimum_degradation_factor:.1f} beams across.")
+                    print("Continuing to the next beam sizes. If you only want different signal to noise with minimal degradation please set the beams to -1")
+                    continue
+                elif beam_n_noise[0] == -1.:
+                    #We could not check before whether these exist
+                    nobeams = galaxy_template_out['Max_Beams_Across']/cfg.roc.minimum_degradation_factor
+                    noise_to_produce=[]
+                    for reqnoise in cfg.roc.snr:
+                        #if reqnoise == -1:
+                        #    reqnoise= galaxy['Original_Mean_Flux']/galaxy['Original_Noise']
+                        dirstring = f"{key}_{nobeams:.1f}Beams_{reqnoise:.1f}SNR"
+                        noise_to_produce.append(reqnoise)
+                        galaxy_dir =f"{cfg.general.main_directory}{dirstring}/"
+                        galaxy_dir_exists = os.path.isdir(galaxy_dir)
+                        if galaxy_dir_exists:
+                            # Do we have a cube
+                            galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+
+                            if galaxy_cube_exist:
+                                noise_to_produce.remove(reqnoise)
+                                print(f"The galaxy {dirstring} galaxy appears fully produced")
+                    if len(noise_to_produce) == 0:
+                        print(f"All galaxies with {name} and {nobeams} across the major axis are  thought to be produced already")
+                    else:
+                        print("It's a misterynp")
+                        print(noise_to_produce)
+                        galaxy_template_out['Requested_SNR'] = noise_to_produce
+                        beam_input = [nobeams,galaxy_template_out,cfg.roc.max_degradation_factor,cfg.general.main_directory]
+                else:
+                    print("It's a mistery")
+
+                    galaxy_template_out['Requested_SNR'] =beam_n_noise[1]
+                    beam_input = [beam_n_noise[0],galaxy_template_out,cfg.roc.max_degradation_factor,cfg.general.main_directory]
+
+                beam_template = beam_templates(*beam_input)
+                print("After the beam!!!!!!!!!!!!!!!!1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+                print(beam_template['Requested_SNR'])
+                for req_snr in beam_template['Requested_SNR']:
+                    print(req_snr)
+                    result = create_final_cube(float(req_snr),cfg.general.main_directory,beam_template)
+                    results.append(result)
+
 
     with open(Catalogue, 'a') as cat:
         for line in results:
