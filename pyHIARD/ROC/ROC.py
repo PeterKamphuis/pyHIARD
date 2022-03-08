@@ -192,8 +192,9 @@ NOTE:
 def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_directory):
     Galaxy_Template = copy.deepcopy(Galaxy_Template_In)
     # first we need to calculate the shift to  apply
-    print(
-        f"We are working on a template with {beam_req} beams across the major axis.")
+    print(f"We are processing the template {Galaxy_Template['Name']} with {beam_req} beams across the major axis.")
+    print(f"We are creating the beam template.")
+
     #First we calculate the degradation we want
 
     new_beam = [(Galaxy_Template['Original_DHI_arcsec'])
@@ -204,8 +205,8 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
     #fits.writeto('Before_Regrid.fits', Galaxy_Template['Galaxy_Template_Cube'],
     #             Galaxy_Template['Galaxy_Template_Header'], overwrite=True)
 
-    print(
-        f"Currently the template is {Galaxy_Template['Galaxy_Template_Cube'].size*Galaxy_Template['Galaxy_Template_Cube'].itemsize/(1024**2)} Mb")
+    #print(
+    #    f"Currently the template is {Galaxy_Template['Galaxy_Template_Cube'].size*Galaxy_Template['Galaxy_Template_Cube'].itemsize/(1024**2)} Mb")
     if initial_factor > max_degradation_factor:
         smooth_factor=initial_factor/max_degradation_factor
         extended_template_cube, extended_template_header, pixel_buffer=\
@@ -237,16 +238,16 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
     #fits.writeto('After_Regrid_Mask.fits', template_mask,
     #             template_hdr, overwrite=True)
 
-    print("And after the regrid")
-    print(f"Currently the template is {template_cube.size*template_cube.itemsize/(1024**2)} Mb")
+    #print("And after the regrid")
+    #print(f"Currently the template is {template_cube.size*template_cube.itemsize/(1024**2)} Mb")
     #print('nois, Total flux, Mean flux')
     #print(template_noise)
-    print(f"The new  beam size {template_hdr['BMAJ']*3600.} x {template_hdr['BMIN']*3600.}")
+    #print(f"The new  beam size {template_hdr['BMAJ']*3600.} x {template_hdr['BMIN']*3600.}")
 
     #newme = cf.get_mean_flux(template_cube,Mask=template_mask)
     new_mean = cf.get_mean_flux(template_cube,Mask=template_mask)
-    print(f"The new mean from the cube is {new_mean}, and the noise {template_noise} so the maximum SNR = {new_mean/template_noise}")
-    print(f'The regrid factor = {regrid_factor}, the degradation factor = {smooth_factor}')
+    #print(f"The new mean from the cube is {new_mean}, and the noise {template_noise} so the maximum SNR = {new_mean/template_noise}")
+    #print(f'The regrid factor = {regrid_factor}, the degradation factor = {smooth_factor}')
 
     # And the new bmin has the same factor
     new_beam.append(template_hdr['BMIN'] * regrid_factor)
@@ -264,7 +265,7 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
     new_systemic=H_0*new_distance+peculiar_velocity
     # And the new redshift (This is actually 1+z)
     new_z=np.sqrt((1. + new_systemic / c_kms) / (1. - new_systemic / c_kms))
-    print(f"Is the z reasonable {new_z}")
+    #print(f"Is the z reasonable {new_z}")
     #And the shifted flux value adjusting the flux and the dimming factor
     #new_total_flux = Galaxy_Template['Original_Total_Flux_In'] / \
     #    (initial_factor**2)
@@ -320,7 +321,7 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
     # Frist we ensure some pixel buffer after smoothing
     extended_new_template_cube, extended_new_template_hdr,pixel_buffer ,extended_mask= extend_cube(
             new_template_cube, template_hdr, new_beam=new_beam[0],Mask=template_mask,rotation_pa=template_hdr['BPA'])
-    print(f"We extended these image with {pixel_buffer} current size {extended_new_template_cube.shape} before {new_template_cube.shape}")
+    #print(f"We extended these image with {pixel_buffer} current size {extended_new_template_cube.shape} before {new_template_cube.shape}")
     template_at_final_res, hdr_at_final_res,noise_at_final_res = smooth_and_regrid(extended_new_template_cube,
         extended_new_template_hdr, factor=regrid_factor, regrid = False,track_noise=new_noise)
 
@@ -346,7 +347,7 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
                 Galaxy_Template['Requested_SNR'].remove(-1.)
                 print(f"The galaxy {dirstring} galaxy appears fully produced")
     if len(Galaxy_Template['Requested_SNR']) == 0.:
-        print(f"All galaxies for this size are produced already.")
+        print(f"All galaxies for template {Galaxy_Template['Name']} with {beam_req} beams across the major axis are already produced.")
         return "EMPTY"
 
 
@@ -398,7 +399,7 @@ NOTE:
 
 def calculate_processes(templates,beams,SNR):
     available_memory = psutil.virtual_memory().total/2**30
-    max_no_process = int(np.floor(available_memory/3.0)) # A single process run peaked at 7 Gb so this should suffice
+    max_no_process = int(np.floor(available_memory/4.0)) # A single process run peaked at 7 Gb so this should suffice
     no_SNR_process = len(SNR)
     no_beam_process = 1
     no_template_process = 1
@@ -497,7 +498,9 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
         required_noise = Galaxy_Template['Final_Mean_Flux']/Galaxy_Template['Final_Noise']
 
     dirstring = f"{Galaxy_Template['Name']}_{Galaxy_Template['Beams']:.1f}Beams_{required_noise:.1f}SNR"
-    print(f"Processing the SNR {required_noise} with {Galaxy_Template['Beams']} beams across the major axis.")
+    print(f'''{Processing the template:>25s} = {Galaxy_Template['Name']}
+{'Beams':>25s} = {Galaxy_Template['Beams']}
+{'SNR':>25s} = {required_noise}''')
     galaxy_dir =f"{main_directory}{dirstring}/"
     galaxy_dir_exists = os.path.isdir(galaxy_dir)
     if not galaxy_dir_exists:
@@ -514,8 +517,8 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
 
 
     # We first find the noise in pixels that matches this
-    print(f''' We are requesting a SNR of {required_noise} and the expected mean in the final cube is = {Galaxy_Template['Final_Mean_Flux']}
-Creating the noise cube. The Noise in the final cube should be {final_req_noise} Jy/beam.''')
+    #print(f''' We are requesting a SNR of {required_noise} and the expected mean in the final cube is = {Galaxy_Template['Final_Mean_Flux']}
+#Creating the noise cube. The Noise in the final cube should be {final_req_noise} Jy/beam.''')
     #fits.writeto(f"{galaxy_dir}Shift_temp.fits",Galaxy_Template['Shifted_Template_Cube'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
     #As we will be adding to the uncorrected cube we need to convert the noise back to its uncorrected value.
     # first we estimate what will be the noise we want for a cube with the resolution of the template
@@ -542,8 +545,8 @@ Creating the noise cube. The Noise in the final cube should be {final_req_noise}
     # If this difference is less than 10 % we will ignore it
     if abs(diff_noise) < achieved_shifted_noise/10. or native_noise:
         diff_noise = 0.
-    print(f'''We will get the noise at the shifted template resolution to  {achieved_shifted_noise} Jy/beam.
-This is a difference of {diff_noise} Jy/beam with the noise in the template at this shift.''')
+    #print(f'''We will get the noise at the shifted template resolution to  {achieved_shifted_noise} Jy/beam.
+#This is a difference of {diff_noise} Jy/beam with the noise in the template at this shift.''')
     # If the new noise is smaller than the input noise we get into trouble an we do not want to return ProgramError(f"This should not happen") as there would be a higher noise on the emission
     if diff_noise < 0:
         with open(f"{galaxy_dir}Why_This_Galaxy_Is_Not_There.txt",'w') as file:
@@ -602,7 +605,7 @@ We continue with the next SNR value.''')
     #fits.writeto(f"{galaxy_dir}Test_final.fits", final_cube, final_hdr,
     #             overwrite=True)
     pixel_shift = int(np.sum(Galaxy_Template['Pixel_Buffer']))
-    print(f"This is the pixel shift we remove {pixel_shift} current size {final_cube.shape}")
+    #print(f"This is the pixel shift we remove {pixel_shift} current size {final_cube.shape}")
     final_cube = copy.deepcopy(final_cube[:, \
             pixel_shift:final_hdr['NAXIS2']-pixel_shift,\
             pixel_shift:final_hdr['NAXIS1']-pixel_shift])
@@ -747,7 +750,7 @@ def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025):
         test_noise_smoothed = scipy.ndimage.gaussian_filter(test_noise,\
             sigma=smoothing_sigma,order=0)
         achieved_noise = np.std(test_noise_smoothed)
-        print(f"The current pixel noise estimate leads to {achieved_noise} mJy/beam (Requested = {requested_noise} mJy/beam).")
+        #print(f"The current pixel noise estimate leads to {achieved_noise} mJy/beam (Requested = {requested_noise} mJy/beam).")
 
 
 
@@ -827,6 +830,8 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     Template_Header = Template_All[0].header
     Template_Cube = Template_All[0].data
     Template_All.close()
+    print(f"We are processing the template {name}.")
+    print(f"We are creating the Original template.")
 
     #We ensure that the Template is square
     #and the new size of the spatial axes
@@ -869,7 +874,7 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     # DHI in arcconds
     DHI_arcsec=cf.convertskyangle(galaxy_module.galaxy_parameters['DHIkpc'],distance=galaxy_module.galaxy_parameters['Distance'],physical=True)
 
-    print(f"we get originally DHI {DHI_arcsec} arcsec, {galaxy_module.galaxy_parameters['DHIkpc']} kpc, {galaxy_module.galaxy_parameters['Distance']} Mpc")
+    #print(f"we get originally DHI {DHI_arcsec} arcsec, {galaxy_module.galaxy_parameters['DHIkpc']} kpc, {galaxy_module.galaxy_parameters['Distance']} Mpc")
     #The number of beams in the original observation corresponding to the D_HI diameter
 
     max_beams_across=(DHI_arcsec)/(Template_Header["BMAJ"]*3600.)
@@ -877,8 +882,8 @@ def galaxy_template(name,path_to_resources,work_directory,sofia2_call):
     Original_Total_Flux_In = np.sum(Template_Cube[Template_Cube > 0.])/pixels_per_beam* Template_Header['CDELT3']#
     # To calculate the mean of all values in the mask is too sensitive to very small variations in the mask
     Original_Mean = cf.get_mean_flux(Template_Cube)
-    print(f'''The mean as determined from the template = {Original_Mean}
-The noise is {galaxy_module.galaxy_parameters["RMS"]}'''    )
+    #print(f'''The mean as determined from the template = {Original_Mean}
+#The noise is {galaxy_module.galaxy_parameters["RMS"]}'''    )
     Original_z= np.sqrt((1+systemic/c_kms)/(1-systemic/c_kms))
 
     Template_Dictionary = {'Name':name,'Galaxy_Template_Cube':Template_Cube,'Galaxy_Template_Header':Template_Header,\
@@ -1016,7 +1021,8 @@ def get_main_template(name,Template_Header,galaxy_module):
             Template_Header.set("BMAJ", Template_Header["BMMAJ"] / 3600.,before="BMMAJ")
             Template_Header.set("BMIN", Template_Header["BMMIN"] / 3600., before="BMMIN")
         except KeyError:
-            print("No BMMAJ")
+            pass
+            #print("No BMMAJ")
         Template_Model['BMAJ'] = f'BMAJ = {Template_Header["BMAJ"]*3600.}'
         Template_Model['BMIN'] = f'BMIN = {Template_Header["BMIN"]*3600.}'
         Template_Model['BPA'] = f'BPA = {Template_Header["BPA"]}'
@@ -1286,8 +1292,6 @@ def ROC(cfg,path_to_resources):
         for key in All_Galaxies:
             galaxy_template_out = galaxy_template(key,path_to_resources,cfg.general.main_directory,cfg.general.sofia2)
             for beam_n_noise in All_Galaxies[key]['iterations']:
-                print(beam_n_noise)
-                print(f"Temp")
                 if beam_n_noise[0] > galaxy_template_out['Max_Beams_Across']/cfg.roc.minimum_degradation_factor:
                     print(f"You requested {beam_n_noise[0]} beams across. However this galaxy originally only has {galaxy_template_out['Max_Beams_Across']} beams across.")
                     print(f"There needs to be a degradation in size for this code to work. Please just use the Original Cube for testing. Or use less than {galaxy_template_out['Max_Beams_Across']/cfg.roc.minimum_degradation_factor:.1f} beams across.")
@@ -1314,22 +1318,14 @@ def ROC(cfg,path_to_resources):
                     if len(noise_to_produce) == 0:
                         print(f"All galaxies with {name} and {nobeams} across the major axis are  thought to be produced already")
                     else:
-                        print("It's a misterynp")
-                        print(noise_to_produce)
                         galaxy_template_out['Requested_SNR'] = noise_to_produce
                         beam_input = [nobeams,galaxy_template_out,cfg.roc.max_degradation_factor,cfg.general.main_directory]
                 else:
-                    print("It's a mistery")
-
                     galaxy_template_out['Requested_SNR'] =beam_n_noise[1]
                     beam_input = [beam_n_noise[0],galaxy_template_out,cfg.roc.max_degradation_factor,cfg.general.main_directory]
 
                 beam_template = beam_templates(*beam_input)
-                print("After the beam!!!!!!!!!!!!!!!!1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
-                print(beam_template['Requested_SNR'])
                 for req_snr in beam_template['Requested_SNR']:
-                    print(req_snr)
                     result = create_final_cube(float(req_snr),cfg.general.main_directory,beam_template)
                     results.append(result)
 
@@ -1339,7 +1335,7 @@ def ROC(cfg,path_to_resources):
             if line != 'EMPTY':
                 cat.write(f"{number_models}|{line}")
                 number_models += 1
-    print(f"We created {number_models} models")
+    print(f"The ROC created {number_models} models")
 
 
 

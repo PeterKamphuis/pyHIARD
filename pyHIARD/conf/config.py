@@ -61,7 +61,7 @@ class ROC:
     # These  are average signal to noise ratios
     # The output template needs to be at least this much smaller (the exact number of beam is achieved with -1)
     minimum_degradation_factor: float = 1.25
-    max_degradation_factor: float = 1.5
+    max_degradation_factor: float = 1.6
     # This is the maximum difference between the shifted template and the final template. If the shift factor is bigger we will smooth and regrid the template before the noise calculations.
     #A lower number  is for speed and low memory usage, a high number provides beter integrateion between the noise and the template. If lower than minimum_degradation_factor it will be set to the minimum_degradation_factor
     snr: List[float] = field(default_factory=lambda: [0.5, 1., 3.])

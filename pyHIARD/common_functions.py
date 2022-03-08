@@ -1445,69 +1445,6 @@ Regrid an array into a new shape through the ndimage module
 
  NOTE:
 '''
-# function to properly regrid the cube after smoothing
-def old_regrid_array(Array_In, Out_Shape):
-    #print("Starting Regrid")
-    Array_In = np.asarray(Array_In, dtype =np.double)
-    In_Shape= Array_In.shape
-    if len(In_Shape) != len(Out_Shape):
-        print(f"The in cube = {In_Shape} and the Out Cube = {Out_Shape}")
-        print("You are regridding to different dimensions not different sizes. This won't work")
-        exit()
-    #print("Obtaining Shapes")
-    multipliers= []  # multipliers for the final coarsegraining
-    for i in range(len(In_Shape)):
-        if Out_Shape[i] < In_Shape[i]:
-            multipliers.append(int(np.ceil(In_Shape[i] / Out_Shape[i])))
-        else:
-            multipliers.append(1)
-    # shape to which to blow up
-    tmp_shape= tuple([i * j for i, j in zip(Out_Shape, multipliers)])
-
-    # stupid zoom doesn't accept the final shape. Carefully crafting the
-    # multipliers to make sure that it will work.
-    zoomMultipliers= np.array(tmp_shape) / np.array(In_Shape) + 0.0000001
-    assert zoomMultipliers.min() >= 1
-    #print("Regridding")
-    # applying scipy.ndimage.zoom
-    regridded= zoom(Array_In, zoomMultipliers)
-    #print("Doing some other things")
-    for ind, mult in enumerate(multipliers):
-        if mult != 1:
-            sh= list(regridded.shape)
-            assert sh[ind] % mult == 0
-            newshape= sh[:ind] + [sh[ind] // mult, mult] + sh[ind + 1:]
-            regridded.shape= newshape
-            regridded = np.mean(regridded, axis =ind + 1)
-    if regridded.shape != Out_Shape:
-        print("Something went wrong when regridding.")
-    return regridded
-old_regrid_array.__doc__= f'''
-NAME:
-    Regrid_Array
-
-PURPOSE:
-    regrid an array into a different shape
-
-CATEGORY:
-   roc
-
-INPUTS:
-    Array_In = original array
-    Out_Shape = shape of the final array
-
-OPTIONAL INPUTS:
-
-OUTPUTS:
-    the array with the new shape
-
-OPTIONAL OUTPUTS:
-
-PROCEDURES CALLED:
-   Unspecified
-
-NOTE:
-'''
 
 def run_sofia(working_dir, parameter_file,sofia_call = 'sofia2'):
     sfrun = subprocess.Popen([sofia_call,parameter_file],cwd =working_dir, stdout = subprocess.PIPE, stderr = subprocess.PIPE)

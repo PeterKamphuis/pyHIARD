@@ -36,6 +36,55 @@ Individual Keywords
 
     configuration input file
 
+    General settings
+    --------
+    *Specified with general*
+
+    **main_directory**:
+
+      *str, optional, default = './'*
+
+      The main directory where the create the database. The default is the directory where pyHIARD is started
+
+    **tirific**:
+
+      *str, optional, default = tirific*
+
+      Command used to call tirific from the python subprocess
+
+    **sofia2**:
+
+      *str, optional, default = sofia2*
+
+      Command to call sofia 2 from the python subprocess
+
+      **tirific**:
+
+        *str, optional, default = tirific*
+
+        Command used to call tirific from the python subprocess
+
+    **casa**:
+
+      *str, optional, default = casa*
+
+      Command to call casa from the python subprocess. Note that aliases will likely not be seen by python.
+
+    **ncpu**:
+
+      *int, optional, default = no of available cores -1*
+
+      Option to select the number of cpus. If multiprocessing is set to False this parameters is defunct.
+
+    **multiprocessing**
+
+      *bool, optional, default = True*
+
+      pyHIARD alows for multiprocessing through the multiprocessing module of python. This works like a charm for the AGC with Gaussian corruption.
+      However, the casa corruption method and the ROC become memory limited very quickly resulting in  a limited increase of speed in case of limited available RAM.
+      We are looking to improve this in furture releases.
+
+
 
 The Artificial Galaxy Catalogue (AGC) keywords
 --------
@@ -143,7 +192,7 @@ The Artificial Galaxy Catalogue (AGC) keywords
     List of variations of the resolution of the synthesized beam in arcsec
 
 
-The Real Observations Catalogue (AGC) keywords
+The Real Observations Catalogue (ROC) keywords
 --------
 *Specified with roc*
 
@@ -200,43 +249,15 @@ The Real Observations Catalogue (AGC) keywords
 
     List of variations of the base signal to noise ration. This is the average SNR over the whole galaxy. -1 indicates the original ratio.
 
+**minimum_degradation_factor**
 
-General settings
---------
-*Specified with general*
+    *float, optional, default = 1.25*
 
-**main_directory**:
+    The templates in the ROC have to be smoothed with a gaussian in order to have a smooth connection between the template and the artificial noise. The minimum degradation factor control how much the original template at least has to be shrank.
+    This sets the maximum size in the output of the ROC.
 
-  *str, optional, default = './'*
+**max_degradation_factor**
 
-  The main directory where the create the database. The default is the directory where pyHIARD is started
+    *float, optional, default = 1.6*
 
-**tirific**:
-
-  *str, optional, default = tirific*
-
-  Command used to call tirific from the python subprocess
-
-**sofia2**:
-
-  *str, optional, default = sofia2*
-
-  Command to call sofia 2 from the python subprocess
-
-  **tirific**:
-
-    *str, optional, default = tirific*
-
-    Command used to call tirific from the python subprocess
-
-**casa**:
-
-  *str, optional, default = casa*
-
-  Command to call casa from the python subprocess. Note that aliases will likely not be seen by python.
-
-**ncpu**:
-
-  *int, optional, default = 6*
-
-  Option to select the number of cpus. pyHIARD for not is not parallelized so this is defunct.
+    The ROC can take a lot of memory this factor sets the size at which pixel resolution the beam template is maintained. At large degradadtion this can save a lot of memory.
