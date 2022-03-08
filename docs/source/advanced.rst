@@ -82,7 +82,7 @@ Individual Keywords
 
       pyHIARD alows for multiprocessing through the multiprocessing module of python. This works like a charm for the AGC with Gaussian corruption.
       However, the casa corruption method and the ROC become memory limited very quickly resulting in  a limited increase of speed in case of limited available RAM.
-      We are looking to improve this in furture releases.
+      In case pyHIARD freezes the system it is using up all RAM. In that case it is better to turn off the multiprocessing. We are looking to improve this in furture releases.
 
 
 
