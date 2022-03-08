@@ -498,7 +498,7 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
         required_noise = Galaxy_Template['Final_Mean_Flux']/Galaxy_Template['Final_Noise']
 
     dirstring = f"{Galaxy_Template['Name']}_{Galaxy_Template['Beams']:.1f}Beams_{required_noise:.1f}SNR"
-    print(f'''{Processing the template:>25s} = {Galaxy_Template['Name']}
+    print(f'''{'Processing the template':>25s} = {Galaxy_Template['Name']}
 {'Beams':>25s} = {Galaxy_Template['Beams']}
 {'SNR':>25s} = {required_noise}''')
     galaxy_dir =f"{main_directory}{dirstring}/"
