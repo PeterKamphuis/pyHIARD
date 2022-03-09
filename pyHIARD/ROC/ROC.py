@@ -193,8 +193,6 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
     Galaxy_Template = copy.deepcopy(Galaxy_Template_In)
     # first we need to calculate the shift to  apply
     print(f"We are processing the template {Galaxy_Template['Name']} with {beam_req} beams across the major axis.")
-    print(f"We are creating the beam template.")
-
     #First we calculate the degradation we want
 
     new_beam = [(Galaxy_Template['Original_DHI_arcsec'])
@@ -399,13 +397,13 @@ NOTE:
 
 def calculate_processes(templates,beams,SNR):
     available_memory = psutil.virtual_memory().total/2**30
-    max_no_process = int(np.floor(available_memory/4.0)) # A single process run peaked at 7 Gb so this should suffice
+    max_no_process = int(np.floor(available_memory/3.5)) # A single process run peaked at 7 Gb so this should suffice
     no_SNR_process = len(SNR)
     no_beam_process = 1
     no_template_process = 1
     if no_SNR_process > (max_no_process-2):
         no_SNR_process = max_no_process-2
-    if (max_no_process-1) > 2.*no_SNR_process:
+    if (max_no_process-1) > 2.*no_SNR_process and no_SNR_process > 1:
         if len(beams)*no_SNR_process > max_no_process:
             left_process =  max_no_process-no_SNR_process-1
             while left_process > no_SNR_process:
@@ -413,7 +411,7 @@ def calculate_processes(templates,beams,SNR):
                 left_process -= no_SNR_process
         else:
             no_beam_process = len(beams)
-    if max_no_process > 2.*no_SNR_process*no_beam_process:
+    if max_no_process > 2.*no_SNR_process*no_beam_process and no_beam_process > 1:
         if len(templates)*no_beam_process*no_SNR_process > max_no_process:
             left_process =  max_no_process-(no_SNR_process*no_beam_process)
             while left_process > no_SNR_process*no_beam_process:
@@ -1180,7 +1178,6 @@ def ROC(cfg,path_to_resources):
         print(f"Seems like the ROC has nothing to do.")
         return
     if cfg.general.multiprocessing:
-
         #first we check that all templates are processed
         needed_templates = [[x,path_to_resources,cfg.general.main_directory,cfg.general.sofia2] for x in All_Galaxies]
         processes = cfg.general.ncpu
@@ -1192,7 +1189,11 @@ def ROC(cfg,path_to_resources):
         #calculate the amount of allowed processes
         no_template_processes,no_beam_processes,no_snr_processes = \
             calculate_processes(All_Galaxies,cfg.roc.beams,cfg.roc.snr)
+        if cfg.roc.snr == 1:
+            cfg.general.multiprocessing =False
+            del needed_templates
 
+    if cfg.general.multiprocessing:
         #list with templates to still process
         templates = [x for x in All_Galaxies]
         results = []
@@ -1200,7 +1201,6 @@ def ROC(cfg,path_to_resources):
 
             #break templates up to process
             proc_templates = [[x,path_to_resources,cfg.general.main_directory,cfg.general.sofia2] for x in templates[:no_template_processes]]
-
             processes = cfg.general.ncpu
             if len(proc_templates) < processes:
                 processes = len(proc_templates)
@@ -1278,11 +1278,12 @@ def ROC(cfg,path_to_resources):
                     if len(current_noise) < processes:
                         processes = len(current_noise)
                     with get_context("spawn").Pool(processes=processes) as pool:
-                        tmp_result = pool.starmap(create_final_cube, all_noise)
+                        tmp_result = pool.starmap(create_final_cube, current_noise)
                     all_noise = all_noise[int(no_snr_processes*no_beam_processes*no_template_processes):]
                     results = results+tmp_result
                 del all_noise
                 different_beams = different_beams[int(no_beam_processes*no_template_processes):]
+
             templates = templates[no_template_processes:]
     else:
         #No MP processing
