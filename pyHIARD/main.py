@@ -118,7 +118,7 @@ configuration_file = ''')
     Catalogue = f'{cfg.general.main_directory}/Output_Summary.txt'
     # If we are making new models we want to ensure this is a new file
     with open(Catalogue, 'w') as cat:
-        cat.write('number|Distance|Directoryname|Cubename\n')
+        cat.write('ID|Distance|Directoryname|Cubename\n')
         if cfg.agc.enable:
             with open(
                 f'{cfg.general.main_directory}/Output_AGC_Summary.txt', 'r') as cat_AGC:
