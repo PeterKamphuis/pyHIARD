@@ -21,6 +21,7 @@ def get_data(work_dir,sofia_call='sofia2'):
         name = 'UGC_1281'
         sizes=[[12,57],[180,350],[190,330]]
         try:
+            print(f"{outdir}/{name}_Original.fits")
             Cube = fits.open(f"{outdir}/{name}_Original.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
         except:
             raise PackageError(f'''This file should been downloaded with the install.

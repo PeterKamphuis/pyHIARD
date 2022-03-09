@@ -18,10 +18,10 @@ recursive-include pyHIARD/Resources/Cubes/NGC_5023/ *.py
 recursive-include pyHIARD/Resources/Cubes/NGC_5023/ *.def
 recursive-include pyHIARD/Resources/Cubes/NGC_5204/ *.py
 recursive-include pyHIARD/Resources/Cubes/NGC_5204/ *.def
-include pyHIARD/Resources/Cubes/NGC_5204/NGC_5204.fits
+include pyHIARD/Resources/Cubes/NGC_5204/NGC_5204_Original.fits
 recursive-include pyHIARD/Resources/Cubes/UGC_1281/ *.py
 recursive-include pyHIARD/Resources/Cubes/UGC_1281/ *.def
-include pyHIARD/Resources/Cubes/UGC_1281/UGC_1281.fits
+include pyHIARD/Resources/Cubes/UGC_1281/UGC_1281_Original.fits
 recursive-include pyHIARD/Resources/Cubes/UGC_7774/ *.py
 recursive-include pyHIARD/Resources/Cubes/UGC_7774/ *.def
 recursive-include pyHIARD/conf *.py
