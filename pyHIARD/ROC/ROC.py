@@ -1254,6 +1254,7 @@ def ROC(cfg,path_to_resources):
             # if we have more than one template we know that all beams and SNR fit in the pool
             if len(different_beams) == 0:
                 print(f"Seems like the ROC has nothing to do on this batch.")
+                templates = templates[no_template_processes:]
                 continue
             del All_Galaxy_Templates
 
