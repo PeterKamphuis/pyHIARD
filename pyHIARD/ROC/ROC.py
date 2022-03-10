@@ -1241,7 +1241,7 @@ def ROC(cfg,path_to_resources):
                                     noise_to_produce.remove(reqnoise)
                                     print(f"The galaxy {dirstring} galaxy appears fully produced")
                         if len(noise_to_produce) == 0:
-                            print(f"All galaxies with {name} and {nobeams} across the major axis are  thought to be produced already")
+                            print(f"All galaxies with {key} and {nobeams} across the major axis are  thought to be produced already")
                         else:
                             galaxy['Requested_SNR'] = noise_to_produce
                             different_beams.append((nobeams,galaxy,cfg.roc.max_degradation_factor,cfg.general.main_directory))
@@ -1253,7 +1253,8 @@ def ROC(cfg,path_to_resources):
                         different_beams.append((x[0],galaxy,cfg.roc.max_degradation_factor,cfg.general.main_directory))
             # if we have more than one template we know that all beams and SNR fit in the pool
             if len(different_beams) == 0:
-                print(f"Seems like the ROC has nothing to do on this batch.")
+                print(f"Seems like the ROC has nothing to do on this batch of beam templates.")
+                templates = templates[no_template_processes:]
                 continue
             del All_Galaxy_Templates
 
