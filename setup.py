@@ -12,13 +12,14 @@ requirements = [
     'scipy',
     'astropy',
     'omegaconf',
+    'psutil',
     'matplotlib',
     'future-fstrings',
     'importlib_resources>=3.3.0',
 ]
 
 PACKAGE_NAME = 'pyHIARD'
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 
 
 with open("README.md", "r") as fh:

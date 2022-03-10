@@ -4,7 +4,8 @@ from pyHIARD.common_functions import download_cube,create_masks,select_emission
 from astropy.io import fits
 import os
 
-galaxy_parameters = {'Galaxy': 'NGC_5023', 'DHIkpc': 18.6  ,'Distance': 6.6, 'Original_Model': 'Tir', 'RMS': 0.0002 , 'MHI': 6.1e8  }
+
+galaxy_parameters = {'Galaxy': 'ESO_223_G009', 'DHIkpc': 21.72 ,'Distance': 6.49, 'Original_Model': 'RC', 'RMS': 0.001781 , 'MHI': 1.02e+09   }
 
 
 def get_data(work_dir,sofia_call='sofia2'):
@@ -12,11 +13,11 @@ def get_data(work_dir,sofia_call='sofia2'):
     succes= False
     outdir = os.path.dirname(os.path.abspath(__file__))
     try:
-        Cube = fits.open(f"{outdir}/NGC_5023.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+        Cube = fits.open(f"{outdir}/ESO_223_G009.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
     except FileNotFoundError:
-        url = 'https://zenodo.org/record/3715549/files/NGC5023-HR-cube.fits'
-        name = 'NGC_5023'
-        sizes=[[7,62],[420,600],[430,570]]
+        url = 'https://www.atnf.csiro.au/research/LVHIS/data/LVHIS-cubes/LVHIS071.na.icln.fits'
+        name = 'ESO_223_G009'
+        sizes=[[8,44],[320,720],[320,720]]
         try:
             Cube = fits.open(f"{outdir}/{name}_Original.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
         except:
@@ -58,26 +59,22 @@ NOTE:
 '''
 
 def place_disclaimer(dir_to_place):
-    disclaimer = '''----- NGC 5023 -----
+    disclaimer = '''---- ESO 223-G009 -----
+    The cube used here comes from the LVHIS Survey. If you use this cube for scientific analysis please acknowledge it by citing the LVHIS overview paper (Koribalski et al. 2018, http://adsabs.harvard.edu/doi/10.1093/mnras/sty479) - Thank you.
 
-    is part of the HALOGAS Survey (Heald et al. 2011)
-    If you make use of these data products in any publication or presentation, we kindly ask you to cite the following paper(s):
+    Please download the original cube from
 
-    Primary HALOGAS reference: Heald et al. (2011)
-    and to include the following acknowledgement:
+    http://www.atnf.csiro.au/research/LVHIS/LVHIS-database.html
 
-    This research made use of data from WSRT HALOGAS-DR1. The Westerbork Synthesis Radio Telescope is operated by ASTRON (Netherlands Institute for Radio Astronomy) with support from the Netherlands Foundation for Scientific Research NWO.
+    LVHIS 071 na cube
 
-    Please download the original HR cube from
-    https://www.astron.nl/halogas/data.php
+    Original Cube name LVHIS071.na.icln.fits
 
-    Original Cube Name  NGC5023-HR-cube.fits
-
-    This model is created by P.Kamphuis and published in
-    HALOGAS observations of NGC 5023 and UGC 2082: Modeling of non-cylindrically symmetric gas distributions in edge-on galaxies" Kamphuis, P.; Rand, R. J.; Józsa, G. I. G.; Zschaechner, L. K.; Heald, G. H.; Patterson, M. T.; Gentile, G.; Walterbos, R. A. M.; Serra, P.; & de Blok, W. J. G. 2013, MNRAS, 434, 2069
-
+    The Model is created by S.-H. Oh with ROTCUR and presented in Kamphuis et al. 2015 and Oh. et al 2018
+    http://adsabs.harvard.edu/abs/2015MNRAS.452.3139K
+    http://adsabs.harvard.edu/abs/2018MNRAS.473.3256O
 '''
-    with open(f'{dir_to_place}/ACKNOWLEDGE_HALOGAS.txt', 'w') as file:
+    with open(f'{dir_to_place}/ACKNOWLEDGE_LVHIS.txt', 'w') as file:
         file.writelines(disclaimer)
 place_disclaimer.__doc__=f'''
 NAME:

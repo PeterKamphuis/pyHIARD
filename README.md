@@ -22,24 +22,28 @@ Installation
 
 Download the source code from the Github or simply install with pip as:
 
-  	pip install pyHIARD
+  `pip install pyHIARD`
 
-This should also install all required python dependencies.
-We recommend the use of python virtual environments. If so desired a pyHIARD installation would look like:
+This should also install all required python dependencies. We recommend the use of python virtual environments. If so desired a pyHIARD installation would look like:
 
-  	python3 -m venv pyHIARD_venv
-  	source pyHIARD_venv/bin/activate.csh
-  	pip install pyHIARD
+  `python3 -m venv pyHIARD_venv`
+
+  `source pyHIARD_venv/bin/activate.csh`
+
+  `pip install --upgrade wheel setuptools pip`
+
+  `pip install pyHIARD`
 
 (In case of bash the correct middle line is 	source pyHIARD_venv/bin/activate)
 You might have to restart the env:
 
-  	deactivate
-  	source pyHIARD_venv/bin/activate.csh
+  `deactivate`
+
+  `source pyHIARD_venv/bin/activate.csh`
 
 Once you have installed HIARD you can check that it has been installed properly by running HIARD as.
 
-  	pyHIARD installation_check=True
+  `pyHIARD installation_check=True`
 
 
 Running pyHIARD
@@ -48,12 +52,10 @@ Running pyHIARD
 cd to the directory where you want the database to exist.
 run pyHIARD by typing:
 
-`pyHIARD configuration_file=my_setup.yml`
+  `pyHIARD configuration_file=my_setup.yml`
 
 or
 
-'pyHIARD'
+  `pyHIARD`
 
 answer the questions about what you want to create.
-
-Note: Degrading large real galaxies to very small ones takes some time due to the convolution and regridding of the cubes.

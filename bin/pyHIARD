@@ -3,4 +3,7 @@
 
 import pyHIARD.main as main
 import sys
-main.main(sys.argv[1:])
+
+#The main is required here when multiprocessing
+if __name__ == '__main__':
+    main.main(sys.argv[1:])

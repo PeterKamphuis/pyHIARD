@@ -18,6 +18,19 @@ pyHIARD/Resources/Cubes/NGC_5023/*NGC_5023*.fits
 pyHIARD/Resources/Cubes/UGC_7774/*UGC_7774*.fits
 pyHIARD/Resources/Cubes/UGC_1281/*UGC_1281*.fits
 pyHIARD/Resources/Cubes/NGC_5204/*NGC_5204*.fits
+pyHIARD/Resources/Cubes/ESO_223_G009/*ESO_223_G009*.fits
+
+#Uniform Def files#
+pyHIARD/Resources/Cubes/Circinus/Circinus_uniform.def
+pyHIARD/Resources/Cubes/M_83/M_83_uniform.def
+pyHIARD/Resources/Cubes/NGC_2903/NGC_2903_uniform.def
+pyHIARD/Resources/Cubes/NGC_3198/NGC_3198_uniform.def
+pyHIARD/Resources/Cubes/NGC_5023/NGC_5023_uniform.def
+pyHIARD/Resources/Cubes/UGC_7774/UGC_7774_uniform.def
+pyHIARD/Resources/Cubes/UGC_1281/UGC_1281_uniform.def
+pyHIARD/Resources/Cubes/NGC_5204/NGC_5204_uniform.def
+pyHIARD/Resources/Cubes/ESO_223_G009/ESO_223_G009_uniform.def
+
 
 # Compiled source #
 ###################
