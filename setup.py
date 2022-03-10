@@ -19,7 +19,7 @@ requirements = [
 ]
 
 PACKAGE_NAME = 'pyHIARD'
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 
 with open("README.md", "r") as fh:
