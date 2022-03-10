@@ -211,7 +211,7 @@ The Real Observations Catalogue (ROC) keywords
 
     *bool, optional, default = False*
 
-    Boolean to the romval of unwanted galaxy templates in the ROC. If set to True all other options are ignored.
+    Boolean to the removal of unwanted galaxy templates in the ROC. If set to True all other options are ignored.
 
 **delete_existing**
 
