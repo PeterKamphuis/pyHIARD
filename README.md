@@ -59,5 +59,3 @@ or
   `pyHIARD`
 
 answer the questions about what you want to create.
-
-Note: Degrading large real galaxies to very small ones takes some time due to the convolution and regridding of the cubes.
