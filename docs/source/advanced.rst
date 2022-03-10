@@ -40,11 +40,23 @@ Individual Keywords
     --------
     *Specified with general*
 
-    **main_directory**:
+  **main_directory**:
 
-      *str, optional, default = './'*
+    *str, optional, default = './'*
 
-      The main directory where the create the database. The default is the directory where pyHIARD is started
+    The main directory where the create the database. The default is the directory where pyHIARD is started
+
+  **tirific**:
+
+    *str, optional, default = tirific*
+
+    Command used to call tirific from the python subprocess
+
+  **sofia2**:
+
+    *str, optional, default = sofia2*
+
+    Command to call sofia 2 from the python subprocess
 
     **tirific**:
 
@@ -52,37 +64,25 @@ Individual Keywords
 
       Command used to call tirific from the python subprocess
 
-    **sofia2**:
+  **casa**:
 
-      *str, optional, default = sofia2*
+    *str, optional, default = casa*
 
-      Command to call sofia 2 from the python subprocess
+    Command to call casa from the python subprocess. Note that aliases will likely not be seen by python.
 
-      **tirific**:
+  **ncpu**:
 
-        *str, optional, default = tirific*
+    *int, optional, default = no of available cores -1*
 
-        Command used to call tirific from the python subprocess
+    Option to select the number of cpus. If multiprocessing is set to False this parameters is defunct.
 
-    **casa**:
+  **multiprocessing**
 
-      *str, optional, default = casa*
+    *bool, optional, default = True*
 
-      Command to call casa from the python subprocess. Note that aliases will likely not be seen by python.
-
-    **ncpu**:
-
-      *int, optional, default = no of available cores -1*
-
-      Option to select the number of cpus. If multiprocessing is set to False this parameters is defunct.
-
-    **multiprocessing**
-
-      *bool, optional, default = True*
-
-      pyHIARD alows for multiprocessing through the multiprocessing module of python. This works like a charm for the AGC with Gaussian corruption.
-      However, the casa corruption method and the ROC become memory limited very quickly resulting in  a limited increase of speed in case of limited available RAM.
-      In case pyHIARD freezes the system it is using up all RAM. In that case it is better to turn off the multiprocessing. We are looking to improve this in furture releases.
+    pyHIARD alows for multiprocessing through the multiprocessing module of python. This works like a charm for the AGC with Gaussian corruption.
+    However, the casa corruption method and the ROC become memory limited very quickly resulting in  a limited increase of speed in case of limited available RAM.
+    In case pyHIARD freezes the system it is using up all RAM. In that case it is better to turn off the multiprocessing. We are looking to improve this in furture releases.
 
 
 
@@ -130,10 +130,9 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
       -Gaussian: Random noise with a gaussian distribution is added.
 
-      -Casa_Sim: Casa's simulation method is used to invert the initial artificial
-                 galaxy to the uv-plane and then converted back to the image plane and cleaned
+      -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned
 
-      -Casa_5: As the simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
+      -Casa_5: As CASA's simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
 
 **variables_to_vary**:
 

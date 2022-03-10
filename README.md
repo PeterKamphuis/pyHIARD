@@ -28,9 +28,12 @@ This should also install all required python dependencies. (If it gives a PILLOW
 We recommend the use of python virtual environments. If so desired a pyHIARD installation would look like:
 
   	python3 -m venv pyHIARD_venv
+
   	source pyHIARD_venv/bin/activate.csh
+
     pip install --upgrade wheel setuptools pip
-  	pip install pyHIARD
+
+    pip install pyHIARD
 
 (In case of bash the correct middle line is 	source pyHIARD_venv/bin/activate)
 You might have to restart the env:
