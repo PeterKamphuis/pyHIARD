@@ -3,7 +3,7 @@
 # It take 6 publicly available well resolved galaxy data cubes and smooths them to 3,4,5,6,7,8,10,12,16 beams across the major axis based on the extend of the best fit model.
 # The galaxies used are
 from pyHIARD.Resources import Cubes as cubes
-from pyHIARD.constants import c_kms, H_0
+from pyHIARD.constants import c_kms, H_0, G_agc
 from pyHIARD import Templates as templates
 from multiprocessing import Pool, get_context
 from astropy.wcs import WCS
@@ -657,39 +657,25 @@ We continue with the next SNR value.''')
     fits.writeto(f"{galaxy_dir}mask.fits", final_mask, final_hdr,overwrite=True,output_verify='ignore')
     # This completes cube manupulation
     channel_width = final_hdr['CDELT3']
+    # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
+    R_HI=[cf.convertskyangle(Galaxy_Template['Final_DHI_arcsec'],distance=\
+            Galaxy_Template['Final_Distance'])/2.,0.,0.]
+    V_max=float(Galaxy_Template['Shifted_TRM_Model']['VROT'].split('=')[1].split()[-1])
+    DynMass=R_HI[0]*10**3*V_max**2/G_agc
+    Achieved = {'SNR':Achieved_SNR, 'Mean_Signal': Achieved_Mean, 'Noise': Achieved_Noise,\
+            'Channel_Width': channel_width,'Res_Beam':\
+            [final_hdr['BMAJ']*3600.,final_hdr['BMIN']*3600.,final_hdr['BPA']],\
+            'Pixel_Beam': cf.get_beam_area_in_pixels(final_hdr), 'Mass': DynMass,\
+            'Corruption': 'Gaussian' }
     del final_mask ; del final_cube; del final_hdr
-
-    # Then we also want to write some info about the galaxy
-    RAdeg = float(Galaxy_Template['Shifted_TRM_Model']['XPOS'].split('=')[1].split()[0])
-    DECdeg = float(Galaxy_Template['Shifted_TRM_Model']['YPOS'].split('=')[1].split()[0])
-    RAhr, DEChr = cf.convertRADEC(RAdeg, DECdeg)
-    with open(f"{galaxy_dir}{dirstring}-Info.txt", 'w') as overview:
-        overview.write(f'''This file contains the basic parameters of this galaxy.
-For the radial dependencies look at Overview.png or ModelInput.def.
-Inclination = {Galaxy_Template['Shifted_TRM_Model']['INCL'].split('=')[1].split()[0]}.
-The dispersion = {float(Galaxy_Template['Shifted_TRM_Model']['SDIS'].split('=')[1].split()[0]):.2f}-{float(Galaxy_Template['Shifted_TRM_Model']['SDIS'].split('=')[1].split()[-1]):.2f}.
-The type of galaxy = {Galaxy_Template['Name']}.
-PA = {Galaxy_Template['Shifted_TRM_Model']['PA'].split('=')[1].split()[0]}.
-Beams across the major axis = {Galaxy_Template['Beams']}.
-SNR Requested = {required_noise} SNR Achieved = {Achieved_SNR}.
-Mean Signal = {Achieved_Mean}.
-Channelwidth = {channel_width}.
-Major axis beam = {Galaxy_Template['New_Beam'][0]} Minor axis beam= {Galaxy_Template['New_Beam'][1]}.
-It's central coordinates are RA={RAhr} DEC={DEChr} vsys={float(Galaxy_Template['Shifted_TRM_Model']['VSYS'].split('=')[1].split()[0]):.2f} km/s.
-At a Distance of {Galaxy_Template['Final_Distance']:.2f} Mpc.
-HI_Mass {Galaxy_Template['M_HI']:.2e} (M_solar).
-The final noise level is {Achieved_Noise} Jy/beam.
-h_z =  {float(Galaxy_Template['Shifted_TRM_Model']['Z0'].split('=')[1].split()[0]):.2f}-{float(Galaxy_Template['Shifted_TRM_Model']['Z0'].split('=')[1].split()[-1]):.2f} (arcsec).''')
-
+    write_overview_file(f"{galaxy_dir}{dirstring}-Info.txt", Galaxy_Template,Achieved,required_noise)
     # We need to make the model input
     with open(f"{galaxy_dir}ModelInput.def", 'w') as tri:
         tri.writelines([Galaxy_Template['Shifted_TRM_Model'][key] + "\n" for key in Galaxy_Template['Shifted_TRM_Model']])
 
     # And an overview plot
     #print("Start plotting")
-    # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
-    R_HI=[cf.convertskyangle(Galaxy_Template['Final_DHI_arcsec'],distance=\
-            Galaxy_Template['Final_Distance'])/2.,0.,0.]
+
     #Profiles are fitted by an exponential with scale length 0.2*RHI i.e. SigHI = C*exp(-R/(0.2*RHI)) so that weay we get the Warp end at Sigma = 0.5
     Warp = [0,np.log(0.5*np.exp(-1./0.2))*-0.2*R_HI[0]]
     cf.plot_input(galaxy_dir,Galaxy_Template['Shifted_TRM_Model']
@@ -698,7 +684,7 @@ h_z =  {float(Galaxy_Template['Shifted_TRM_Model']['Z0'].split('=')[1].split()[0
                 )
     # And a file with scrambled initial estimates
     cf.scrambled_initial(galaxy_dir,Galaxy_Template['Shifted_TRM_Model'])
-    return_line = f"{Galaxy_Template['Final_Distance']}|{dirstring}|Convolved_Cube\n"
+    return_line = f"{Galaxy_Template['Final_Distance']:.2f}|{dirstring}|Convolved_Cube\n"
     del Galaxy_Template
     return return_line
 
@@ -1466,4 +1452,61 @@ PROCEDURES CALLED:
    Unspecified
 
 NOTE:
+'''
+
+def write_overview_file(filename,Galaxy_Template,Achieved,SNR):
+    Template = Galaxy_Template['Shifted_TRM_Model']
+    # Then we also want to write some info about the galaxy
+    RAdeg = float(Galaxy_Template['Shifted_TRM_Model']['XPOS'].split('=')[1].split()[0])
+    DECdeg = float(Galaxy_Template['Shifted_TRM_Model']['YPOS'].split('=')[1].split()[0])
+    RAhr, DEChr = cf.convertRADEC(RAdeg, DECdeg)
+    with open(filename, 'w') as overview:
+            overview.write(f'''# This file contains the basic parameters of this galaxy. For the radial dependencies look at Overview.png or ModelInput.def.
+#{'Variable':<14s} {'Requested':<15s} {'Achieved':15s} {'Units':<15s}
+{'Inclination':<15s} {'':<15s} {float(Template['INCL'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
+{'PA':<15s} {'':<15s} {float(Template['PA'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
+{'Sys. Velocity':<15s} {'':<15s} {float(Template['VSYS'].split('=')[1].split()[0]):<15.2f} {'km/s':<15s}
+{'RA':<15s} {'':<15s} {RAhr.strip():<15s} {'':<15s}
+{'Declination':<15s} {'':<15s} {DEChr.strip():<15s} {'':<15s}
+{'Dispersion':<15s} {'':<15s} {f"{float(Template['SDIS'].split('=')[1].split()[0]):.2f}-{float(Template['SDIS'].split('=')[1].split()[-1]):.2f}":<15s} {'km/s':<15s}
+{'Scale height':<15s} {'':<15s} {f"{float(Template['Z0'].split('=')[1].split()[0]):.2f}-{float(Template['Z0'].split('=')[1].split()[-1]):.2f}":<15s} {'arcsec':<15s}
+{'Maj Axis':<15s} {'':<15s} {Galaxy_Template['Beams']:<15.3f} {'Beams'}
+{'Total Mass':<15s} {'':<15s} {Achieved['Mass']:<15.1e} {'M_solar':<15s}
+{'HI Mass':<15s} {'':<15s} {Galaxy_Template['M_HI']:<15.1e} {'M_solar':<15s}
+{'Chan. Width':<15s} {'':<15s} {Achieved['Channel_Width']:<15.3f} {'km/s':<15.2s}
+{'SNR':<15s} {SNR:<15.3f} {Achieved['SNR']:<15.3f}
+{'Mean Signal':<15s} {'':<15s} {Achieved['Mean_Signal']*1000.:<15.3f} {'mJy/beam':<15s}
+{'Noise':<15s} {'':<15s} {Achieved['Noise']*1000.:<15.3f} {'mJy/beam':<15s}
+{'Distance':<15s} {'':<15s} {float(Template['DISTANCE'].split('=')[1]):<15.3f} {'Mpc':<15s}
+{'Maj. FWHM':<15s} {'':<15s} {Achieved['Res_Beam'][0]:<15.2f} {'arcsec':<15s}
+{'Min. FWHM':<15s} {'':<15s} {Achieved['Res_Beam'][1]:<15.2f} {'arcsec':<15s}
+{'Beam BPA':<15s} {'':<15s} {Achieved['Res_Beam'][2]:<15.2f} {'degree':<15s}
+{'Pixel per Beam':<15s} {'':<15s} {Achieved['Pixel_Beam']:<15.2f} {'pixel':<15s}
+{'Corruption':<15s} {'':<15s} {Achieved['Corruption']:<15s}''')
+
+write_overview_file.__doc__ = f'''
+NAME:
+   write_overview_file
+
+PURPOSE:
+    write the overview file with requested and achieved values
+
+CATEGORY:
+   ROC
+
+INPUTS:
+   Current_Galaxy = the Current Gakaxy that is processed (The requested values)
+   Template = The tirific template that is used to create the galaxy
+   Achieved= Copy of Current_Galaxy that contains the values measured from the cube
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    file with a table with the requested and achieved values
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE: For now the Achieved.Flare and Achieved.Warp are merely copies of the input simply assumed to be implemented correctly
 '''
