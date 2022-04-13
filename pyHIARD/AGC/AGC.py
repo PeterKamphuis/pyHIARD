@@ -2050,9 +2050,15 @@ def one_galaxy(cfg,Current_Galaxy,Achieved):
     if Current_Galaxy.Arms == 'Arms':
         phase,arm_brightness,arm_width = create_arms(Vrot,Rad,SBRprof,WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
         phase,arm_brightness,arm_width = create_arms(Vrot,Rad,SBRprof,disk=2,WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
+        Achieved.Arms = 'Arms Added'
+    else:
+        Achieved.Arms = 'No Arms'
     # A possible Bar
     if Current_Galaxy.Bar == 'Barred':
         bar_length = create_bar(Vrot,Rad,SBRprof,Template,WarpStart=WarpStart)
+        Achieved.Bar = 'Bar Added'
+    else:
+        Achieved.Bar = 'No Bar'
     # and possible inhomogeneities
     if cfg.agc.inhomogenous:
         inhomogeneity_amp = create_inhomogeneity(MHI,Current_Galaxy.SNR,disks=[1,2])
@@ -2249,46 +2255,6 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def write_overview_file(filename,Current_Galaxy,Template,Achieved):
-    RAhr,DEChr= cf.convertRADEC(*Current_Galaxy.Coord)
-    RAhra,DEChra= cf.convertRADEC(*Achieved.Coord)
-    with open(filename, 'w') as overview:
-            overview.write(f'''# This file contains the basic parameters of this galaxy. For the radial dependencies look at Overview.png or ModelInput.def.
-#{'Variable':<14s} {'Requested':<15s} {'Achieved':15s} {'Units':<15s}
-{'Inclination':<15s} {Current_Galaxy.Inclination:<15.2f} {float(Template['INCL'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
-{'PA':<15s} {Current_Galaxy.PA:<15.2f} {float(Template['PA'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
-{'Sys. Velocity':<15s} {'':<15s} {float(Template['VSYS'].split('=')[1].split()[0]):<15.2f} {'km/s':<15s}
-{'RA':<15s} {RAhr.strip():<15s} {RAhra.strip():<15s} {'':<15s}
-{'Declination':<15s} {DEChr.strip():<15s} {DEChra.strip():<15s} {'':<15s}
-{'Dispersion':<15s} {f"{Current_Galaxy.Dispersion[0]:.2f}-{Current_Galaxy.Dispersion[1]:.2f}":<15s} {f"{float(Template['SDIS'].split('=')[1].split()[0]):.2f}-{float(Template['SDIS'].split('=')[1].split()[-1]):.2f}":<15s} {'km/s':<15s}
-{'Scale height':<15s} {'':<15s} {f"{float(Template['Z0'].split('=')[1].split()[0]):.2f}-{float(Template['Z0'].split('=')[1].split()[-1]):.2f}":<15s} {'arcsec':<15s}
-{'Warp':<15s} {f"{Current_Galaxy.Warp[0]:.2f}-{Current_Galaxy.Warp[1]:.2f}":<15s} {f"{Achieved.Warp[0]:.2f}-{Achieved.Warp[1]:.2f}":<15s} {'radian':<15s}
-{'Warp Radius':<15s} {'':<15s} {Achieved.Warp_Radius:<15.3f} {'kpc':<15s}
-{'HI Radius':<15s} {'':<15s} {Achieved.HI_Radius[0]:<15.3f} {'kpc':<15s}
-{'Scalelength':<15s} {'':<15s} {Achieved.Scalelength:<15.3f} {'kpc':<15s}
-{'Maj Axis':<15s} {Current_Galaxy.Beams:<15.3f} {Achieved.Beams:<15.3f} {'Beams'}
-{'Total Mass':<15s} {Current_Galaxy.Mass:<15.1e} {Achieved.Mass:<15.1e} {'M_solar':<15s}
-{'HI Mass':<15s} {Current_Galaxy.HI_Mass:<15.1e} {Achieved.HI_Mass:<15.1e} {'M_solar':<15s}
-{'Chan. Width':<15s} {Current_Galaxy.Channelwidth:<15.3f} {Achieved.Channelwidth:<15.3f} {'km/s':<15.2s}
-{'Chan. Dep.':<15s} {'':<15s} {Achieved.Channel_Dep:<15s}
-{'SNR':<15s} {Current_Galaxy.SNR:<15.3f} {Achieved.SNR:<15.3f}
-{'Mean Signal':<15s} {'':<15s} {Achieved.Mean_Signal*1000.:<15.3f} {'mJy/beam':<15s}
-{'Noise':<15s} {'':<15s} {Achieved.Noise*1000.:<15.3f} {'mJy/beam':<15s}
-{'Distance':<15s} {'':<15s} {float(Template['DISTANCE'].split('=')[1]):<15.3f} {'Mpc':<15s}
-{'Maj. FWHM':<15s} {Current_Galaxy.Res_Beam[0]:<15.2f} {Achieved.Res_Beam[0]:<15.2f} {'arcsec':<15s}
-{'Min. FWHM':<15s} {Current_Galaxy.Res_Beam[1]:<15.2f} {Achieved.Res_Beam[1]:<15.2f} {'arcsec':<15s}
-{'Beam BPA':<15s} {Current_Galaxy.Res_Beam[2]:<15.2f} {Achieved.Res_Beam[2]:<15.2f} {'degree':<15s}
-{'Pixel per Beam':<15s} {'':<15s} {Achieved.Pixel_Beam:<15.2f} {'pixel':<15s}
-{'Flare':<15s} {Current_Galaxy.Flare:<15s} {Achieved.Flare:<15s}
-{'Arms':<15s} {Current_Galaxy.Arms:<15s} {Achieved.Arms:<15s}
-{'Bar':<15s} {Current_Galaxy.Bar:<15s} {Achieved.Bar:<15s}
-{'Corruption':<15s} {Current_Galaxy.Corruption:<15s} {Achieved.Corruption:<15s}''')
-
-
-
-
-
-
 def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax):
     '''dd the RC to the overview plot and return updated tracker'''
     if set_done[0] == 1024:
@@ -2426,4 +2392,66 @@ PROCEDURES CALLED:
    Unspecified
 
 NOTE:
+'''
+
+def write_overview_file(filename,Current_Galaxy,Template,Achieved):
+    RAhr,DEChr= cf.convertRADEC(*Current_Galaxy.Coord)
+    RAhra,DEChra= cf.convertRADEC(*Achieved.Coord)
+    with open(filename, 'w') as overview:
+            overview.write(f'''# This file contains the basic parameters of this galaxy. For the radial dependencies look at Overview.png or ModelInput.def.
+#{'Variable':<14s} {'Requested':<15s} {'Achieved':15s} {'Units':<15s}
+{'Inclination':<15s} {Current_Galaxy.Inclination:<15.2f} {float(Template['INCL'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
+{'PA':<15s} {Current_Galaxy.PA:<15.2f} {float(Template['PA'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
+{'Sys. Velocity':<15s} {'':<15s} {float(Template['VSYS'].split('=')[1].split()[0]):<15.2f} {'km/s':<15s}
+{'RA':<15s} {RAhr.strip():<15s} {RAhra.strip():<15s} {'':<15s}
+{'Declination':<15s} {DEChr.strip():<15s} {DEChra.strip():<15s} {'':<15s}
+{'Dispersion':<15s} {f"{Current_Galaxy.Dispersion[0]:.2f}-{Current_Galaxy.Dispersion[1]:.2f}":<15s} {f"{float(Template['SDIS'].split('=')[1].split()[0]):.2f}-{float(Template['SDIS'].split('=')[1].split()[-1]):.2f}":<15s} {'km/s':<15s}
+{'Scale height':<15s} {'':<15s} {f"{float(Template['Z0'].split('=')[1].split()[0]):.2f}-{float(Template['Z0'].split('=')[1].split()[-1]):.2f}":<15s} {'arcsec':<15s}
+{'Warp':<15s} {f"{Current_Galaxy.Warp[0]:.2f}-{Current_Galaxy.Warp[1]:.2f}":<15s} {f"{Achieved.Warp[0]:.2f}-{Achieved.Warp[1]:.2f}":<15s} {'radian':<15s}
+{'Warp Radius':<15s} {'':<15s} {Achieved.Warp_Radius:<15.3f} {'kpc':<15s}
+{'HI Radius':<15s} {'':<15s} {Achieved.HI_Radius[0]:<15.3f} {'kpc':<15s}
+{'Scalelength':<15s} {'':<15s} {Achieved.Scalelength:<15.3f} {'kpc':<15s}
+{'Maj Axis':<15s} {Current_Galaxy.Beams:<15.3f} {Achieved.Beams:<15.3f} {'Beams'}
+{'Total Mass':<15s} {Current_Galaxy.Mass:<15.1e} {Achieved.Mass:<15.1e} {'M_solar':<15s}
+{'HI Mass':<15s} {Current_Galaxy.HI_Mass:<15.1e} {Achieved.HI_Mass:<15.1e} {'M_solar':<15s}
+{'Chan. Width':<15s} {Current_Galaxy.Channelwidth:<15.3f} {Achieved.Channelwidth:<15.3f} {'km/s':<15.2s}
+{'Chan. Dep.':<15s} {'':<15s} {Achieved.Channel_Dep:<15s}
+{'SNR':<15s} {Current_Galaxy.SNR:<15.3f} {Achieved.SNR:<15.3f}
+{'Mean Signal':<15s} {'':<15s} {Achieved.Mean_Signal*1000.:<15.3f} {'mJy/beam':<15s}
+{'Noise':<15s} {'':<15s} {Achieved.Noise*1000.:<15.3f} {'mJy/beam':<15s}
+{'Distance':<15s} {'':<15s} {float(Template['DISTANCE'].split('=')[1]):<15.3f} {'Mpc':<15s}
+{'Maj. FWHM':<15s} {Current_Galaxy.Res_Beam[0]:<15.2f} {Achieved.Res_Beam[0]:<15.2f} {'arcsec':<15s}
+{'Min. FWHM':<15s} {Current_Galaxy.Res_Beam[1]:<15.2f} {Achieved.Res_Beam[1]:<15.2f} {'arcsec':<15s}
+{'Beam BPA':<15s} {Current_Galaxy.Res_Beam[2]:<15.2f} {Achieved.Res_Beam[2]:<15.2f} {'degree':<15s}
+{'Pixel per Beam':<15s} {'':<15s} {Achieved.Pixel_Beam:<15.2f} {'pixel':<15s}
+{'Flare':<15s} {Current_Galaxy.Flare:<15s} {Achieved.Flare:<15s}
+{'Arms':<15s} {Current_Galaxy.Arms:<15s} {Achieved.Arms:<15s}
+{'Bar':<15s} {Current_Galaxy.Bar:<15s} {Achieved.Bar:<15s}
+{'Corruption':<15s} {Current_Galaxy.Corruption:<15s} {Achieved.Corruption:<15s}''')
+
+write_overview_file.__doc__ = f'''
+NAME:
+   write_overview_file
+
+PURPOSE:
+    write the overview file with requested and achieved values
+
+CATEGORY:
+   agc
+
+INPUTS:
+   Current_Galaxy = the Current Gakaxy that is processed (The requested values)
+   Template = The tirific template that is used to create the galaxy
+   Achieved= Copy of Current_Galaxy that contains the values measured from the cube
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    file with a table with the requested and achieved values
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE: For now the Achieved.Flare and Achieved.Warp are merely copies of the input simply assumed to be implemented correctly
 '''
