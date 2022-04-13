@@ -134,8 +134,8 @@ def check_input(cfg):
 
     if cfg.agc.enable:
         cfg.general.tirific = find_program(cfg.general.tirific, 'TiRiFiC')
-        if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5']:
-            cfg.general.casa = find_program(cfg.general.casa, 'CASA')
+        #if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5']:
+        #    cfg.general.casa = find_program(cfg.general.casa, 'CASA')
     if cfg.roc.enable:
         cfg.general.sofia2 = find_program(cfg.general.sofia2, 'SoFiA2')
 
@@ -459,6 +459,7 @@ def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
     hdr = copy.deepcopy(hdr_in)
     # First we smooth our template
     # We smooth this to 1.25 the input beam
+    '''
     bmaj = hdr["BMAJ"]*3600.
     bmin = hdr["BMIN"]*3600.
     FWHM_conv_maj = np.sqrt((1.25 * bmaj) ** 2 - bmaj ** 2)
@@ -468,8 +469,10 @@ def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
                abs(hdr["CDELT1"] * 3600.)
     sig_min = (FWHM_conv_min / np.sqrt(8 * np.log(2))) / \
                abs(hdr["CDELT2"] * 3600.)
+    '''
     #We replace zeros with NAN
     data[data == 0.] = float('NaN')
+    # It seems that I do not smooth the mask anymore, why not?
     Tmp_Cube=data
     #Tmp_Cube = gaussian_filter(data, sigma=(0, sig_min, sig_maj), order=0)
     # Replace 0. with Nan
@@ -558,6 +561,61 @@ create_masks.__doc__ = f'''
 
  NOTE:
 '''
+
+
+def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025):
+    #firt guess of the pixel noise
+    pixel_noise = requested_noise *np.mean(smoothing_sigma)*2. * np.sqrt(np.pi)
+    #  we need a shape for testing. something say 100 * smoothing kernel
+    test_shape= np.array([int(x*100.) for x in smoothing_sigma],dtype=int)
+    rng = np.random.default_rng()
+    achieved_noise = 0.
+    while abs(achieved_noise - requested_noise) / requested_noise > 0.025:
+        #If not the first run update our pixel noise
+        if achieved_noise != 0:
+            pixel_noise = pixel_noise*requested_noise/achieved_noise
+        #We only need to estimate this in a single channel there is no spectral component
+        #fill with gaussian values
+        test_noise = rng.normal(scale=pixel_noise, size=test_shape)
+        # and smooth to the final beam
+        test_noise_smoothed = scipy.ndimage.gaussian_filter(test_noise,\
+            sigma=smoothing_sigma,order=0)
+        achieved_noise = np.std(test_noise_smoothed)
+        #print(f"The current pixel noise estimate leads to {achieved_noise} mJy/beam (Requested = {requested_noise} mJy/beam).")
+
+
+
+    return achieved_noise,pixel_noise
+calculate_pixel_noise.__doc__ = f'''
+ NAME:
+    calculate_pixel_noise
+
+ PURPOSE:
+    calculate the noise that is required as input to random value generator to end up with the required noise after smoothing
+
+ CATEGORY:
+    common_functions
+
+ INPUTS:
+    requested_noise = the finale requested noise in smoothed images
+    smoothing_sigma = the sigma of the final beam in pixels
+
+
+ OPTIONAL INPUTS:
+    tolerance = the accepted difference between the requested noise and the achieved noise
+
+ OUTPUTS:
+    achieved_noise = the smoothed standard deviation
+    pixel_noise = the input pixel standard deviation
+
+ OPTIONAL OUTPUTS:
+
+ PROCEDURES CALLED:
+    Unspecified
+
+ NOTE:
+'''
+
 
 
 def cut_input_cube(file_in, sizes, name='EMPTY', debug=False):
@@ -1262,7 +1320,7 @@ def scrambled_initial(directory, Model):
     sdec=profile['YPOS']+rng.uniform(-10./3600., -10./3600.)
     svsys= profile['VSYS']+rng.uniform(-4., 4.)
     with open(f"{directory}Initial_Estimates.txt", 'w') as overview:
-        overview.write(f'''#This file contains the initial estimates.
+        overview.write(f'''#This file contains the random varied initial estimates.
 #{'VROT':<15s} {'INCL':<15s} {'PA':<15s} {'Z0':<15s} {'SBR':<15s} {'DISP':<15s} {'VRAD':<15s} {'RA':<15s} {'DEC':<15s}  {'VSYS':<15s}
 #{'km/s':<15s} {'Degree':<15s} {'Degree':<15s} {'arcsec':<15s} {'Jy km/s/arcsec^2':<15s} {'km/s':<15s} {'km/s':<15s} {'Degree':<15s} {'Degree':<15s}  {'km/s':<15s}
 {svrot:<15.2f} {sincl:<15.2f} {spa:<15.2f} {sz0:<15.3f} {ssbr:<15.7f} {ssdis:<15.2f} {svrad:<15.2f} {sra:<15.5f} {sdec:<15.5f}  {svsys:<15.2f}''')

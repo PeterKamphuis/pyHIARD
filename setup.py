@@ -13,6 +13,7 @@ requirements = [
     'astropy',
     'omegaconf',
     'psutil',
+    'casatasks',
     'matplotlib',
     'future-fstrings',
     'importlib_resources>=3.3.0',

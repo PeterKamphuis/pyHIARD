@@ -149,10 +149,10 @@ def add_template(cfg, path_to_resources, existing_galaxies):
     cf.create_directory(galaxy_parameters['Galaxy'], path_to_resources)
 
     fits.writeto(
-        f'{new_resource}/{galaxy_parameters["Galaxy"]}.fits', Cube[0].data, Cube[0].header, overwrite=False)
+        f'{new_resource}/{galaxy_parameters["Galaxy"]}_Original.fits', Cube[0].data, Cube[0].header, overwrite=False)
     Cube.close()
-    Mask_Inner, Mask_Outer = cf.create_masks(
-        new_resource, cfg.general.main_directory, galaxy_parameters['Galaxy'], sofia_call=cfg.general.sofia2)
+    #Mask_Inner, Mask_Outer = cf.create_masks(
+    #    new_resource, cfg.general.main_directory, galaxy_parameters['Galaxy'], sofia_call=cfg.general.sofia2)
     ext = {'Tir': 'def', 'Bar': 'txt', 'RC': 'rotcur'}
     os.system(
         f"cp {cfg.general.main_directory}{model_file} {new_resource}{galaxy_parameters['Galaxy']}.{ext[galaxy_parameters['Original_Model']]}")
@@ -536,7 +536,7 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
         (2. * np.sqrt(2. * np.log(2.)))
     # Fine tune the pixel noise estimate to achieve the final noise
     #setup the random number generator
-    achieved_shifted_noise,pixel_noise = calculate_pixel_noise(shifted_req_noise,template_pixel_sigma)
+    achieved_shifted_noise,pixel_noise = cf.calculate_pixel_noise(shifted_req_noise,template_pixel_sigma)
 
     # If this noise differs significantly from the original noise in the cube then we want to add noise to the emission part as well.
     diff_noise = achieved_shifted_noise - Galaxy_Template['Shifted_Original_Noise']
@@ -557,7 +557,7 @@ We continue with the next SNR value.''')
     # calculate the noise to be added to the template
     # If we want to add noise  we construct a new noise cube for this purpose
     if diff_noise > 0.:
-        achieved_diff_noise,pixel_diff_noise = calculate_pixel_noise(diff_noise,template_pixel_sigma)
+        achieved_diff_noise,pixel_diff_noise = cf.calculate_pixel_noise(diff_noise,template_pixel_sigma)
         #create a cube with this noise
         diff_noise_cube = rng.normal(scale=pixel_diff_noise, size=Galaxy_Template['Shifted_Template_Cube'].shape)
         # smooth it to the template resolution
@@ -730,29 +730,6 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025):
-    #firt guess of the pixel noise
-    pixel_noise = requested_noise *np.mean(smoothing_sigma)*2. * np.sqrt(np.pi)
-    #  we need a shape for testing. something say 100 * smoothing kernel
-    test_shape= np.array([int(x*100.) for x in smoothing_sigma],dtype=int)
-    rng = np.random.default_rng()
-    achieved_noise = 0.
-    while abs(achieved_noise - requested_noise) / requested_noise > 0.025:
-        #If not the first run update our pixel noise
-        if achieved_noise != 0:
-            pixel_noise = pixel_noise*requested_noise/achieved_noise
-        #We only need to estimate this in a single channel there is no spectral component
-        #fill with gaussian values
-        test_noise = rng.normal(scale=pixel_noise, size=test_shape)
-        # and smooth to the final beam
-        test_noise_smoothed = scipy.ndimage.gaussian_filter(test_noise,\
-            sigma=smoothing_sigma,order=0)
-        achieved_noise = np.std(test_noise_smoothed)
-        #print(f"The current pixel noise estimate leads to {achieved_noise} mJy/beam (Requested = {requested_noise} mJy/beam).")
-
-
-
-    return achieved_noise,pixel_noise
 
 def extend_cube(cube_in, hdr_in, new_beam=0., Mask=[-1., -1.], rotation_pa=0.):
     cube = copy.deepcopy(cube_in)
@@ -1189,7 +1166,8 @@ def ROC(cfg,path_to_resources):
         #calculate the amount of allowed processes
         no_template_processes,no_beam_processes,no_snr_processes = \
             calculate_processes(All_Galaxies,cfg.roc.beams,cfg.roc.snr)
-        if cfg.roc.snr == 1:
+        if  no_snr_processes == 1:
+            # if we can not do multiple SNR processes even there is no point in MP
             cfg.general.multiprocessing =False
             del needed_templates
 
@@ -1395,7 +1373,7 @@ def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = [-1],
         original_pixel_sigma=(np.array([hdr[key] for key in ['BMAJ','BMIN'] ],dtype=float)/ \
             np.abs(np.array([hdr[key] for key in ['CDELT2','CDELT1'] ],dtype=float)))/\
             (2. * np.sqrt(2. * np.log(2.)))
-        achieved_noise,pixel_noise = calculate_pixel_noise(track_noise,original_pixel_sigma,tolerance=0.01)
+        achieved_noise,pixel_noise = cf.calculate_pixel_noise(track_noise,original_pixel_sigma,tolerance=0.01)
         #create a cube with this noise
         rng = np.random.default_rng()
         noise_channel = rng.normal(scale=pixel_noise, size=Cube.shape[1:])
