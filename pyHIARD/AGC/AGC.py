@@ -1532,8 +1532,8 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     imhead(imagename=casa_mask, mode='put',
            hdkey='date-obs', hdvalue='2019/10/4/00:00:00')
     #cleaning our visbilities
-    listobs(vis=f'{work_dir}sim_data.ms',
-            listfile=f'{work_dir}obslist.txt', verbose=True, overwrite=True)
+    listobs(vis=f'{msname}',
+            listfile=f'{work_dir}Observation_Overview.txt', verbose=True, overwrite=True)
 
     os.system(f'rm -Rf {work_dir}Final_Cube* {work_dir}Final_Cube_HR* {work_dir}Uni_Cube*')
     print(f"Produce the final image")
@@ -1663,11 +1663,12 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     fits.writeto(work_dir+'/mask.fits',dummymask[0].data,dummy[0].header, overwrite = True)
 
     #newdummy=dummy[0].data
+    '''
     outnoise = (np.std(newdummy[0])+np.std(newdummy[-1]))/2.
     Achieved_SNR =mean_signal/outnoise
     with open(f"{maindir}/Casa_Noise_Statistics.txt",'a') as file:
         file.write(f"{SNR:<10.6f} {Achieved_SNR:<10.6f} {Achieved_SNR/SNR:<10.6f} {mean_signal:<10.7e} {noise:<10.7e} {outnoise:<10.7e} {visnoise:<10.7e} |{source}| \n" )
-
+    '''
 #
 
 
@@ -1675,7 +1676,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
 
     os.system(f'mkdir {work_dir}Casa_Log')
     os.system(f'mv {work_dir}*.last {work_dir}Casa_Log/')
-    os.system(f'mv {work_dir}obslist.txt {work_dir}Casa_Log/')
+    os.system(f'mv {work_dir}Observation_Overview.txt {work_dir}Casa_Log/')
     os.system(f'rm -Rf {work_dir}in_cube.image {work_dir}sim_data.ms {work_dir}sim_predict.* {work_dir}mask.image  {work_dir}Uni_Cube.* {work_dir}Final_Cube.* {work_dir}Final_Cube_HR.*  {work_dir}casa*.log casa*.log')
 
 
