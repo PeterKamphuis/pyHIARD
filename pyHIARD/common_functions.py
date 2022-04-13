@@ -578,8 +578,8 @@ def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025):
         #fill with gaussian values
         test_noise = rng.normal(scale=pixel_noise, size=test_shape)
         # and smooth to the final beam
-        test_noise_smoothed = scipy.ndimage.gaussian_filter(test_noise,\
-            sigma=smoothing_sigma,order=0)
+        test_noise_smoothed = gaussian_filter(test_noise,sigma=smoothing_sigma,\
+                                order=0)
         achieved_noise = np.std(test_noise_smoothed)
         #print(f"The current pixel noise estimate leads to {achieved_noise} mJy/beam (Requested = {requested_noise} mJy/beam).")
 

@@ -311,7 +311,7 @@ def AGC(cfg):
                     Casa_Galaxies.append((cfg, Current_Galaxy,Achieved))
                 All_Galaxies.append(name)
                 if Current_Galaxy.Mass not in set_done:
-                    SBRprof, Rad, sclength, MHI, Rad_HI, Vrot, sub_ring, molecular_profile,NFWMass = build_sbr_prof(
+                    SBRprof, Rad, sclength, MHI, Rad_HI, Vrot, sub_ring, molecular_profile,DynMass = build_sbr_prof(
                         Current_Galaxy, symmetric=cfg.agc.symmetric, no_template=True)  # Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
                     set_done, max_rad, colors, plot_ax = plot_RC(
                         set_done, Current_Galaxy.Mass, Rad, Vrot, colors, max_rad, sub_ring, plot_ax)
@@ -562,7 +562,7 @@ def build_sbr_prof(Current_Galaxy, symmetric=False, no_template=False):
     # Avanti used 	V_Ropt = (200*(l**0.41))/(0.80 +0.49*np.log10(l) +(0.75*np.exp(-0.4*l))/(0.47 + 2.25*(l**0.4)))**0.5 (Persic & Sallucci)
     # We will not use the URC as it get's silly at high mass and remains showing flat parts at low mass
     # We will use the parameterisation of Courteau 1997
-    v_circ, HIrad, MHI, MK,NFWMass = get_HI_disk(Current_Galaxy.Mass)
+    v_circ, HIrad, MHI, MK,DynMass = get_HI_disk(Current_Galaxy.Mass)
 
         #First we set the radii at with a 10 elements per rings out to 1.5 times HIrad. However we always need at least 25 rings for transition purposes
     if Current_Galaxy.Beams < 5.:
@@ -691,7 +691,7 @@ def build_sbr_prof(Current_Galaxy, symmetric=False, no_template=False):
     average_sbr_profile = np.zeros(len(sbr_prof[:, 0]))
     for i in range(len(sbr_prof)):
         average_sbr_profile[i] = np.mean(sbr_prof[i, :])
-    return average_sbr_profile, Rad, h_r/1000., OutHIMass, HIrad, vrot, sub_ring, molecular_profile,NFWMass
+    return average_sbr_profile, Rad, h_r/1000., OutHIMass, HIrad, vrot, sub_ring, molecular_profile,DynMass
 
 
 build_sbr_prof.__doc__ = f'''
@@ -1328,8 +1328,6 @@ NOTE:
 def vel_to_freq(hdr):
     central_freq = HI_rest_freq*(1-float(hdr['CRVAL3'])/c)
     cdelt_freq = -HI_rest_freq*float(hdr['CDELT3'])/c
-    print(
-        f"This is the original vel conversion {central_freq/1e9}Ghz, {cdelt_freq/1000.}kHz")
     top_freq = central_freq+(hdr['CRPIX3']-hdr['NAXIS3'])*cdelt_freq
     low_freq = central_freq+(hdr['CRPIX3']-1)*cdelt_freq
     return central_freq, cdelt_freq, top_freq, low_freq
@@ -1831,13 +1829,14 @@ def get_HI_disk(Mass,output_directory=None):
     v_circ_NFW = calc_vc_NFW(Mass,M_HI,m_star,R_HI)
     #our final velocity is an average between TF and NFW
     V_HI=(v_circ_TF+v_circ_NFW )/2.
-    DynMassNFW= R_HI*10**3*v_circ_NFW**2/G_agc
+
+    DynMass=R_HI*10**3*V_HI**2/G_agc
     if output_directory:
-        DynMass=R_HI*10**3*V_HI**2/G_agc
+        DynMassNFW= R_HI*10**3*v_circ_NFW**2/G_agc
         with open(f'{output_directory}Fractions_and_Masses.txt','a') as file:
             file.write(f'''The input Mass = {Mass:.2e}  and the retrieved NFW Dynamical mass = {DynMassNFW:.2e} and Dynamical Mass based on v_circ = {DynMass:.2e}.
 The current the baryon fraction = {bary_frac:.5f}\n''')
-    return V_HI, R_HI, M_HI,M_K,DynMassNFW
+    return V_HI, R_HI, M_HI,M_K,DynMass
 get_HI_disk.__doc__ = f'''
 NAME:
     get_HI_disk
@@ -1955,10 +1954,10 @@ def one_galaxy(cfg,Current_Galaxy,Achieved):
 
 
     #Then we need to build the Surface Brightnes profile
-    SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring,molecular_profile,NFWMass = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
+    SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring,molecular_profile,DynMass = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
     setattr(Achieved, "HI_Radius", Rad_HI)
     setattr(Current_Galaxy, "HI_Mass", MHI)
-    Achieved.Mass = NFWMass
+    Achieved.Mass = DynMass
     setattr(Achieved, "Scalelength", sclength)
     #We need central coordinates the vsys will come from the required distance and hubble flow. The RA and dec should not matter hance it will be the only random component in the code as we do want to test variations of them
     Sky_Size = np.radians(Current_Galaxy.Res_Beam[0]*Current_Galaxy.Beams/3600.)
