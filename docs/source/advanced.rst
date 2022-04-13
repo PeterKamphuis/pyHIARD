@@ -64,12 +64,6 @@ Individual Keywords
 
       Command used to call tirific from the python subprocess
 
-  **casa**:
-
-    *str, optional, default = casa*
-
-    Command to call casa from the python subprocess. Note that aliases will likely not be seen by python.
-
   **ncpu**:
 
     *int, optional, default = no of available cores -1*
