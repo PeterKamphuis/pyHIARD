@@ -298,6 +298,7 @@ def AGC(cfg):
                         continue
                     else:
                         if name in created:
+                            number_models -= 1
                             continue
                         else:
                             print(
@@ -317,7 +318,6 @@ def AGC(cfg):
                         set_done, Current_Galaxy.Mass, Rad, Vrot, colors, max_rad, sub_ring, plot_ax)
 
                 #print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
-
     if len(Casa_Galaxies) > 0:
         with open(f"{cfg.general.main_directory}/Casa_Noise_Statistics.txt", 'w') as file:
             file.write(f"{'Req SNR':10s} {'Achieved SNR':10s} {'Inc. Fact':10s} {'Factor Check':10s} {'Mean Flux':10s} {'Input Noise':10s} {'Output Noise':10s} {'Input Noise':10s} \n")
