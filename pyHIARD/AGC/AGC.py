@@ -1341,7 +1341,7 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     from casatasks.private import simutil
     mean_signal, hdr, data = create_mask(work_dir, beam, casa=True)
     #This next line should be commented as it is merely for testing
-    #mean_signal = 7.3623526e-05
+    mean_signal = 7.3623526e-05
     # In order to corrupt we need to know the average signal.
     # we do this taking the mean in each chaneel above a tenth of the max and then take the mean of that profile
     # This is the noise in the final cube
@@ -1661,12 +1661,12 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     fits.writeto(work_dir+'/mask.fits',dummymask[0].data,dummy[0].header, overwrite = True)
 
     #newdummy=dummy[0].data
-    '''
+
     outnoise = (np.std(newdummy[0])+np.std(newdummy[-1]))/2.
     Achieved_SNR =mean_signal/outnoise
     with open(f"{maindir}/Casa_Noise_Statistics.txt",'a') as file:
         file.write(f"{SNR:<10.6f} {Achieved_SNR:<10.6f} {Achieved_SNR/SNR:<10.6f} {mean_signal:<10.7e} {noise:<10.7e} {outnoise:<10.7e} {visnoise:<10.7e} |{source}| \n" )
-    '''
+
 #
 
 
