@@ -230,22 +230,10 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
         template_cube = Galaxy_Template['Galaxy_Template_Cube']
         template_hdr = Galaxy_Template['Galaxy_Template_Header']
         template_noise = Galaxy_Template['Original_Noise']
-    #fits.writeto('After_Regrid.fits', template_cube,
-    #             template_hdr, overwrite=True)
+
     template_mask = cf.get_mask(template_cube,factor = initial_factor)
-    #fits.writeto('After_Regrid_Mask.fits', template_mask,
-    #             template_hdr, overwrite=True)
 
-    #print("And after the regrid")
-    #print(f"Currently the template is {template_cube.size*template_cube.itemsize/(1024**2)} Mb")
-    #print('nois, Total flux, Mean flux')
-    #print(template_noise)
-    #print(f"The new  beam size {template_hdr['BMAJ']*3600.} x {template_hdr['BMIN']*3600.}")
-
-    #newme = cf.get_mean_flux(template_cube,Mask=template_mask)
     new_mean = cf.get_mean_flux(template_cube,Mask=template_mask)
-    #print(f"The new mean from the cube is {new_mean}, and the noise {template_noise} so the maximum SNR = {new_mean/template_noise}")
-    #print(f'The regrid factor = {regrid_factor}, the degradation factor = {smooth_factor}')
 
     # And the new bmin has the same factor
     new_beam.append(template_hdr['BMIN'] * regrid_factor)
@@ -507,17 +495,7 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
     Galaxy_Template['Disclaimer'](galaxy_dir)
     # The noise in the final cube should be
     final_req_noise = Galaxy_Template['Final_Mean_Flux']/required_noise
-
-    #fits.writeto(f"{galaxy_dir}Template_Cube.fits",Galaxy_Template['Shifted_Template_Cube'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
-    #fits.writeto(f"{galaxy_dir}Template_Mask.fits",Galaxy_Template['Shifted_Mask'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
-
-
-
-
     # We first find the noise in pixels that matches this
-    #print(f''' We are requesting a SNR of {required_noise} and the expected mean in the final cube is = {Galaxy_Template['Final_Mean_Flux']}
-#Creating the noise cube. The Noise in the final cube should be {final_req_noise} Jy/beam.''')
-    #fits.writeto(f"{galaxy_dir}Shift_temp.fits",Galaxy_Template['Shifted_Template_Cube'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
     #As we will be adding to the uncorrected cube we need to convert the noise back to its uncorrected value.
     # first we estimate what will be the noise we want for a cube with the resolution of the template
     # so we scale with the beam area new_beam/old_beam
@@ -1460,6 +1438,7 @@ def write_overview_file(filename,Galaxy_Template,Achieved,SNR):
     RAdeg = float(Galaxy_Template['Shifted_TRM_Model']['XPOS'].split('=')[1].split()[0])
     DECdeg = float(Galaxy_Template['Shifted_TRM_Model']['YPOS'].split('=')[1].split()[0])
     RAhr, DEChr = cf.convertRADEC(RAdeg, DECdeg)
+    RHI = cf.convertskyangle(Galaxy_Template['Final_DHI_arcsec'],float(Template['DISTANCE'].split('=')[1]))/2.
     with open(filename, 'w') as overview:
             overview.write(f'''# This file contains the basic parameters of this galaxy. For the radial dependencies look at Overview.png or ModelInput.def.
 #{'Variable':<14s} {'Requested':<15s} {'Achieved':15s} {'Units':<15s}
@@ -1470,7 +1449,8 @@ def write_overview_file(filename,Galaxy_Template,Achieved,SNR):
 {'Declination':<15s} {'':<15s} {DEChr.strip():<15s} {'':<15s}
 {'Dispersion':<15s} {'':<15s} {f"{float(Template['SDIS'].split('=')[1].split()[0]):.2f}-{float(Template['SDIS'].split('=')[1].split()[-1]):.2f}":<15s} {'km/s':<15s}
 {'Scale height':<15s} {'':<15s} {f"{float(Template['Z0'].split('=')[1].split()[0]):.2f}-{float(Template['Z0'].split('=')[1].split()[-1]):.2f}":<15s} {'arcsec':<15s}
-{'Maj Axis':<15s} {'':<15s} {Galaxy_Template['Beams']:<15.3f} {'Beams'}
+{'HI Radius':<15s} {'':<15s} {RHI:<15.3f} {'kpc':<15s}
+{'Maj Axis':<15s} {Galaxy_Template['Beams']:<15.3f} {'':15s} {'Beams'}
 {'Total Mass':<15s} {'':<15s} {Achieved['Mass']:<15.1e} {'M_solar':<15s}
 {'HI Mass':<15s} {'':<15s} {Galaxy_Template['M_HI']:<15.1e} {'M_solar':<15s}
 {'Chan. Width':<15s} {'':<15s} {Achieved['Channel_Width']:<15.3f} {'km/s':<15.2s}
