@@ -1341,7 +1341,7 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     from casatasks.private import simutil
     mean_signal, hdr, data = create_mask(work_dir, beam, casa=True)
     #This next line should be commented as it is merely for testing
-    mean_signal = 7.3623526e-05
+    #mean_signal = 7.3623526e-05
     # In order to corrupt we need to know the average signal.
     # we do this taking the mean in each chaneel above a tenth of the max and then take the mean of that profile
     # This is the noise in the final cube
