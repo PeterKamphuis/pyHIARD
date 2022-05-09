@@ -1299,15 +1299,16 @@ def create_mask(work_dir, beam, casa=False):
         fits.writeto(f'{work_dir}testsmooth_cube.fits',
                      smooth, dummy[0].header, overwrite=True)
     mean_signal = cf.get_mean_flux(smooth)
-    smooth = cf.get_mask(smooth)
-
+    mask = cf.get_mask(smooth)
+    mask_header=copy.deepcopy(dummy[0].header)
+    mask_header['BITPIX'] = 16
     #cutoff = 0.05*mean_signal
     #Then create mask
     #smooth[smooth < cutoff] = 0
     #smooth[smooth > cutoff] = 1
     # Write mask
-    fits.writeto(work_dir+'/mask.fits', smooth,
-                 dummy[0].header, overwrite=True)
+
+    fits.writeto(work_dir+'/mask.fits', mask,mask_header, overwrite=True)
 
     hdr = copy.deepcopy(dummy[0].header)
     data = copy.deepcopy(dummy[0].data)
@@ -1769,6 +1770,8 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     newdummy *= mean_scale
     fits.writeto(work_dir+'/Convolved_Cube.fits', newdummy,
                  dummy[0].header, overwrite=True)
+    dummy[0].header['BITPIX'] = 16
+    dummymask[0].data = np.array(dummymask[0].data,dtype=int)
     fits.writeto(work_dir+'/mask.fits',
                  dummymask[0].data, dummy[0].header, overwrite=True)
 
@@ -2294,10 +2297,10 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     unconvolved_cube = fits.open(fits_to_modify,
                      uint=False, do_not_scale_image_data=True, ignore_blank=True)
     hdr = unconvolved_cube[0].header
-
+    data = unconvolved_cube[0].data
 
     freq, cdelt, up_band, low_band = vel_to_freq(hdr)
-
+    hdr['BITPIX'] = -32
     hdr['SPECSYS'] = 'BARYCENT'
     hdr['OBJECT'] = 'AGC_GALAXY'
     hdr['INSTRUME'] = 'AGC'
@@ -2311,11 +2314,12 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     hdr['ALTRPIX']=hdr['CRPIX3']
 
 
-    fits.writeto(fits_to_modify,
-                 unconvolved_cube[0].data, hdr, overwrite = True)
+    fits.writeto(fits_to_modify,data, hdr, overwrite = True)
 
 
     unconvolved_cube.close()
+    data= []
+    hdr = []
     # Now we want to corrupt this cube with some realistic noise
     # For this we first want to get the noise we want in terms of Jansky per beam
     # we will define the SNR as the mean(Intensity)/noiselevel hence noise =mean(In)/SNR
@@ -2342,10 +2346,8 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
             Achieved.Corruption='Gaussian'
 
 
-        mask=fits.open(f"{cfg.general.main_directory}{name}/mask.fits",
-                         uint = False, do_not_scale_image_data = True, ignore_blank = True)
-        Cube=fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",
-                         uint = False, do_not_scale_image_data = True, ignore_blank = True)
+        mask=fits.open(f"{cfg.general.main_directory}{name}/mask.fits")
+        Cube=fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits")
         #Here we have no control over the BPA it is what it is.
 
         Current_Galaxy.Res_Beam[2]=Cube[0].header['BPA']
