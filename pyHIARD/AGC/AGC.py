@@ -39,7 +39,11 @@ except ImportError:
 #Some errors
 class TirificRunError(Exception):
     pass
+#Some errors
 
+
+class RunningError(Exception):
+    pass
 #------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Main for creating the AGC!!!!!!!!!!!!!!!!!!!!!----------------------
 
 
@@ -185,7 +189,6 @@ def AGC(cfg):
     Gauss_Galaxies = []
     Casa_Galaxies = []
     created = []
-
     for base in range(len(cfg.agc.base_galaxies)):
         base_defined = False
         # We want to keep the center constant per base galaxy, for easy comparison as well as to be able to investigate how center determination is affected
@@ -268,40 +271,46 @@ def AGC(cfg):
                 setattr(Current_Galaxy, "Model_Number", number_models)
 
                 number_models += 1
-                if cfg.agc.corrupt_models:
-                    if (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) == number_models/5.)) or (cfg.agc.corruption_method == 'Casa_Sim'):
+
+                if ((cfg.agc.corruption_method == 'Casa_5' or cfg.agc.corruption_method == 'Tres') and
+                    (int(number_models/5.) == number_models/5.)) \
+                    or (cfg.agc.corruption_method == 'Casa_Sim'):
                         setattr(Current_Galaxy, "Corruption", "Casa_Sim")
-                    elif (cfg.agc.corruption_method == 'Gaussian' or cfg.agc.corruption_method == 'Casa_5'):
-                        setattr(Current_Galaxy, "Corruption", "Gaussian")
-                    else:
-                      print(
-                          "!!!!!!!This corruption method is unknown, leaving the cube uncorrupted and unconvolved!!!!!!!!")
+                elif cfg.agc.corruption_method == 'No_Corrupt' or \
+                    (cfg.agc.corruption_method == 'Tres' and \
+                    int((number_models+1)/5.) == (number_models+1.)/5.):
+                        setattr(Current_Galaxy, "Corruption", "No_Corrupt")
                 else:
-                    setattr(Current_Galaxy, "Corruption", "Uncorrupted")
-                Achieved = copy.deepcopy(Current_Galaxy)
+                    setattr(Current_Galaxy, "Corruption", "Gaussian")
+
+
+                Achieved=copy.deepcopy(Current_Galaxy)
                 #Check if galaxy already exists
-                name = set_name(Current_Galaxy)
+                name=set_name(Current_Galaxy)
                 print(f"{name} is the name we attach to the current galaxy")
 
                 # Check for the existence of the directory
-                constructstring = f"mkdir {cfg.general.main_directory}{name}"
-                checkdir = False
-                galaxy_dir = f"{cfg.general.main_directory}{name}/"
-                galaxy_exists = os.path.isdir(galaxy_dir)
+                constructstring=f"mkdir {cfg.general.main_directory}{name}"
+                checkdir=False
+                galaxy_dir=f"{cfg.general.main_directory}{name}/"
+                galaxy_exists=os.path.isdir(galaxy_dir)
                 if not galaxy_exists:
                     os.system(constructstring)
                     created.append(name)
                 else:
                     time.sleep(0.1)
                     # Do we have a cube
-                    galaxy_cube_exist = os.path.isfile(
+                    galaxy_cube_exist=os.path.isfile(
                         f"{galaxy_dir}Convolved_Cube.fits")
                     if not galaxy_cube_exist:
-                        galaxy_cube_exist = os.path.isfile(
+                        galaxy_cube_exist=os.path.isfile(
                             f"{galaxy_dir}Convolved_Cube_CS.fits")
+                    if not galaxy_cube_exist:
+                        galaxy_cube_exist=os.path.isfile(
+                            f"{galaxy_dir}Convolved_Cube_Gauss.fits")
                     if galaxy_cube_exist:
                         print("This galaxy appears fully produced")
-                        checkdir = True
+                        checkdir=True
                         continue
                     else:
                         if name in created:
@@ -313,16 +322,23 @@ def AGC(cfg):
                             #print("Reproducing the galaxy. Be aware of Double Table entries")
                             print("This is too dangerous. Breaking the code.")
                             exit()
-                if Current_Galaxy.Corruption in ['Uncorrupted', 'Gaussian']:
+                if Current_Galaxy.Corruption in ['No_Corrupt', 'Gaussian']:
                     Gauss_Galaxies.append((cfg, Current_Galaxy, Achieved))
                 else:
                     Casa_Galaxies.append((cfg, Current_Galaxy, Achieved))
                 All_Galaxies.append(name)
                 if Current_Galaxy.Mass not in set_done:
-                    SBRprof, Rad, sclength, MHI, Rad_HI, Vrot, sub_ring, molecular_profile, DynMass = build_sbr_prof(
-                        Current_Galaxy, symmetric=cfg.agc.symmetric, no_template=True)  # Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
-                    set_done, max_rad, colors, plot_ax = plot_RC(
+                    SBRprof, Rad, sclength, MHI, Rad_HI, Vrot, sub_ring, molecular_profile, DynMass=build_sbr_prof(
+                        Current_Galaxy, symmetric = cfg.agc.symmetric, no_template = True)  # Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
+                    set_done, max_rad, colors, plot_ax=plot_RC(
                         set_done, Current_Galaxy.Mass, Rad, Vrot, colors, max_rad, sub_ring, plot_ax)
+    plt.figure(59)
+
+    plot_ax.set_ylim(ymin = 0)
+    plot_ax.set_xlim(xmin = 0, xmax = max_rad)
+    plt.legend(loc = 'lower right', fontsize = 12)
+    plt.savefig('Rotation_Curves.pdf', bbox_inches = 'tight')
+    plt.close()
 
                 #print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
     if len(Casa_Galaxies) > 0:
@@ -332,29 +348,29 @@ def AGC(cfg):
         #        f"{' ':10s} {' ':10s} {' ':10s} {' ':10s} {'Jy/Beam':10s} {'Jy/Beam':10s} {'Jy/Beam':10s} {'Jy':10s} \n")
 #
         #tclean is parallel inmplemented so we run all casa corruption singular
-        results_casa = []
+        results_casa=[]
         for the_galaxy in Casa_Galaxies:
-            single_result = one_galaxy(*the_galaxy)
+            single_result=one_galaxy(*the_galaxy)
             results_casa.append(single_result)
     #Create All Uncoorupted and Gaussian Galaxies
     if len(Gauss_Galaxies) > 0:
         if cfg.general.multiprocessing:
-            no_process = cfg.general.ncpu
+            no_process=cfg.general.ncpu
             if no_process > len(Gauss_Galaxies):
-                no_process = len(Gauss_Galaxies)
-            with get_context("spawn").Pool(processes=no_process) as pool:
-                results_gauss = pool.starmap(one_galaxy, Gauss_Galaxies)
+                no_process=len(Gauss_Galaxies)
+            with get_context("spawn").Pool(processes = no_process) as pool:
+                results_gauss=pool.starmap(one_galaxy, Gauss_Galaxies)
         else:
-            results_gauss = []
+            results_gauss=[]
             for the_galaxy in Gauss_Galaxies:
-                single_result = one_galaxy(*the_galaxy)
+                single_result=one_galaxy(*the_galaxy)
                 results_gauss.append(single_result)
 
-    results = ['empty']*len(All_Galaxies)
+    results=['empty']*len(All_Galaxies)
     if len(Gauss_Galaxies) > 0:
-        results = sort_results(All_Galaxies, results_gauss, results)
+        results=sort_results(All_Galaxies, results_gauss, results)
     if len(Casa_Galaxies) > 0:
-        results = sort_results(All_Galaxies, results_casa, results)
+        results=sort_results(All_Galaxies, results_casa, results)
 
     os.system(f'rm -f {cfg.general.main_directory}/Input.fits')
     print("We created {} models".format(number_models))
@@ -364,16 +380,10 @@ def AGC(cfg):
         for line in results:
             cat.write(line)
 
-    plt.figure(59)
-
-    plot_ax.set_ylim(ymin=0)
-    plot_ax.set_xlim(xmin=0, xmax=max_rad)
-    plt.legend(loc='lower right', fontsize=12)
-    plt.savefig('Rotation_Curves.pdf', bbox_inches='tight')
-    plt.close()
 
 
-AGC.__doc__ = f'''
+
+AGC.__doc__=f'''
 NAME:
    AGC
 
@@ -401,19 +411,19 @@ NOTE:
 
 
 def calc_vc_NFW(DM_mass, MHI, m_star, rad):
-    r200 = (DM_mass*G_agc/(100. * H_0**2)*1e12)**(1./3.)
-    v200square = DM_mass*G_agc/r200
-    xr = rad/(r200/10**3)
+    r200=(DM_mass*G_agc/(100. * H_0**2)*1e12)**(1./3.)
+    v200square=DM_mass*G_agc/r200
+    xr=rad/(r200/10**3)
     # From A. Dutton 2014
-    c200 = 10**(0.905-0.101*np.log10(DM_mass/(10**12*100./H_0)))
-    NFWvflat = np.sqrt(v200square*(1./xr)*((np.log(1.+c200*xr)
+    c200=10**(0.905-0.101*np.log10(DM_mass/(10**12*100./H_0)))
+    NFWvflat=np.sqrt(v200square*(1./xr)*((np.log(1.+c200*xr)
                        - (c200*xr)/(1+c200*xr))/(np.log(1+c200)-c200/(1+c200))))
-    v_star = np.sqrt(m_star*G_agc/(rad*10**3))
-    v_HI = np.sqrt(MHI*1.4*G_agc/(rad*10**3))
+    v_star=np.sqrt(m_star*G_agc/(rad*10**3))
+    v_HI=np.sqrt(MHI*1.4*G_agc/(rad*10**3))
     return np.sqrt(NFWvflat**2+v_star**2+v_HI**2)
 
 
-calc_vc_NFW.__doc__ = f'''
+calc_vc_NFW.__doc__=f'''
 NAME:
    calc_vc_NFW
 
@@ -448,16 +458,16 @@ NOTE:
 
 def copy_disk(olddisk, newdisk):
     '''Routine to copy a disk in the tirific template file'''
-    start = 0
-    startlast = 0.
+    start=0
+    startlast=0.
     if int(Template["NDISKS"].split('=')[1]) < newdisk:
-        Template["NDISKS"] = "NDISKS = {:d}".format(newdisk)
-    copkeys = "Empty"
-    last = 'RADI'
+        Template["NDISKS"]="NDISKS = {:d}".format(newdisk)
+    copkeys="Empty"
+    last='RADI'
     for key in Template.keys():
         if start == 2:
             if copkeys == "Empty":
-                copkeys = [key]
+                copkeys=[key]
             else:
                 copkeys.append(key)
         if key == 'RADI':
@@ -465,18 +475,18 @@ def copy_disk(olddisk, newdisk):
             if olddisk == 1:
                 start += 1
         if '_' in key:
-            key_ext = key.split('_')
+            key_ext=key.split('_')
             if key_ext[1] == str(olddisk) and start == 1:
                 start += 1
                 if olddisk > 1:
-                    copkeys = [key]
+                    copkeys=[key]
             elif (key_ext[1] != str(olddisk)) and start == 2:
                 del copkeys[-1]
                 start += 1
             if key_ext[1] == str(newdisk-1) and startlast == 0:
-                startlast = 1
+                startlast=1
             if key_ext[1] == str(newdisk-1) and startlast == 1:
-                last = key
+                last=key
             if key_ext[1] != str(newdisk-1) and startlast == 1:
                 startlast += 1
         if key == 'CONDISP' and (start == 2 or startlast == 1):
@@ -485,7 +495,7 @@ def copy_disk(olddisk, newdisk):
             startlast += 1
             start += 1
     for key in reversed(copkeys):
-        var_name = key.split('_')[0]
+        var_name=key.split('_')[0]
         Template.insert(last, var_name+"_{:d}".format(newdisk), var_name
                         + "_{:d} =".format(newdisk)+Template[key].split('=')[1])
     Template.insert("CFLUX_{:d}".format(newdisk-1), "CFLUX_{:d}".format(newdisk),
@@ -1260,9 +1270,9 @@ def create_inhomogeneity(mass, SNR, disks=1.):
 def create_mask(work_dir, beam, casa=False):
     # First open the model cube
 
-    dummy = fits.open(work_dir+'/unconvolved_cube.fits', uint=False,
+    dummy = fits.open(work_dir+'/Unconvolved_Cube.fits', uint=False,
                       do_not_scale_image_data=True, ignore_blank=True)
-        #fits.writeto(work_dir+'/unconvolved_cube.fits',dummy[0].data,original_hdr, overwrite = True)
+        #fits.writeto(work_dir+'/Unconvolved_Cube.fits',dummy[0].data,original_hdr, overwrite = True)
     # downgrade the velocity resolution to the one we want
     tmp_cube = np.zeros([int(len(dummy[0].data[:, 0, 0])/3),
                         len(dummy[0].data[0, :, 0]), len(dummy[0].data[0, 0, :])])
@@ -1278,7 +1288,7 @@ def create_mask(work_dir, beam, casa=False):
     #We do not want to do the casa corruption at high resolution as it takes too long
     if casa:
 
-        fits.writeto(f'{work_dir}unconvolved_cube.fits',
+        fits.writeto(f'{work_dir}Unconvolved_Cube.fits',
                      dummy[0].data, dummy[0].header, overwrite=True)
         pixperbeam = cf.get_beam_area_in_pixels(
             dummy[0].header, beam=[x/3600. for x in beam])
@@ -1301,15 +1311,10 @@ def create_mask(work_dir, beam, casa=False):
     mean_signal = cf.get_mean_flux(smooth)
     mask = cf.get_mask(smooth)
     mask_header=copy.deepcopy(dummy[0].header)
-    mask_header['BITPIX'] = 16
-    #cutoff = 0.05*mean_signal
-    #Then create mask
-    #smooth[smooth < cutoff] = 0
-    #smooth[smooth > cutoff] = 1
-    # Write mask
+    mask = np.array(mask,dtype = 'float32')
+    mask_header['BITPIX'] = -32
 
     fits.writeto(work_dir+'/mask.fits', mask,mask_header, overwrite=True)
-
     hdr = copy.deepcopy(dummy[0].header)
     data = copy.deepcopy(dummy[0].data)
     dummy.close()
@@ -1380,8 +1385,8 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     # flat noise = weighted by sqrt(weight), flatsky = weighted by weight, pbsquare=no normalisation
     skynormalistation = 'flatnoise'
     #weight is  sum ( square ( pb ) ), pb =  Primary beam calculated as sqrt ( xxx.weight )
-    inframe = fits.getval(f'{work_dir}unconvolved_cube.fits', 'SPECSYS')
-    fits.setval(f'{work_dir}unconvolved_cube.fits', 'SPECSYS', value=vel_frame)
+    inframe = fits.getval(f'{work_dir}Unconvolved_Cube.fits', 'SPECSYS')
+    fits.setval(f'{work_dir}Unconvolved_Cube.fits', 'SPECSYS', value=vel_frame)
     # make some names to use
     msname = f'{work_dir}sim_data.ms'
     casa_image = f'{work_dir}in_cube.image'
@@ -1391,12 +1396,12 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     print(freq, cdelt, up_band, low_band)
 
     # Read the model into a casa format
-    importfits(fitsimage=f'{work_dir}unconvolved_cube.fits', imagename=casa_image,            # Name of input image FITS file # Name of output CASA image
+    importfits(fitsimage=f'{work_dir}Unconvolved_Cube.fits', imagename=casa_image,            # Name of input image FITS file # Name of output CASA image
                 # If fits image has multiple coordinate ,# If its file contains multiple images,Set blanked pixels to zero (not NaN)
                 whichrep=0, whichhdu=-1, zeroblanks=True,
                 overwrite=True, defaultaxes=True, defaultaxesvalues=[RA, DEC, f'{up_band}Hz', 'I'])
 
-    fits.setval(f'{work_dir}unconvolved_cube.fits', 'SPECSYS', value=inframe)
+    fits.setval(f'{work_dir}Unconvolved_Cube.fits', 'SPECSYS', value=inframe)
     # We have options to use different telescopes but lets's stick with the VLA
     if hdr['CRVAL2'] > 90:
         ant_list = 'WSRT.cfg'
@@ -1823,7 +1828,7 @@ NOTE: The final SNR is a guesstimate as the actuall observation is based on the 
 '''
 
 
-def corrupt_gauss(work_dir, beam, SNR):
+def corrupt_gauss(work_dir, beam, SNR, no_corrupt =False):
     '''Corrupt our artifical galaxy with the correct noise cube such that the average SNR over the galaxy is the required one'''
     mean_signal, hdr, data = create_mask(work_dir, beam)
     # Calculate the area of the beam in arcsec
@@ -1849,10 +1854,12 @@ def corrupt_gauss(work_dir, beam, SNR):
         data = cf.rotateCube(
             data, beam[2], [hdr['CRPIX1']+shift, hdr['CRPIX2']+shift], order=1)
 
-    cuberms = np.random.normal(scale=noisescl, size=np.shape(data))
     # combine the two cubes
-
-    noisedcube = data+cuberms
+    if no_corrupt:
+        noisedcube= data
+    else:
+        cuberms = np.random.normal(scale=noisescl, size=np.shape(data))
+        noisedcube = data+cuberms
     # Smooth to the requred resolution
 
     #our BPA is set to 0 which means the major axis smoothing should be in DEC axis and the minor on the RA
@@ -2170,7 +2177,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     setattr(Achieved, "Channel_Dep", cfg.agc.channel_dependency)
     # We need to set the input and output cube
     Template["INSET"] = "INSET = Input.fits"
-    Template["OUTSET"] = "OUTSET = unconvolved_cube.fits"
+    Template["OUTSET"] = "OUTSET = Unconvolved_Cube.fits"
     #Some tirific varaiables
     Template["LOOPS"] = "LOOPS = 0 "
     # We need models with about 3 million particles but not more as it takes too long
@@ -2293,7 +2300,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
             "AGC:Tirific did not execute properly. See screen for details")
 
     # Make sure that our tirific output confirms with the FITs standard header
-    fits_to_modify = f"{cfg.general.main_directory}{name}/unconvolved_cube.fits"
+    fits_to_modify = f"{cfg.general.main_directory}{name}/Unconvolved_Cube.fits"
     unconvolved_cube = fits.open(fits_to_modify,
                      uint=False, do_not_scale_image_data=True, ignore_blank=True)
     hdr = unconvolved_cube[0].header
@@ -2323,68 +2330,68 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     # Now we want to corrupt this cube with some realistic noise
     # For this we first want to get the noise we want in terms of Jansky per beam
     # we will define the SNR as the mean(Intensity)/noiselevel hence noise =mean(In)/SNR
-    if Current_Galaxy.Corruption == 'Casa_Sim' or Current_Galaxy.Corruption == 'Gaussian':
-        if Current_Galaxy.Corruption == 'Casa_Sim':
-            fits.setval(fits_to_modify, 'CTYPE3', value = 'VRAD')
-            from contextlib import redirect_stdout
 
-            with open(f'{cfg.general.main_directory}{name}/Casa_Log.txt', 'w') as f:
-                with redirect_stdout(f):
-                    corrupt_casa(f"{cfg.general.main_directory}{name}/",
-                                 Current_Galaxy.Res_Beam, Current_Galaxy.SNR, cfg.general.main_directory)
-            os.system(
-                f"mv {cfg.general.main_directory}{name}/Casa_Log.txt {cfg.general.main_directory}{name}/Casa_Log/")
-            fits.setval(fits_to_modify, 'CTYPE3', value = 'VELO-HEL')
-            fits.setval(
-                f"{cfg.general.main_directory}{name}/mask.fits", 'CTYPE3', value = 'VELO-HEL')
-            fits.setval(
-                f"{cfg.general.main_directory}{name}/Convolved_Cube.fits", 'CTYPE3', value = 'VELO-HEL')
-            Achieved.Corruption='Casa_Sim'
-        else:
-            corrupt_gauss(f"{cfg.general.main_directory}{name}/",
-                          Current_Galaxy.Res_Beam, Current_Galaxy.SNR)
-            Achieved.Corruption='Gaussian'
+    if Current_Galaxy.Corruption == 'Casa_Sim':
+        fits.setval(fits_to_modify, 'CTYPE3', value = 'VRAD')
+        from contextlib import redirect_stdout
 
+        with open(f'{cfg.general.main_directory}{name}/Casa_Log.txt', 'w') as f:
+            with redirect_stdout(f):
+                corrupt_casa(f"{cfg.general.main_directory}{name}/",
+                             Current_Galaxy.Res_Beam, Current_Galaxy.SNR, cfg.general.main_directory)
+        os.system(
+            f"mv {cfg.general.main_directory}{name}/Casa_Log.txt {cfg.general.main_directory}{name}/Casa_Log/")
+        fits.setval(fits_to_modify, 'CTYPE3', value = 'VELO-HEL')
+        fits.setval(
+            f"{cfg.general.main_directory}{name}/mask.fits", 'CTYPE3', value = 'VELO-HEL')
+        fits.setval(
+            f"{cfg.general.main_directory}{name}/Convolved_Cube.fits", 'CTYPE3', value = 'VELO-HEL')
+        Achieved.Corruption='Casa_Sim'
 
-        mask=fits.open(f"{cfg.general.main_directory}{name}/mask.fits")
-        Cube=fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits")
-        #Here we have no control over the BPA it is what it is.
-
-        Current_Galaxy.Res_Beam[2]=Cube[0].header['BPA']
-        maskr=mask[0].data
-        sigma=(np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
-        Cube_Clean=Cube[0].data
-        Cube_Clean[maskr < 0.5]=0.
-        pixperbeam=cf.get_beam_area_in_pixels(Cube[0].header)
-        totalsignal=np.sum(Cube_Clean)/pixperbeam
-        mass=2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
-        mean_signal=cf.get_mean_flux(Cube_Clean)
-        SNRachieved=float(mean_signal)/(float(sigma))
-        Achieved.Res_Beam=[Cube[0].header['BMAJ']*3600.,
-                             Cube[0].header['BMIN']*3600.,
-                             Cube[0].header['BPA']]
-        if Current_Galaxy.Corruption == 'Casa_Sim':
-            catalog_cube_name= 'Convolved_Cube_CS'
-            os.system(
-                f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_CS.fits")
-        else:
-            catalog_cube_name='Convolved_Cube'
-        #if we have
+    elif Current_Galaxy.Corruption == 'Gaussian' or Current_Galaxy.Corruption == 'No_Corrupt':
+        no_corrupt= False
+        if Current_Galaxy.Corruption == 'No_Corrupt':
+            no_corrupt= True
+        corrupt_gauss(f"{cfg.general.main_directory}{name}/",
+                      Current_Galaxy.Res_Beam, Current_Galaxy.SNR,no_corrupt = no_corrupt)
+        Achieved.Corruption=Current_Galaxy.Corruption
     else:
-        Cube=fits.open(f"{cfg.general.main_directory}{name}/unconvolved_cube.fits",
-                         uint = False, do_not_scale_image_data = True, ignore_blank = True)
-        Achieved.Res_Beam= [0., 0., 0.]
-        SNRachieved=float('NaN')
-        sigma=float('NaN')
-        mass=float('NaN')
-        catalog_cube_name='unconvolved_cube'
-        mean_signal, hdr, data=create_mask(
-            f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam)
+        raise RunningError(f'These boots (Corruption = {Current_Galaxy.Corruption}) are not made for running pyHIARD')
 
-        pixperbeam=cf.get_beam_area_in_pixels(hdr)
-        hdr=[]
-        data=[]
-        print("!!!!!!!This corruption method is unknown, leaving the cube uncorrupted and unconvolved!!!!!!!!")
+
+    mask=fits.open(f"{cfg.general.main_directory}{name}/mask.fits")
+    Cube=fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits")
+    #Here we have no control over the BPA it is what it is.
+
+    Current_Galaxy.Res_Beam[2]=Cube[0].header['BPA']
+    maskr=mask[0].data
+    sigma=(np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
+    Cube_Clean=Cube[0].data
+    Cube_Clean[maskr < 0.5]=0.
+    pixperbeam=cf.get_beam_area_in_pixels(Cube[0].header)
+    totalsignal=np.sum(Cube_Clean)/pixperbeam
+    mass=2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
+    mean_signal=cf.get_mean_flux(Cube_Clean)
+    SNRachieved=float(mean_signal)/(float(sigma))
+    Achieved.Res_Beam=[Cube[0].header['BMAJ']*3600.,
+                         Cube[0].header['BMIN']*3600.,
+                         Cube[0].header['BPA']]
+    if Current_Galaxy.Corruption == 'Casa_Sim':
+        catalog_cube_name= 'Convolved_Cube_CS'
+        os.system(
+            f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_CS.fits")
+    elif Current_Galaxy.Corruption == 'Gaussian':
+        catalog_cube_name='Convolved_Cube_Gauss'
+        os.system(
+            f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_Gauss.fits")
+
+    elif Current_Galaxy.Corruption == 'No_Corrupt':
+        catalog_cube_name='Convolved_Cube'
+
+    if not cfg.agc.retain_unconvolved_model:
+        os.remove(f'{cfg.general.main_directory}{name}/Unconvolved_Cube.fits')
+        #if we have
+
         # We'll create a little text file with an Overview of all the parameters
     Template['BMAJ'] = f'BMAJ= {Cube[0].header["BMAJ"]*3600.}'
     Template['BMIN'] = f'BMIN= {Cube[0].header["BMIN"]*3600.}'

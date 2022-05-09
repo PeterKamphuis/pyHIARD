@@ -162,9 +162,9 @@ def check_input(cfg):
                     "\s+|\s*,\s*|\s+$", vals.strip()) if 1 <= int(x) <= 6]
                 if len(cfg.agc.base_galaxies) == 0:
                     cfg.agc.base_galaxies = [7]
-        while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian', 'casa_5']:
+        while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian','no_corrupt', 'casa_5','tres']:
             cfg.agc.corruption_method = input(
-                'Your method of corruption is not acceptable please choose from Casa_Sim, Gaussian, Casa_5 (Default = Gaussian):')
+                'Your method of corruption is not acceptable please choose from Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5 (Default = Gaussian):')
             if cfg.agc.corruption_method == '':
                 cfg.agc.corruption_method = 'Gaussian'
 
@@ -945,8 +945,9 @@ def get_mask(Cube_In, factor = 5.2):
     if pix_smooth > 3:
         pix_smooth=3.
     Mask =  gaussian_filter(Mask,sigma=(0.,pix_smooth,pix_smooth),order=0)
-    Mask[Mask > 0.95] = 1.
-    Mask[Mask < 0.05] = 0.
+    Mask[Mask > 0.95] = 1
+    Mask[Mask < 0.05] = 0
+    Mask = np.array(Mask,dtype=int)
     return Mask
 
 def get_mean_flux(Cube_In,Mask=[-1]):
