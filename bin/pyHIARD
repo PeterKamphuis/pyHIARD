@@ -6,4 +6,6 @@ import sys
 
 #The main is required here when multiprocessing
 if __name__ == '__main__':
-    main.main(sys.argv[1:])
+    from viztracer import VizTracer
+    with VizTracer(output_file='Full_Run_Out.json', min_duration=500) as tracer:
+        main.main(sys.argv[1:])
