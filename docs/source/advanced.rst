@@ -120,13 +120,23 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
     *str, optinal, default = 'Gaussian'*
 
-    How the artificial galaxies are corrupted. The options are Gaussian, Casa_Sim, and Casa_5.
+    How the artificial galaxies are corrupted. The options are No_Corrupt, Gaussian, Casa_Sim, Tres and Casa_5.
+
+      -No_Corrupt: Do not add any noise to the model simply smooth to the required beam.
 
       -Gaussian: Random noise with a gaussian distribution is added.
 
       -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned
 
+      -Tres: Mix the the three corruption methods 1 uncorrupted, 1 Gaussian corrupted and 1 CASA corrupted.
+
       -Casa_5: As CASA's simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
+
+**retain_unconvolved_model**
+
+  *bool, optinal, default = False*
+
+  retain a version of the unconvolved model, if you are only interested in these models the best way to run pyHIARD is to set the corruption method to No_Corrupt
 
 **variables_to_vary**:
 
