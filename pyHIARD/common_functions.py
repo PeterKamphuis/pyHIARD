@@ -196,8 +196,8 @@ replace with:''')
             cfg.agc.variables_to_vary[i] = changes_poss[changes_poss_lower.index(
                 variables.lower())]
         #We always make the base
-        if 'Base' not in cfg.agc.variables_to_vary:
-            cfg.agc.variables_to_vary.append('Base')
+        #if 'Base' not in cfg.agc.variables_to_vary:
+        #    cfg.agc.variables_to_vary.append('Base')
 
         if 'inclination' in [x.lower() for x in cfg.agc.variables_to_vary]:
             for i, incs in enumerate(cfg.agc.inclination):
@@ -813,6 +813,7 @@ find_program.__doc__=f'''
 def get_beam_area_in_pixels(Template_Header, beam= [-1,-1.]):
     if np.sum(beam) == -2.:
         beam = [Template_Header["BMAJ"],Template_Header["BMIN"]]
+    #  https://science.nrao.edu/facilities/vla/proposing/TBconv
     beamarea=(np.pi*abs((beam[0]*beam[1])))/(4.*np.log(2.))
     return beamarea/(abs(Template_Header['CDELT1'])*abs(Template_Header['CDELT2']))
 get_beam_area_in_pixels.__doc__=f'''

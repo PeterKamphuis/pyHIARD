@@ -47,7 +47,7 @@ def AGC(cfg):
     '''Create realistic artificial galaxies.'''
     # Let's give an overview of the database that will be created
     print(
-        f"We will create a database with {len(cfg.agc.base_galaxies)} basic sets in the directory {cfg.general.main_directory}.\n")
+        f"We will create a database in the directory {cfg.general.main_directory}.\n")
     if cfg.agc.delete_existing:
         print("All previous models will be removed prior to the build. \n")
     else:
@@ -58,6 +58,13 @@ def AGC(cfg):
     else:
         print(
             f"We will use {cfg.agc.corruption_method} as corruption method.\n")
+
+    if 'Base' in cfg.agc.variables_to_vary:
+        print(
+            f"We will produce the base galaxies: {','.join([str(e) for e in cfg.agc.base_galaxies])}.\n")
+    else:
+        print(
+            f"We will use the following galaxies as base: {','.join([str(e) for e in cfg.agc.base_galaxies])}.\n")
     print("We will vary the following parameters")
     if 'Inclination' in cfg.agc.variables_to_vary:
         print(
@@ -307,22 +314,22 @@ def AGC(cfg):
                             print("This is too dangerous. Breaking the code.")
                             exit()
                 if Current_Galaxy.Corruption in ['Uncorrupted', 'Gaussian']:
-                    Gauss_Galaxies.append((cfg, Current_Galaxy,Achieved))
+                    Gauss_Galaxies.append((cfg, Current_Galaxy, Achieved))
                 else:
-                    Casa_Galaxies.append((cfg, Current_Galaxy,Achieved))
+                    Casa_Galaxies.append((cfg, Current_Galaxy, Achieved))
                 All_Galaxies.append(name)
                 if Current_Galaxy.Mass not in set_done:
-                    SBRprof, Rad, sclength, MHI, Rad_HI, Vrot, sub_ring, molecular_profile,DynMass = build_sbr_prof(
+                    SBRprof, Rad, sclength, MHI, Rad_HI, Vrot, sub_ring, molecular_profile, DynMass = build_sbr_prof(
                         Current_Galaxy, symmetric=cfg.agc.symmetric, no_template=True)  # Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
                     set_done, max_rad, colors, plot_ax = plot_RC(
                         set_done, Current_Galaxy.Mass, Rad, Vrot, colors, max_rad, sub_ring, plot_ax)
 
                 #print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
     if len(Casa_Galaxies) > 0:
-        with open(f"{cfg.general.main_directory}/Casa_Noise_Statistics.txt", 'w') as file:
-            file.write(f"{'Req SNR':10s} {'Achieved SNR':10s} {'Inc. Fact':10s} {'Factor Check':10s} {'Mean Flux':10s} {'Input Noise':10s} {'Output Noise':10s} {'Input Noise':10s} \n")
-            file.write(
-                f"{' ':10s} {' ':10s} {' ':10s} {' ':10s} {'Jy/Beam':10s} {'Jy/Beam':10s} {'Jy/Beam':10s} {'Jy':10s} \n")
+        #with open(f"{cfg.general.main_directory}/Casa_Noise_Statistics.txt", 'w') as file:
+        #    file.write(f"{'Req SNR':10s} {'Achieved SNR':10s} {'Inc. Fact':10s} {'Factor Check':10s} {'Mean Flux':10s} {'Input Noise':10s} {'Output Noise':10s} {'Input Noise':10s} \n")
+        #    file.write(
+        #        f"{' ':10s} {' ':10s} {' ':10s} {' ':10s} {'Jy/Beam':10s} {'Jy/Beam':10s} {'Jy/Beam':10s} {'Jy':10s} \n")
 #
         #tclean is parallel inmplemented so we run all casa corruption singular
         results_casa = []
@@ -562,7 +569,7 @@ def build_sbr_prof(Current_Galaxy, symmetric=False, no_template=False):
     # Avanti used 	V_Ropt = (200*(l**0.41))/(0.80 +0.49*np.log10(l) +(0.75*np.exp(-0.4*l))/(0.47 + 2.25*(l**0.4)))**0.5 (Persic & Sallucci)
     # We will not use the URC as it get's silly at high mass and remains showing flat parts at low mass
     # We will use the parameterisation of Courteau 1997
-    v_circ, HIrad, MHI, MK,DynMass = get_HI_disk(Current_Galaxy.Mass)
+    v_circ, HIrad, MHI, MK, DynMass = get_HI_disk(Current_Galaxy.Mass)
 
         #First we set the radii at with a 10 elements per rings out to 1.5 times HIrad. However we always need at least 25 rings for transition purposes
     if Current_Galaxy.Beams < 5.:
@@ -691,7 +698,7 @@ def build_sbr_prof(Current_Galaxy, symmetric=False, no_template=False):
     average_sbr_profile = np.zeros(len(sbr_prof[:, 0]))
     for i in range(len(sbr_prof)):
         average_sbr_profile[i] = np.mean(sbr_prof[i, :])
-    return average_sbr_profile, Rad, h_r/1000., OutHIMass, HIrad, vrot, sub_ring, molecular_profile,DynMass
+    return average_sbr_profile, Rad, h_r/1000., OutHIMass, HIrad, vrot, sub_ring, molecular_profile, DynMass
 
 
 build_sbr_prof.__doc__ = f'''
@@ -1149,17 +1156,20 @@ def create_warp(Radii,
     # thetarings=thetarings*180./np.pi
     # This seems to work mostly but not at some extremes exactly for some reason
     # According to josh tan is required, and yes that makes it work at large angles as well.
-    angle_adjust = np.tan(
-        (PA[0]-PA)*np.cos(inc*np.pi/180.)*np.pi/180)*180/np.pi
+    #angle_adjust = np.tan(
+    #    (PA[0]-PA)*np.cos(inc*np.pi/180.)*np.pi/180)*180/np.pi
+    angle_adjust = np.array(np.degrees(
+        np.tan(np.radians((PA[0]-PA)*np.cos(np.radians(inc))))), dtype=float)
+
     if disk == 1:
         Template["INCL"] = "INCL = "+" ".join(str(e) for e in inc)
         Template["PA"] = "PA = "+" ".join(str(e) for e in PA)
         try:
-            phase = Template["AZ1P"].split('=')[1]
+            phase = float(Template["AZ1P"].split('=')[1])
         except KeyError:
             phase = 0.
-            Template.insert("AZ1W", "AZ1P", "AZ1P = "
-                            + " ".join(str(phase+(e)) for e in angle_adjust))
+        Template.insert(
+            "AZ1W", "AZ1P", f"AZ1P = {' '.join([f'{phase+e:10.5f}' for e in angle_adjust])}")
     else:
         Template["INCL_{:d}".format(disk)] = "INCL_{:d} =".format(
             disk)+" ".join(str(e) for e in inc)
@@ -1267,8 +1277,11 @@ def create_mask(work_dir, beam, casa=False):
     dummy[0].header['ALTRPIX'] = dummy[0].header['CRPIX3']
     #We do not want to do the casa corruption at high resolution as it takes too long
     if casa:
+
         fits.writeto(f'{work_dir}unconvolved_cube.fits',
                      dummy[0].data, dummy[0].header, overwrite=True)
+        pixperbeam = cf.get_beam_area_in_pixels(
+            dummy[0].header, beam=[x/3600. for x in beam])
     # In order to create a cleaning mask we smooth to the beam size and cut at 1e-5 Jy/beam
     #   Calculate the sigma's from the required beam size
     sigma = [(beam[0]/abs(dummy[0].header['CDELT1']*3600.))/(2*np.sqrt(2*np.log(2))),
@@ -1277,18 +1290,29 @@ def create_mask(work_dir, beam, casa=False):
     #our BPA is set to 0 which means the major axis smoothing should be in DEC axis and the minor on the RA
     smooth = gaussian_filter(dummy[0].data, sigma=(
         0, sigma[0], sigma[1]), order=0)
-    # We want the mean signal in the smoothed cube
+    if casa:
+        #If we are doing the casa corruption we want to do the proper conservation of brightness
+        #In casa of gaussian corruption this is done after combining the model and the noise
+        smooth = smooth*pixperbeam
+
+        # We want the mean signal in the smoothed cube
+        fits.writeto(f'{work_dir}testsmooth_cube.fits',
+                     smooth, dummy[0].header, overwrite=True)
     mean_signal = cf.get_mean_flux(smooth)
-    cutoff = 0.05*mean_signal
+    smooth = cf.get_mask(smooth)
+
+    #cutoff = 0.05*mean_signal
     #Then create mask
-    smooth[smooth < cutoff] = 0
-    smooth[smooth > cutoff] = 1
+    #smooth[smooth < cutoff] = 0
+    #smooth[smooth > cutoff] = 1
     # Write mask
     fits.writeto(work_dir+'/mask.fits', smooth,
                  dummy[0].header, overwrite=True)
+
     hdr = copy.deepcopy(dummy[0].header)
     data = copy.deepcopy(dummy[0].data)
     dummy.close()
+
     return mean_signal, hdr, data
 
 
@@ -1327,21 +1351,20 @@ NOTE:
 
 def vel_to_freq(hdr):
     central_freq = HI_rest_freq*(1-float(hdr['CRVAL3'])/c)
-    cdelt_freq = -HI_rest_freq*float(hdr['CDELT3'])/c
-    top_freq = central_freq+(hdr['CRPIX3']-hdr['NAXIS3'])*cdelt_freq
-    low_freq = central_freq+(hdr['CRPIX3']-1)*cdelt_freq
+    cdelt_freq = -HI_rest_freq*float(hdr['CDELT3']/1000.)/c_kms
+    top_freq = central_freq+(hdr['NAXIS3']-1-hdr['CRPIX3']-1)*cdelt_freq
+    low_freq = central_freq-(hdr['CRPIX3']-1)*cdelt_freq
     return central_freq, cdelt_freq, top_freq, low_freq
 
 
 def corrupt_casa(work_dir, beam, SNR, maindir):
     '''Corrupt our artifical galaxy with a casa's sim observe routines'''
-    from casatools import simulator,  ctsys, measures, table, msmetadata,synthesisutils
-    from casatasks import tclean,  imhead, exportfits, flagdata,\
-                          importfits, listobs, vishead, imsmooth
+    from casatools import simulator,  ctsys, measures, table, msmetadata, synthesisutils, ms
+    from casatasks import tclean,  imhead, exportfits, flagdata, simanalyze, \
+                          importfits, listobs, vishead, imsmooth, simobserve
     from casatasks.private import simutil
     mean_signal, hdr, data = create_mask(work_dir, beam, casa=True)
     #This next line should be commented as it is merely for testing
-    #mean_signal = 7.3623526e-05
     # In order to corrupt we need to know the average signal.
     # we do this taking the mean in each chaneel above a tenth of the max and then take the mean of that profile
     # This is the noise in the final cube
@@ -1349,41 +1372,61 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     noise = mean_signal/SNR
     print(f'We use this noise estimate {noise}')
     # We need to know the location in the sky dec > 30 we use WSRT 30 > dec > -30 --> VLA -30 > dec  --> Atca
-    RA, DEC = cf.convertRADEC(hdr['CRVAL1'], hdr['CRVAL2'])
+    RA, DEC = cf.convertRADEC(hdr['CRVAL1']+hdr['CDELT1'], hdr['CRVAL2']+hdr['CDELT2'])
     #mask sure previously used products are gone
     os.system('rm -Rf in_cube')
+    vel_frame = 'LSRK'
+    # flat noise = weighted by sqrt(weight), flatsky = weighted by weight, pbsquare=no normalisation
+    skynormalistation = 'flatnoise'
+    #weight is  sum ( square ( pb ) ), pb =  Primary beam calculated as sqrt ( xxx.weight )
+    inframe = fits.getval(f'{work_dir}unconvolved_cube.fits', 'SPECSYS')
+    fits.setval(f'{work_dir}unconvolved_cube.fits', 'SPECSYS', value=vel_frame)
     # make some names to use
     msname = f'{work_dir}sim_data.ms'
     casa_image = f'{work_dir}in_cube.image'
     casa_mask = f'{work_dir}mask.image'
     #get the header frequency informatio
     freq, cdelt, up_band, low_band = vel_to_freq(hdr)
-    print(
-        f'We find these frequencies {up_band/1e9}GHz delt= {cdelt/1000.} kHz')
-    print(f"We are using this many channels {hdr['NAXIS3']}")
+    print(freq, cdelt, up_band, low_band)
+
     # Read the model into a casa format
     importfits(fitsimage=f'{work_dir}unconvolved_cube.fits', imagename=casa_image,            # Name of input image FITS file # Name of output CASA image
                 # If fits image has multiple coordinate ,# If its file contains multiple images,Set blanked pixels to zero (not NaN)
                 whichrep=0, whichhdu=-1, zeroblanks=True,
                 overwrite=True, defaultaxes=True, defaultaxesvalues=[RA, DEC, f'{up_band}Hz', 'I'])
 
+    fits.setval(f'{work_dir}unconvolved_cube.fits', 'SPECSYS', value=inframe)
     # We have options to use different telescopes but lets's stick with the VLA
     if hdr['CRVAL2'] > 90:
         ant_list = 'WSRT.cfg'
     elif hdr['CRVAL2'] > -30:
         #If the requested beam is small we need to use a configuration
         if beam[1] < 8.:
+            #nat beam ~ 2."
             ant_list = 'vla.a.cfg'
-        else:
+            ext = 'vla.a'
+        elif beam[1] < 18:
+            #nat beam ~ 6"
             ant_list = 'vla.b.cfg'
+            ext = 'vla.b'
+        elif beam[1] < 80:
+            #nat beam ~ 20"
+            ant_list = 'vla.c.cfg'
+            ext = 'vla.c'
+        else:
+            #nat beam ~75"
+            ant_list = 'vla.d.cfg'
+            ext = 'vla.d'
     else:
         #if at low declination we need to use atca
         ant_list = 'atca_6c.cfg'
-
+    print(f"We selected {ant_list} as the antenna layout")
     # Instantiate all the required tools for the simulation
     sm = simulator()
     msmd = msmetadata()
     me = measures()
+    ms = ms()
+    #ms =measurementset()
     mysu = simutil.simutil()
     su = synthesisutils()
     tb = table()
@@ -1391,8 +1434,40 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     # First clean up
     os.system(f'rm -rf {msname}')
     # Open the simulator
-
+    # We will use simobserve as it works better
+    #simobserve need to work in the directory
+    sm.setvp(dovp=False)
+    os.chdir(f'{work_dir}')
+    #cellsize = [f'{abs(hdr['CDELT1']*3600.),abs(hdr['CDELT2']*3600.)]
+    simobserve(
+        #  simobserve :: visibility simulation task
+        project='sim_data',  # root prefix for output file names
+        skymodel=casa_image,  # model image to observe
+        complist='',  # componentlist to observe
+        setpointings=True,
+        integration='20s',  # integration (sampling) time
+        inbright=f'{np.max(data)}Jy/pixel',
+        indirection=f'J2000 {RA} {DEC}',
+        incenter=f'{freq}Hz',
+        inwidth=f'{cdelt}Hz',
+        incell=f'{hdr["CDELT2"]*3600.}arcsec',
+        # observation mode to simulate [int(interferometer)|sd(singledish)|""(none)]
+        obsmode='int',
+        outframe=vel_frame,
+        antennalist=ant_list,  # interferometer antenna position file
+        # hour angle of observation center e.g. "-3:00:00", "5h", "-4.5" (a number without units will be
+        hourangle='transit',
+        #   interpreted as hours), or "transit"
+        totaltime='12h',  # total time of observation or number of repetitions
+        thermalnoise='',  # No noise to be able to add the correct noise""]
+        # display graphics at each stage to [screen|file|both|none]. Have to be off to be able to run in screen.
+        graphics='file',
+        verbose=False,
+        overwrite=True)  # overwrite files starting with $project
     # Read/create an antenna configuration from the casa directory.
+
+    os.chdir(f'{maindir}')
+
     antennalist = os.path.join(ctsys.resolve("alma/simmos"), ant_list)
     ## Fictitious telescopes can be simulated by specifying x, y, z, d, an, telname, antpos.
     ##     x,y,z are locations in meters in ITRF (Earth centered) coordinates.
@@ -1400,82 +1475,30 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     ##     telname and obspos are the name and coordinates of the observatory.
     (x, y, z, d, an, an2, telname, obspos) = mysu.readantenna(antennalist)
     #calculate the number of baselines
-    no_baselines = len(an)*(len(an)-1.)/2.
-    no_pol = 2
     no_integrations = 12.*3600./20.
     source = work_dir.split('/')[-2]
-    # Set the antenna configuration
-    print(f"This is the observatory {telname}")
-    sm.open(ms=f'{msname}');
-    sm.setconfig(telescopename=telname,
-                     x=x,
-                     y=y,
-                     z=z,
-                     dishdiameter=d,
-                     mount=['alt-az'],
-                     antname=an,
-                     coordsystem='global',
-                     referencelocation=me.observatory(telname));
-    # Set the polarization mode (this goes to the FEED subtable)
-    sm.setfeed(mode='perfect R L', pol=['']);
-    # Set the spectral window and polarization (one data-description-id).
-    sm.setspwindow(spwname="LBand",
-                   freq=f"{up_band}Hz",
-                   deltafreq=f"{cdelt}Hz",
-                   refcode='BARY',
-                   freqresolution=f"{abs(cdelt)}Hz",
-                   nchannels=hdr['NAXIS3']+1,
-                   stokes='RR LL');
-    # Setup source/field information (i.e. where the observation phase center is)
-    # Call multiple times for different pointings or source locations.
-    sm.setfield(sourcename=source,
-                 sourcedirection=me.direction(rf='J2000', v0=RA, v1=DEC));
-    # Set shadow/elevation limits (if you care). These set flags.
-    #sm.setlimits(shadowlimit=0.01, elevationlimit='10deg');
-    # Leave autocorrelations out of the MS.
-    sm.setauto(autocorrwt=0.0);
-    # Set the integration time, and the convention to use for timerange specification
-    # Note : It is convenient to pick the hourangle mode as all times specified in sm.observe()
-    #        will be relative to when the source transits. Let's make 1800 integration in total
-    sm.settimes(integrationtime=f"{int(20.):d}s",
-                usehourangle=True,
-                referencetime=me.epoch('UTC', '2019/10/4/00:00:00'));
-    # Construct MS metadata and UVW values for one scan and ddid
-    # Call multiple times for multiple scans.
-    # all this with different sourcenames (fields) and spw/pol settings as defined above.
-    # Timesteps will be defined in intervals of 'integrationtime', between starttime and stoptime.
-    sm.observe(sourcename=source,
-               spwname='LBand',
-               starttime='-6.0h',
-               stoptime='+6.0h');
-    ## Close the simulator
-    sm.close()
 
-    vishead(vis=msname, mode='put', hdkey='telescope', hdvalue=telname)
-
-    print(f"We created the ms")
-
-    #use tclean to predict the model
-    print(f"Now populating the visibilities")
-    image_size =  [su.getOptimumSize(int(hdr['NAXIS1'])),\
+    sm.setvp(dovp=False)
+    image_size = [su.getOptimumSize(int(hdr['NAXIS1'])),
                 su.getOptimumSize(int(hdr['NAXIS2']))]
-
-    tclean(vis=msname,
-       startmodel=casa_image,
-       imagename=f'{work_dir}sim_predict',
-       savemodel='modelcolumn',
+    '''
+    tclean(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
+       imagename=f'{work_dir}Uni_Cube',
        imsize=image_size,
-       cell=[f"{hdr['CDELT1']*3600.}arcsec", f"{hdr['CDELT2']*3600.}arcsec"],
+       cell=[f"{abs(hdr['CDELT1']*3600.)}arcsec",
+                    f"{abs(hdr['CDELT2']*3600.)}arcsec"],
        specmode='cube',
        interpolation='nearest',
        start=1,
        width=1,
-       outframe='BARY',
+       outframe=vel_frame,
        nchan=hdr['NAXIS3'],
        reffreq=f'{HI_rest_freq}Hz',
        veltype='radio',
-       gridder='wproject',
-       normtype='flatsky',  # sky model is flat-sky
+       weighting = 'natural',
+       gridder = 'standard',
+       deconvolver = 'clark',
+       normtype=skynormalistation,  # sky model is flat-sky
        cfcache='sim_predict.cfcache',
        wbawp=True,      # ensure that gridders='mosaic' and 'awproject' do freq-dep PBs
        pblimit=0.05,
@@ -1485,19 +1508,53 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
        niter=0,
        wprojplanes=-1,
        parallel=True)
-    #and copy the model to the data
+    '''
+    image_size = [su.getOptimumSize(int(hdr['NAXIS1'])),
+                    su.getOptimumSize(int(hdr['NAXIS2']))]
+    tclean(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
+        usemask='user',
+        restart=False,
+        imagename=f'{work_dir}Uni_Cube',
+        #imagename=f'{work_dir}Final_Cube',
+        niter=0,
+        threshold=f'1Jy/beam',
+        #threshold=f'{noise/3.}Jy/beam',
+        mask=casa_mask,
+        normtype=skynormalistation,
+        datacolumn='observed',
+        imsize=image_size,
+        smallscalebias=0.6,
+        cell=[f"{abs(hdr['CDELT1']*3600.)}arcsec",
+                     f"{abs(hdr['CDELT2']*3600.)}arcsec"],
+        #scales=[0, int(2./4.*uniform_beam[1]), int(5./4.*uniform_beam[1])],
+        #cell=[f"{beam[1]/4.}arcsec", f"{beam[1]/4.}arcsec"],
+        #scales=[0, int(2./4.*beam[0]), int(5./4.*beam[0])],
+        #uvtaper = [f'{beam[0]}arcsec', f'{beam[1]}arcsec', '0deg'],
+        pblimit=-1.0,
+        pbmask=0.0,
+        pbcor=False,
+        restoringbeam='common',
+        specmode='cube',
+        start=0,
+        cfcache='sim_predict.cfcache',
+        outframe=vel_frame,
+        width=1,
+        calcres=False,
+        calcpsf=True,
+        restfreq=f'{HI_rest_freq}Hz',
+        veltype='radio',
+        field='0',
+        weighting='natural',
+        gridder='standard',
+        deconvolver='clark',
+        interactive=False,
+        parallel=True
+    )
 
-    print(f"Copying the data to the observed column")
-    tb.open(msname, nomodify=False)
-    tb.removecols('DATA')
-    tb.removecols('CORRECTED_DATA')
-    tb.renamecol('MODEL_DATA', 'DATA')
-    tb.close()
-
-    #make a copy of the ms to check
-    #os.system(f'cp -r {msname} {work_dir}check_uncorruptvis.ms')
     #Get the uniform weighted beam size
-    summary = imhead(imagename=f'{work_dir}sim_predict.psf', mode='summary')
+
+    summary = imhead(imagename=f'{work_dir}Uni_Cube.psf', mode='summary')
+
     uniform_beam = [summary['perplanebeams']['beams']['*4']['*0']['major']['value'],
                     summary['perplanebeams']['beams']['*4']['*0']['minor']['value'],
                     summary['perplanebeams']['beams']['*4']['*0']['positionangle']['value']]
@@ -1507,12 +1564,15 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
 
     print(f''' For the beam {beam}
 We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np.mean(beam[:2])} to obtain untapered noise.''')
+    no_baselines = len(an)*(len(an)-1.)/2.
+    no_pol = 2
     noise_at_uni = noise*np.mean(uniform_beam[:2])/np.mean(beam[:2])
     visnoise = noise_at_uni * \
-        np.sqrt(no_pol)*np.sqrt(no_baselines)*np.sqrt(no_integrations)
-    print(f'Corrupting the visbilities with noise of {visnoise} Jy')
+        np.sqrt(no_pol)*np.sqrt(no_baselines)*np.sqrt(no_integrations)*1.2
 
-    sm.openfromms(msname);
+    print(f'Corrupting the visbilities with noise of {visnoise} Jy')
+    sm.openfromms(f'{work_dir}sim_data/sim_data.{ext}.ms');
+    sm.setvp(dovp=False)
     sm.setseed(50)
     sm.setnoise(mode='simplenoise', simplenoise=f'{visnoise}Jy');
     #sm.setgain(mode='fbm',amplitude=0.025) #Minimal amplitude errors
@@ -1529,157 +1589,206 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     imhead(imagename=casa_mask, mode='put', hdkey='telescope', hdvalue=telname)
     imhead(imagename=casa_mask, mode='put',
            hdkey='date-obs', hdvalue='2019/10/4/00:00:00')
+    # use simanalyze to produce an image
     #cleaning our visbilities
-    listobs(vis=f'{msname}',
-            listfile=f'{work_dir}Observation_Overview.txt', verbose=True, overwrite=True)
+    #listobs(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
+    #        listfile=f'{work_dir}Observation_Overview.txt', verbose=True, overwrite=True)
 
-    os.system(f'rm -Rf {work_dir}Final_Cube* {work_dir}Final_Cube_HR* {work_dir}Uni_Cube*')
-    print(f"Produce the final image")
-    image_size = [su.getOptimumSize(int(abs(hdr['NAXIS1']*hdr['CDELT1']*3600./(uniform_beam[1]/4.)))),\
-                su.getOptimumSize(int(abs(hdr['NAXIS2']*hdr['CDELT2']*3600./(uniform_beam[1]/4.))))]
-    #image_size = [su.getOptimumSize(int(abs(hdr['NAXIS1']))),\
-    #            su.getOptimumSize(int(abs(hdr['NAXIS2'])))]
-    #if beam[0] == beam[1]:
-    #    beam[1] = 0.99*beam[0]
-    tclean(vis=msname,
+    tclean(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
         usemask='user',
-        restart=False,
+        restart=True,
         imagename=f'{work_dir}Uni_Cube',
         #imagename=f'{work_dir}Final_Cube',
         niter=1000,
         threshold=f'{noise_at_uni/4.}Jy/beam',
         #threshold=f'{noise/3.}Jy/beam',
         mask=casa_mask,
+        normtype=skynormalistation,
         datacolumn='observed',
-        imsize= image_size,
+        imsize=image_size,
         smallscalebias=0.6,
-        cell=[f"{uniform_beam[1]/4.}arcsec", f"{uniform_beam[1]/4.}arcsec"],
-        scales=[0, int(2./4.*uniform_beam[1]), int(5./4.*uniform_beam[1])],
+        cell=[f"{abs(hdr['CDELT1']*3600.)}arcsec",
+                     f"{abs(hdr['CDELT2']*3600.)}arcsec"],
+        #scales=[0, int(2./4.*uniform_beam[1]), int(5./4.*uniform_beam[1])],
         #cell=[f"{beam[1]/4.}arcsec", f"{beam[1]/4.}arcsec"],
         #scales=[0, int(2./4.*beam[0]), int(5./4.*beam[0])],
         #uvtaper = [f'{beam[0]}arcsec', f'{beam[1]}arcsec', '0deg'],
         pblimit = -1.0,
         pbmask = 0.0,
+        pbcor = False,
         restoringbeam = 'common',
         specmode = 'cube',
-        start = 1,
+        start = 0,
         cfcache = 'sim_predict.cfcache',
-        outframe = 'BARY',
+        outframe = vel_frame,
         width = 1,
+        calcres = True,
+        calcpsf = False,
         restfreq = f'{HI_rest_freq}Hz',
         veltype = 'radio',
         field = '0',
-        weighting = 'briggs',
-        gridder = 'wproject',
-        deconvolver = 'multiscale',
-        wprojplanes = -1,
-        robust = 2.0,
+        weighting = 'natural',
+        gridder = 'standard',
+        deconvolver = 'clark',
         interactive = False,
         parallel = True
     )
+    '''
+    os.chdir(f'{work_dir}')
+    simanalyze(
+        project     =      'sim_data'  ,      #  root prefix for output file names
+        #  (re)image $project.*.ms to $project.image
+        image       =       True  ,
+        vis         =  'default',       #  Measurement Set(s) to image
+        #  lower resolution prior image to use in clean e.g. existing total power image
+        modelimage  =         ''   ,
+        #  output image size in pixels (x,y) or 0 to match model
+        imsize      =          0   ,
+        #  set output image direction, (otherwise center on the model)
+        imdirection =         ''  ,
+        #  cell size with units e.g. "10arcsec"  or "" to equal model
+        cell        =         '' ,
+        #  interactive clean?  (make sure to set niter>0 also)
+        interactive =      False,
+        #  maximum number of iterations (0 for  dirty image)
+        niter       =          1000 ,
+        #  flux level (+units) to stop cleaning
+        threshold   =   f'{noise_at_uni/4.}Jy/beam',
+        #  weighting to apply to visibilities.   briggs will use robust=0.5
+        weighting   =  'natural',
+        #  Cleanbox(es), mask image(s), region(s), or a level
+        mask        =         [f'{casa_mask}'],
+        outertaper  =         [],        #  uv-taper on outer baselines in uv-plane
+        #  correct the output of synthesis images for primary beam response?
+        pbcor       =       False,
+        stokes      =        'I',        #  Stokes params to image
+        #  image (e.g. total power) to feather with new image
+        featherimage=         '',
+        #  (only first 6 selected outputs will be displayed)
+        analyze     =      False ,
+        #  display graphics at each stage to [screen|file|both|none]
+        graphics    =     'file',
+        verbose     =      True,
+        overwrite   =       True,        #  overwrite files starting with $project
+        #  only print information [experimental; only for interfermetric data]
+        dryrun      =      False ,
+        logfile     =         '')
+    os.chdir(f'{maindir}')
+    '''
     if beam[0] < uniform_beam[0] or beam[1] < uniform_beam[1]:
         print(f'!!!!!!!!!!!!!!!!!!!!!!We can not make the beam as small as you want it. We are simply copying the naturally weighted cube.')
         os.system(
             f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
     else:
-        imsmooth(imagename = f'{work_dir}Uni_Cube.image', outfile = f'{work_dir}Final_Cube.image',\
+        #imsmooth(imagename=f'{work_dir}sim_data/sim_data.{ext}.image', outfile=f'{work_dir}Final_Cube.image',
+        imsmooth(imagename = f'{work_dir}Uni_Cube.image', outfile = f'{work_dir}Final_Cube.image',
                     overwrite = True, major = f'{beam[0]}arcsec', minor = f'{beam[1]}arcsec',
                     pa = f'{beam[2]}deg', targetres = True)
-    #casa regrid takes forever
-    #temp_dict=imregrid(
-    #    imagename = f"{work_dir}in_cube.image", template = "get")
-    #imregrid(imagename = f'{work_dir}Final_Cube_HR.image',
-    #         output = f'{work_dir}Final_Cube.image', template = temp_dict)
-    imhead(imagename = f'{work_dir}Final_Cube.image',mode = 'put',hdkey = 'object',hdvalue = 'AGC Galaxy')
-    #imhead(imagename = f'{work_dir}Final_Cube.mask',mode = 'put',hdkey = 'object',hdvalue = 'AGC Mask')
-    exportfits(imagename = f'{work_dir}Final_Cube.image',  # Name of input CASA image
-               fitsimage = f'{work_dir}Convolved_Cube.fits',  # Name of output image FITS file
-               velocity = True,  # Use velocity (rather than frequency) as spectral axis
-               optical = False,  # Use the optical (rather than radio) velocity convention
-               bitpix = -32,  # Bits per pixel
-               # Minimum pixel value (if minpix > maxpix, value is automatically determined)
-               minpix = 0,
-               # Maximum pixel value (if minpix > maxpix, value is automatically determined)
-               maxpix = -1,
-               overwrite = True,  # Overwrite pre-existing imagename
-               dropstokes = True,  # Drop the Stokes axis?
-               stokeslast = False,  # Put Stokes axis last in header?
-               history = True,  # Write history to the FITS image?
-               dropdeg = True)
-    #exportfits(imagename = f'{work_dir}Final_Cube.mask',  # Name of input CASA image
-    #           fitsimage = f'{work_dir}mask.fits',  # Name of output image FITS file
-    #           velocity = True,  # Use velocity (rather than frequency) as spectral axis
-    #           optical = False,  # Use the optical (rather than radio) velocity convention
-               # Minimum pixel value (if minpix > maxpix, value is automatically determined)
-    #           minpix = 0,
-               # Maximum pixel value (if minpix > maxpix, value is automatically determined)
-    #           maxpix = -1,
-    #           overwrite = True,  # Overwrite pre-existing imagename
-    #           dropstokes = True,  # Drop the Stokes axis?
-    #           stokeslast = False,  # Put Stokes axis last in header?
-    #           history = True,  # Write history to the FITS image?
-    #           dropdeg = True)
 
+    imhead(imagename = f'{work_dir}Final_Cube.image',
+           mode='put', hdkey='object', hdvalue='AGC Galaxy')
 
-    dummy = fits.open(work_dir+'/Convolved_Cube.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
+    exportfits(imagename=f'{work_dir}Final_Cube.image',  # Name of input CASA image
+               # Name of output image FITS file
+               fitsimage=f'{work_dir}Convolved_Cube.fits',
+               # Use velocity (rather than frequency) as spectral axis
+               velocity=True,
+               # Use the optical (rather than radio) velocity convention
+               optical=False,
+               bitpix=-32,  # Bits per pixel
+               # Minimum pixel value (if minpix > maxpix, value is automatically determined)
+               minpix=0,
+               # Maximum pixel value (if minpix > maxpix, value is automatically determined)
+               maxpix=-1,
+               overwrite=True,  # Overwrite pre-existing imagename
+               dropstokes=True,  # Drop the Stokes axis?
+               stokeslast=False,  # Put Stokes axis last in header?
+               history=True,  # Write history to the FITS image?
+               dropdeg=True)
+
+    #os.system(
+    #        f'cp -r {work_dir}Convolved_Cube.fits {work_dir}Unscaled_Convolved_Cube.fits')
+    dummy = fits.open(work_dir+'/Convolved_Cube.fits', uint=False,
+                      do_not_scale_image_data=True, ignore_blank=True)
 
     #We need to regrid to our desired resolution
-
     for key in hdr:
         try:
-            print(f'For {key} we have in the header {hdr[key]} and {dummy[0].header[key]} in the original')
+            print(
+                f'For {key} we have in the header {hdr[key]} and {dummy[0].header[key]} in the original')
         except:
             pass
     newdummy = cf.regrid_array(dummy[0].data, Out_Shape=((int(hdr['NAXIS3']),
-        int(hdr['NAXIS2']),int(hdr['NAXIS1'] ))))
-    for ext in ['1','2']:
-        achieved_regrid = dummy[0].data.shape[int(ext)] / newdummy.shape[int(ext)]
-        dummy[0].header[f'CDELT{ext}'] = dummy[0].header[f'CDELT{ext}']*achieved_regrid
-        dummy[0].header[f'CRPIX{ext}'] = dummy[0].header[f'CRPIX{ext}']/achieved_regrid
+        int(hdr['NAXIS2']), int(hdr['NAXIS1']))))
+    for ext in ['1', '2']:
+        achieved_regrid = dummy[0].data.shape[int(
+            ext)] / newdummy.shape[int(ext)]
+        dummy[0].header[f'CDELT{ext}'] = dummy[0].header[f'CDELT{ext}'] * \
+            achieved_regrid
+        dummy[0].header[f'CRPIX{ext}'] = dummy[0].header[f'CRPIX{ext}'] / \
+            achieved_regrid
         dummy[0].header[f'NAXIS{ext}'] = newdummy.shape[int(ext)]
 
     # We cut 20 pixels around the edges
     #fits.writeto(work_dir+'/Convolved_Cube.fits',newdummy,hdr, overwrite = True)
     #Cut empty channels at the start and beginning
-    dummymask = fits.open(work_dir+'/mask.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
+    dummymask = fits.open(work_dir+'/mask.fits', uint=False,
+                          do_not_scale_image_data=True, ignore_blank=True)
+    clean_smooth = fits.open(f'{work_dir}testsmooth_cube.fits')
     while dummymask[0].data.shape[0] > newdummy.shape[0]:
         print(f'We are removing a back channel from the mask')
         dummymask[0].data = dummymask[0].data[:-1]
+        clean_smooth[0].data = clean_smooth[0].data[:-1]
 
     while np.sum(newdummy[-1]) == 0:
         newdummy = newdummy[:-1]
-        dummymask[0].data=dummymask[0].data[:-1]
+        clean_smooth[0].data = clean_smooth[0].data[:-1]
+        dummymask[0].data = dummymask[0].data[:-1]
         dummy[0].header['NAXIS3'] = dummy[0].header['NAXIS3']-1
 
     while np.sum(newdummy[0]) == 0:
         newdummy = newdummy[1:]
-        dummymask[0].data=dummymask[0].data[1:]
-
+        dummymask[0].data = dummymask[0].data[1:]
+        clean_smooth[0].data = clean_smooth[0].data[1:]
         dummy[0].header['NAXIS3'] = dummy[0].header['NAXIS3']-1
         dummy[0].header['CRPIX3'] = dummy[0].header['CRPIX3']-1
-    fits.writeto(work_dir+'/Convolved_Cube.fits',newdummy,dummy[0].header, overwrite = True)
-    fits.writeto(work_dir+'/mask.fits',dummymask[0].data,dummy[0].header, overwrite = True)
+    dummy[0].header['SPECSYS'] = inframe
+    outnoise = (np.std(newdummy[0])+np.std(newdummy[-1]))/2.
+    getscaling = copy.deepcopy(clean_smooth[0].data)
+    mean_signal = cf.get_mean_flux(clean_smooth[0].data,Mask=dummymask[0].data)
+    getscaling[dummymask[0].data < 0.5] = -0.1
+    getscaling[getscaling < 0.5*mean_signal] = -0.1
+    #And scale the final cube to make sure that we maintained the total flux
+    #fits.writeto(work_dir+'/Scaling_Mask.fits', getscaling,
+    #             dummy[0].header, overwrite=True)
+    #fits.writeto(f'{work_dir}testsmooth_cube.fits', clean_smooth[0].data,
+    #             dummy[0].header, overwrite=True)
+    mean_scale = np.mean(clean_smooth[0].data[getscaling > 0.]/newdummy[getscaling > 0.])
+
+    print(f'We scale the final cube by {mean_scale} to retain the M_HI')
+    newdummy *= mean_scale
+    fits.writeto(work_dir+'/Convolved_Cube.fits', newdummy,
+                 dummy[0].header, overwrite=True)
+    fits.writeto(work_dir+'/mask.fits',
+                 dummymask[0].data, dummy[0].header, overwrite=True)
 
     #newdummy=dummy[0].data
 
-    outnoise = (np.std(newdummy[0])+np.std(newdummy[-1]))/2.
-    Achieved_SNR =mean_signal/outnoise
-    with open(f"{maindir}/Casa_Noise_Statistics.txt",'a') as file:
-        file.write(f"{SNR:<10.6f} {Achieved_SNR:<10.6f} {Achieved_SNR/SNR:<10.6f} {mean_signal:<10.7e} {noise:<10.7e} {outnoise:<10.7e} {visnoise:<10.7e} |{source}| \n" )
 
-#
-
+    #Achieved_SNR = mean_signal/outnoise
+    #with open(f"{maindir}/Casa_Noise_Statistics.txt", 'a') as file:
+    #    file.write(f"{SNR:<10.6f} {Achieved_SNR:<10.6f} {Achieved_SNR/SNR:<10.6f} {mean_signal:<10.7e} {noise:<10.7e} {outnoise:<10.7e} {visnoise:<10.7e} |{source}| \n")
 
     #clean up the mess
-
     os.system(f'mkdir {work_dir}Casa_Log')
     os.system(f'mv {work_dir}*.last {work_dir}Casa_Log/')
+    os.system(f'mv {work_dir}sim_data/*.png {work_dir}Casa_Log/')
     os.system(f'mv {work_dir}Observation_Overview.txt {work_dir}Casa_Log/')
-    os.system(f'rm -Rf {work_dir}in_cube.image {work_dir}sim_data.ms {work_dir}sim_predict.* {work_dir}mask.image  {work_dir}Uni_Cube.* {work_dir}Final_Cube.* {work_dir}Final_Cube_HR.*  {work_dir}casa*.log casa*.log')
+    os.system(f'rm -Rf {work_dir}testsmooth_cube.fits')
+    os.system(f'rm -Rf {work_dir}sim_data {work_dir}in_cube.image {work_dir}sim_data.ms {work_dir}sim_predict.* {work_dir}mask.image  {work_dir}Uni_Cube.* {work_dir}Final_Cube.* {work_dir}Final_Cube_HR.*  {work_dir}casa*.log casa*.log')
+    os.system(f'mv {maindir}casa-*.log {work_dir}Casa_Log/')
 
-
-
-corrupt_casa.__doc__=f'''
+corrupt_casa.__doc__ = f'''
 NAME:
    corrupt_casa
 
@@ -1710,55 +1819,63 @@ PROCEDURES CALLED:
 NOTE: The final SNR is a guesstimate as the actuall observation is based on the time. This part could be improved.
 '''
 
-def corrupt_gauss(work_dir,beam,SNR):
+
+def corrupt_gauss(work_dir, beam, SNR):
     '''Corrupt our artifical galaxy with the correct noise cube such that the average SNR over the galaxy is the required one'''
-    mean_signal,hdr,data= create_mask(work_dir,beam)
+    mean_signal, hdr, data = create_mask(work_dir, beam)
     # Calculate the area of the beam in arcsec
-    beamarea=(np.pi*abs(beam[0]*beam[1]))/(4.*np.log(2.))
+    #
+    #beamarea=(np.pi*abs(beam[0]*beam[1]))/(4.*np.log(2.))
     # Convert arcsec to pixels
-    pixperbeam=beamarea/(abs(hdr['CDELT1']*3600.)*abs(hdr['CDELT2']*3600.))
+    #pixperbeam=beamarea/(abs(hdr['CDELT1']*3600.)*abs(hdr['CDELT2']*3600.))
+    pixperbeam = cf.get_beam_area_in_pixels(hdr, beam=[x/3600. for x in beam])
     # Make an the size of the model with random values distributed as the noise
     # The noise we want is the mean signal divided by the signal to noise ratio
     # that value needs to be deconvolved so from https://en.wikipedia.org/wiki/Gaussian_blur
     # The formula is uncited but works
-    sigma=[(beam[0]/abs(hdr['CDELT1']*3600.))/(2*np.sqrt(2*np.log(2))),(beam[1]/abs(hdr['CDELT2']*3600.))/(2*np.sqrt(2*np.log(2)))]
-    noisescl=(mean_signal/SNR*np.mean(sigma)*2*np.sqrt(np.pi))
+    sigma = [(beam[0]/abs(hdr['CDELT1']*3600.))/(2*np.sqrt(2*np.log(2))),
+              (beam[1]/abs(hdr['CDELT2']*3600.))/(2*np.sqrt(2*np.log(2)))]
+    noisescl = (mean_signal/SNR*np.mean(sigma)*2*np.sqrt(np.pi))
     #print("This our mean signal {} and noise {} in Jy/pixel. ".format(mean_signal,noisescl))
 
-    if beam[2] !=0. :
+    if beam[2] != 0.:
         #As we are going to rotatet the cube we should first extend it
         shift = int(abs(np.sin(np.radians(beam[2])))*hdr['NAXIS1']/2.+5)
-        Pix_Extend= [shift,shift]
+        Pix_Extend = [shift, shift]
         data = np.pad(data, [[0, 0], Pix_Extend, Pix_Extend], 'constant')
-        data = cf.rotateCube(data,beam[2],[hdr['CRPIX1']+shift,hdr['CRPIX2']+shift],order=1)
+        data = cf.rotateCube(
+            data, beam[2], [hdr['CRPIX1']+shift, hdr['CRPIX2']+shift], order=1)
 
-    cuberms = np.random.normal(scale=noisescl,size=np.shape(data))
+    cuberms = np.random.normal(scale=noisescl, size=np.shape(data))
     # combine the two cubes
 
-    noisedcube=data+cuberms
+    noisedcube = data+cuberms
     # Smooth to the requred resolution
 
     #our BPA is set to 0 which means the major axis smoothing should be in DEC axis and the minor on the RA
-    final = gaussian_filter(noisedcube, sigma=(0,sigma[0], sigma[1]), order=0)
+    final = gaussian_filter(noisedcube, sigma=(0, sigma[0], sigma[1]), order=0)
 
     if beam[2] != 0.:
         #rotate back
-        final_tmp = cf.rotateCube(final,-1*(beam[2]),[hdr['CRPIX1']+shift,hdr['CRPIX2']+shift],order=1)
-        final = copy.deepcopy(final_tmp[:, \
-            shift:hdr['NAXIS2'] + \
-            shift,shift:hdr['NAXIS1']\
+        final_tmp = cf.rotateCube(
+            final, -1*(beam[2]), [hdr['CRPIX1']+shift, hdr['CRPIX2']+shift], order=1)
+        final = copy.deepcopy(final_tmp[:,
+            shift:hdr['NAXIS2']
+            + shift, shift:hdr['NAXIS1']
              + shift])
-        final_tmp =[]
+        final_tmp = []
 
     # to preserve brightness temperature this should be multiplied with the increase in beam area
     # which is the same as the amount of pixels in the beam as we go from 1 pixel area to an area the size of the beam which is assuming two gaussians so we need to correct with a difference factor of the area of the. Last factor is to correct for the fact that the unconvolved cube hassquare pixels not a circular beam.
-    final=final*pixperbeam
+    final = final*pixperbeam
     # And write this final cube to the directory
-    hdr['BMAJ']=beam[0]/3600.
-    hdr['BMIN']=beam[1]/3600.
+    hdr['BMAJ'] = beam[0]/3600.
+    hdr['BMIN'] = beam[1]/3600.
     hdr['BPA'] = beam[2]
-    fits.writeto(work_dir+'/Convolved_Cube.fits',final,hdr, overwrite = True)
-corrupt_gauss.__doc__=f'''
+    fits.writeto(work_dir+'/Convolved_Cube.fits', final, hdr, overwrite=True)
+
+
+corrupt_gauss.__doc__ = f'''
 NAME:
    corrupt_gauss
 
@@ -1786,21 +1903,22 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def get_HI_disk(Mass,output_directory=None):
+
+def get_HI_disk(Mass, output_directory=None):
     # About 18.5% is cosmic baryon fraction from planck (Omb=0.048, OmDM = 0.2589). In a galactic halo this is roughly 70%-90% of the cosmic mean (See Crain et al. 2006, Pezzulli 2019)
     bary_frac = 0.1854
-    diff=0.9
+    diff = 0.9
     counter = 0
     # if the baryon mass is higher the 2* a typical gass mass disk (i.e. M_HI = 1e9 Msol)
     # then we subtract this disk from the baryonic fraction and count the remainder as the initial stellar mass guess
     if bary_frac*Mass > 2.8*10**9:
-        m_star=bary_frac*Mass-1.4*10**9
+        m_star = bary_frac*Mass-1.4*10**9
     else:
         # else half baryonic in stars
-        m_star=bary_frac*Mass/2.
+        m_star = bary_frac*Mass/2.
 
     # and convert stellar mass to an HI Mass following van Driel (2016)
-    m_star_prev=1
+    m_star_prev = 1
     while abs(m_star_prev-m_star)/m_star > 0.1:
         M_HI = m_star*10**(-0.43*np.log10(m_star)+3.75)
         # If the total gas mass is higher than the calculated baryonic mass then modify
@@ -1812,12 +1930,12 @@ def get_HI_disk(Mass,output_directory=None):
             else:
                 #The baryonic fraction is raised to match the current one
                 bary_frac = (1.4*M_HI+m_star)/(Mass)
-        m_star_prev=copy.deepcopy(m_star)
-        m_star=bary_frac* Mass-M_HI*1.4
+        m_star_prev = copy.deepcopy(m_star)
+        m_star = bary_frac * Mass-M_HI*1.4
 
     #print("This is MHI {:.2e} and mstar {:.2e}".format(MHI,m_star,m_star_prev))
     # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
-    R_HI=10**(0.506*np.log10(M_HI)-3.293)/2.
+    R_HI = 10**(0.506*np.log10(M_HI)-3.293)/2.
 
     # McGaugh 2014  M_*/Lk = 0.6
     M_K = np.log10(m_star/0.6)*-2.5+3.29
@@ -1826,17 +1944,19 @@ def get_HI_disk(Mass,output_directory=None):
     v_circ_TF = 10**((np.log10(m_star/0.6)-1.22)/3.81)/2.
 
     #  Let's check that this roughly gives our DM mass at the virial radius in pc
-    v_circ_NFW = calc_vc_NFW(Mass,M_HI,m_star,R_HI)
+    v_circ_NFW = calc_vc_NFW(Mass, M_HI, m_star, R_HI)
     #our final velocity is an average between TF and NFW
-    V_HI=(v_circ_TF+v_circ_NFW )/2.
+    V_HI = (v_circ_TF+v_circ_NFW)/2.
 
-    DynMass=R_HI*10**3*V_HI**2/G_agc
+    DynMass = R_HI*10**3*V_HI**2/G_agc
     if output_directory:
-        DynMassNFW= R_HI*10**3*v_circ_NFW**2/G_agc
-        with open(f'{output_directory}Fractions_and_Masses.txt','a') as file:
-            file.write(f'''The input Mass = {Mass:.2e}  and the retrieved NFW Dynamical mass = {DynMassNFW:.2e} and Dynamical Mass based on v_circ = {DynMass:.2e}.
-The current the baryon fraction = {bary_frac:.5f}\n''')
-    return V_HI, R_HI, M_HI,M_K,DynMass
+        DynMassNFW = R_HI*10**3*v_circ_NFW**2/G_agc
+        with open(f'{output_directory}Fractions_and_Masses.txt', 'a') as file:
+            file.write(f'''The input Mass = {Mass: .2e} and the retrieved NFW Dynamical mass = {DynMassNFW: .2e} and Dynamical Mass based on v_circ = {DynMass: .2e}.
+The current the baryon fraction = {bary_frac: .5f}\n''')
+    return V_HI, R_HI, M_HI, M_K, DynMass
+
+
 get_HI_disk.__doc__ = f'''
 NAME:
     get_HI_disk
@@ -1863,16 +1983,19 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def get_sparcs_fit(v_end,radius):
+
+def get_sparcs_fit(v_end, radius):
     '''Calculate the R_0, gamma and beta parameters'''
 
-    v_flat=11.+0.76*v_end
+    v_flat = 11.+0.76*v_end
     R_0 = 10*np.exp(-1*radius**2/10.**2)+2.25+0.08*radius
     beta = 0.5*(1.14-0.0006*v_end)+0.5*(0.7*np.arctan((radius - 32.)/25.))
     if beta < 0.25:
         beta = 0.25
-    gamma = 0.5*(gaussian_function(v_end,1.5,170.,60.))+0.5*(3.7- 0.003*radius)
-    return v_flat,R_0,beta,gamma
+    gamma = 0.5*(gaussian_function(v_end, 1.5, 170., 60.)) + \
+                 0.5*(3.7 - 0.003*radius)
+    return v_flat, R_0, beta, gamma
+
 
 get_sparcs_fit.__doc__ = f'''
 NAME:
@@ -1901,8 +2024,11 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def gaussian_function(x,amp,center,sigma):
+
+def gaussian_function(x, amp, center, sigma):
     return amp*np.exp(-(x-center)**2/(2.*sigma**2))
+
+
 gaussian_function.__doc__ = f'''
 NAME:
    gaussian_function
@@ -1932,7 +2058,8 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def one_galaxy(cfg,Current_Galaxy,Achieved):
+
+def one_galaxy(cfg, Current_Galaxy, Achieved):
     # Build a name and a directory where to stor the specific output
     print(f'''This is the galaxy we are creating.''')
     cf.print_base_galaxy(Current_Galaxy)
@@ -1944,23 +2071,25 @@ def one_galaxy(cfg,Current_Galaxy,Achieved):
     # But since python is the most alogical programming language ever invented
     # it does have to be declared because we  are in a function not in Global
     #Template=copy.deepcopy(Template_in)
-    os.system(f"cp {cfg.general.main_directory}/Input.fits {cfg.general.main_directory}/{name}/Input.fits  ")
+    os.system(
+        f"cp {cfg.general.main_directory}/Input.fits {cfg.general.main_directory}/{name}/Input.fits  ")
     Template = cf.read_template_file('Template.def')
 
      # First set the beam to 0.
-    Template["BMAJ"]= "BMAJ = 0."
-    Template["BMIN"]= "BMIN = 0."
-    Template["BPA"]= "BPA = 0."
-
+    Template["BMAJ"] = "BMAJ = 0."
+    Template["BMIN"] = "BMIN = 0."
+    Template["BPA"] = "BPA = 0."
 
     #Then we need to build the Surface Brightnes profile
-    SBRprof,Rad,sclength,MHI,Rad_HI,Vrot,sub_ring,molecular_profile,DynMass = build_sbr_prof(Current_Galaxy,symmetric=cfg.agc.symmetric) #Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
+    SBRprof, Rad, sclength, MHI, Rad_HI, Vrot, sub_ring, molecular_profile, DynMass = build_sbr_prof(
+        Current_Galaxy, symmetric=cfg.agc.symmetric)  # Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
     setattr(Achieved, "HI_Radius", Rad_HI)
     setattr(Current_Galaxy, "HI_Mass", MHI)
     Achieved.Mass = DynMass
     setattr(Achieved, "Scalelength", sclength)
     #We need central coordinates the vsys will come from the required distance and hubble flow. The RA and dec should not matter hance it will be the only random component in the code as we do want to test variations of them
-    Sky_Size = np.radians(Current_Galaxy.Res_Beam[0]*Current_Galaxy.Beams/3600.)
+    Sky_Size = np.radians(
+        Current_Galaxy.Res_Beam[0]*Current_Galaxy.Beams/3600.)
     Distance = (Rad_HI[0]/(np.tan(Sky_Size/2.)))/1000.
 
     #print("The Distance is {:5.2f} Mpc".format(Distance))
@@ -1973,124 +2102,158 @@ def one_galaxy(cfg,Current_Galaxy,Achieved):
     #    DECdeg=-60
     #    while DECdeg < -20.:
     #        DECdeg = (np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
-    RAhr,DEChr= cf.convertRADEC(*Current_Galaxy.Coord)
+    RAhr, DEChr = cf.convertRADEC(*Current_Galaxy.Coord)
     #print("It's central coordinates are RA={} DEC={} vsys={} km/s".format(RAhr,DEChr,vsys))
     # Write them to the template
-    for ext in ['','_2']:
-        Template[f"XPOS{ext}"]=f"XPOS{ext}= {Current_Galaxy.Coord[0]}"
-        Template[f"YPOS{ext}"]=f"YPOS{ext}= {Current_Galaxy.Coord[1]}"
-        Template[f"VSYS{ext}"]=f"VSYS{ext}= {vsys}"
+    for ext in ['', '_2']:
+        Template[f"XPOS{ext}"] = f"XPOS{ext}= {Current_Galaxy.Coord[0]}"
+        Template[f"YPOS{ext}"] = f"YPOS{ext}= {Current_Galaxy.Coord[1]}"
+        Template[f"VSYS{ext}"] = f"VSYS{ext}= {vsys}"
 
     # The Distance, this is not required but can be usefull
-    Template["DISTANCE"]="DISTANCE= {}".format(Distance)
+    Template["DISTANCE"] = "DISTANCE= {}".format(Distance)
     # With the distance we can also convert our radii
      # we need our radii in the corresponding arcsec
-    Rad_arcsec = cf.convertskyangle(Rad,distance=Distance,physical = True)
+    Rad_arcsec = cf.convertskyangle(Rad, distance=Distance, physical=True)
      # then the number of rings to the total number of rings
-    Template["NUR"]="NUR= {}".format(len(Rad))
+    Template["NUR"] = "NUR= {}".format(len(Rad))
     # The radii in arcsec
-    Template["RADI"]="RADI = "+" ".join(str(e) for e in Rad_arcsec)
+    Template["RADI"] = "RADI = "+" ".join(str(e) for e in Rad_arcsec)
     # Then we need to get a starting radius for the warp.
     # the warp should start at the edge of the optical radius which is the HI scale length/0.6
     # which are about ~ 4 * h_r
     WarpStart = 4.*sclength
     setattr(Achieved, "Warp_Radius", WarpStart)
-    WarpEnd=Rad[np.where(SBRprof >= 4.98534620064e-05)[0][-1]]
+    WarpEnd = Rad[np.where(SBRprof >= 4.98534620064e-05)[0][-1]]
     # Write it to the Template
-    Template["VROT"]="VROT = "+" ".join(str(e) for e in Vrot)
-    Template["VROT_2"]="VROT_2 = "+" ".join(str(e) for e in Vrot)
+    Template["VROT"] = "VROT = "+" ".join(str(e) for e in Vrot)
+    Template["VROT_2"] = "VROT_2 = "+" ".join(str(e) for e in Vrot)
     # We need a scale height and dispersion for each ring. They are coupled and hence they are both created in create_flare
-    h_z,dispersion=create_flare(Rad,Vrot,Current_Galaxy.Dispersion,Current_Galaxy.Flare,Rad_HI[0],sub_ring,distance=Distance)
+    h_z, dispersion = create_flare(Rad, Vrot, Current_Galaxy.Dispersion,
+                                   Current_Galaxy.Flare, Rad_HI[0], sub_ring, distance=Distance)
 
     # Finally we need to set the warping
-    PA,inc,phirings = create_warp(Rad,Current_Galaxy.PA,Current_Galaxy.Inclination,Current_Galaxy.Warp,[WarpStart,WarpEnd],sub_ring)
+    PA, inc, phirings = create_warp(Rad, Current_Galaxy.PA, Current_Galaxy.Inclination, Current_Galaxy.Warp, [
+                                  WarpStart, WarpEnd], sub_ring)
     if cfg.agc.symmetric:
-        PA_2,inc_2,phirings_2 = create_warp(Rad,Current_Galaxy.PA,Current_Galaxy.Inclination,Current_Galaxy.Warp,[WarpStart,WarpEnd],sub_ring,disk=2)
+        PA_2, inc_2, phirings_2 = create_warp(Rad, Current_Galaxy.PA, Current_Galaxy.Inclination, Current_Galaxy.Warp, [
+                                            WarpStart, WarpEnd], sub_ring, disk=2)
     else:
         # we want an assymetric warp so we redo the PA and inc but swap the variation
-        PA_2,inc_2,phirings_2 = create_warp(Rad,Current_Galaxy.PA,Current_Galaxy.Inclination,[Current_Galaxy.Warp[0]-Current_Galaxy.Warp[1],Current_Galaxy.Warp[1]/2.+Current_Galaxy.Warp[0]/2.],[WarpStart,WarpEnd],sub_ring,disk=2)
+        PA_2, inc_2, phirings_2 = create_warp(Rad, Current_Galaxy.PA, Current_Galaxy.Inclination, [
+                                            Current_Galaxy.Warp[0]-Current_Galaxy.Warp[1], Current_Galaxy.Warp[1]/2.+Current_Galaxy.Warp[0]/2.], [WarpStart, WarpEnd], sub_ring, disk=2)
 
     #If we want Radial Motions then they need to be inserted
     if Current_Galaxy.Radial_Motions != 0.:
-          Template.insert("VROT","VRAD","VRAD = {}".format(Current_Galaxy.Radial_Motions))
-          Template.insert("VROT_2","VRAD_2","VRAD_2 = {}".format(Current_Galaxy.Radial_Motions))
+          Template.insert("VROT", "VRAD", "VRAD = {}".format(
+              Current_Galaxy.Radial_Motions))
+          Template.insert("VROT_2", "VRAD_2", "VRAD_2 = {}".format(
+              Current_Galaxy.Radial_Motions))
 
     # This comes from FAT. If I remember correctly this is the sine response to the channels *1.2/(2*SQRT(2*ALOG(2.))))
     # However in our input we want independent channels which means we should set this to 0.
     # Template["CONDISP"]="CONDISP = 0."
     if cfg.agc.channel_dependency == 'sinusoidal':
-        Template["CONDISP"]="CONDISP = {}".format(Current_Galaxy.Channelwidth*1.2/(2*np.sqrt(2*np.log(2.))))
+        Template["CONDISP"] = "CONDISP = {}".format(
+            Current_Galaxy.Channelwidth*1.2/(2*np.sqrt(2*np.log(2.))))
     elif cfg.agc.channel_dependency == 'hanning':
-        Template["CONDISP"]="CONDISP = {}".format(Current_Galaxy.Channelwidth*2./(2*np.sqrt(2*np.log(2.))))
+        Template["CONDISP"] = "CONDISP = {}".format(
+            Current_Galaxy.Channelwidth*2./(2*np.sqrt(2*np.log(2.))))
     elif cfg.agc.channel_dependency == 'independent':
-        Template["CONDISP"]="CONDISP = 0."
+        Template["CONDISP"] = "CONDISP = 0."
     else:
-        raise InputError(f"{cfg.agc.channel_dependency} is not an option for the channel dependency")
-    setattr(Achieved, "Channel_Dep", cfg.agc.channel_dependency )
+        raise InputError(
+            f"{cfg.agc.channel_dependency} is not an option for the channel dependency")
+    setattr(Achieved, "Channel_Dep", cfg.agc.channel_dependency)
     # We need to set the input and output cube
-    Template["INSET"]="INSET = Input.fits"
-    Template["OUTSET"]="OUTSET = unconvolved_cube.fits"
+    Template["INSET"] = "INSET = Input.fits"
+    Template["OUTSET"] = "OUTSET = unconvolved_cube.fits"
     #Some tirific varaiables
-    Template["LOOPS"]="LOOPS = 0 "
+    Template["LOOPS"] = "LOOPS = 0 "
     # We need models with about 3 million particles but not more as it takes too long
-    TotFlux=MHI/(2.36e5*(Distance)**2)
-    Template["CFLUX"]="CFLUX = {}".format(TotFlux/5e6)
-    Template["CFLUX_2"]="CFLUX_2 = {}".format(TotFlux/5e6)
-    Template.insert("RMS","NDISKS","NDISKS = 2")
-    Template["TIRDEF"]="TIRDEF = ModelInput.def"
-    Template["GR_DEVICE"]="GR_DEVICE = "
-    Template["GR_CONT"]="GR_CONT = "
-    Template.insert("INSET","ACTION","ACTION = 1")
-    Template["PROGRESSLOG"]="PROGRESSLOG = "
-    Template["LOGNAME"]= "LOGNAME= "
+    TotFlux = MHI/(2.36e5*(Distance)**2)
+    Template["CFLUX"] = "CFLUX = {}".format(TotFlux/5e6)
+    Template["CFLUX_2"] = "CFLUX_2 = {}".format(TotFlux/5e6)
+    Template.insert("RMS", "NDISKS", "NDISKS = 2")
+    Template["TIRDEF"] = "TIRDEF = ModelInput.def"
+    Template["GR_DEVICE"] = "GR_DEVICE = "
+    Template["GR_CONT"] = "GR_CONT = "
+    Template.insert("INSET", "ACTION", "ACTION = 1")
+    Template["PROGRESSLOG"] = "PROGRESSLOG = "
+    Template["LOGNAME"] = "LOGNAME= "
 
     #-------------------------------This finishes the basic disk the following are optional components----------------------
 
     # The possible arms
     if Current_Galaxy.Arms == 'Arms':
-        phase,arm_brightness,arm_width = create_arms(Vrot,Rad,SBRprof,WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
-        phase,arm_brightness,arm_width = create_arms(Vrot,Rad,SBRprof,disk=2,WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
+        phase, arm_brightness, arm_width = create_arms(
+            Vrot, Rad, SBRprof, WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
+        phase, arm_brightness, arm_width = create_arms(
+            Vrot, Rad, SBRprof, disk=2, WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
         Achieved.Arms = 'Arms Added'
     else:
         Achieved.Arms = 'No Arms'
     # A possible Bar
     if Current_Galaxy.Bar == 'Barred':
-        bar_length = create_bar(Vrot,Rad,SBRprof,Template,WarpStart=WarpStart)
+        bar_length = create_bar(
+            Vrot, Rad, SBRprof, Template, WarpStart=WarpStart)
         Achieved.Bar = 'Bar Added'
     else:
         Achieved.Bar = 'No Bar'
     # and possible inhomogeneities
     if cfg.agc.inhomogenous:
-        inhomogeneity_amp = create_inhomogeneity(MHI,Current_Galaxy.SNR,disks=[1,2])
+        inhomogeneity_amp = create_inhomogeneity(
+            MHI, Current_Galaxy.SNR, disks=[1, 2])
     # we write the def files
     with open(f"{cfg.general.main_directory}{name}/tirific.def", 'w') as file:
         file.writelines([Template[key]+"\n" for key in Template])
 
     # So we need to  modify the input file to the correct coordinates else we'll get an empty cube
 
-    dummy = fits.open(f"{cfg.general.main_directory}{name}/Input.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+    dummy = fits.open(f"{cfg.general.main_directory}{name}/Input.fits",
+                      uint=False, do_not_scale_image_data=True, ignore_blank=True)
     #first we do a check wether the BMAJ
     #is written correctly for the python
     #program. We set a bunch of generic header values.
     #First we make sure that it fits
 
-    size = 2.*Rad_arcsec[-1] +(Current_Galaxy.Res_Beam[0])
-    if  Current_Galaxy.Beams < 6.:
-        size = 2.*Rad_arcsec[-1] +(6.*Current_Galaxy.Res_Beam[0])
+    size = 2.*Rad_arcsec[-1] + (Current_Galaxy.Res_Beam[0])
+    if Current_Galaxy.Beams < 6.:
+        size = 2.*Rad_arcsec[-1] + (6.*Current_Galaxy.Res_Beam[0])
     #pix_size = (Rad_arcsec[1]-Rad_arcsec[0])
     pix_size = Current_Galaxy.Res_Beam[1]/5.
-    if Current_Galaxy.Corruption =='Casa_Sim':
-        size += 60*pix_size
-    required_pixels=int(np.ceil(size/pix_size))
-    vel_max=2.5*np.max([Vrot*np.sin(inc*np.pi/180.)+4*dispersion,Vrot*np.sin(inc_2*np.pi/180.)+4*dispersion])
-    velpix=int(np.ceil(vel_max/Current_Galaxy.Channelwidth)*3 )
+    if Current_Galaxy.Corruption == 'Casa_Sim':
+        size += 20*pix_size
+        #we want to ensure 4 pixels in the natural beam
+        if Current_Galaxy.Res_Beam[1] < 8.:
+            #nat beam ~2"
+            if pix_size > 0.5:
+                pix_size = 0.5
+        elif Current_Galaxy.Res_Beam[1] < 18:
+            if pix_size > 1.5:
+                pix_size = 1.5
+            #nat beam ~ 6"
+        elif Current_Galaxy.Res_Beam[1] < 80:
+            if pix_size > 5:
+                pix_size = 5
+            #nat beam ~ 20"
+        else:
+            #nat beam ~75"
+            if pix_size > 18:
+                pix_size = 18
+
+    required_pixels = int(np.ceil(size/pix_size))
+    vel_max = 2.5*np.max([Vrot*np.sin(inc*np.pi/180.)+4
+                         * dispersion, Vrot*np.sin(inc_2*np.pi/180.)+4*dispersion])
+    velpix = int(np.ceil(vel_max/Current_Galaxy.Channelwidth)*3)
     dummy[0].header['CRPIX1'] = np.floor(required_pixels/2.)
     dummy[0].header['CRPIX2'] = np.floor(required_pixels/2.)
     dummy[0].header['CRPIX3'] = np.floor(velpix/2.)
     # Stupid astropy doesn't account for minus in header of cdelt1 then cdelt has different precision
-    tmp=int(pix_size/3600.*1e15)/1e15
+    tmp = int(pix_size/3600.*1e15)/1e15
     dummy[0].header['CDELT1'] = -1*tmp
     dummy[0].header['CDELT2'] = tmp
+
     dummy[0].header['CDELT3'] = Current_Galaxy.Channelwidth*1000./3.
     dummy[0].header['CRVAL1'] = Current_Galaxy.Coord[0]
     dummy[0].header['CRVAL2'] = Current_Galaxy.Coord[1]
@@ -2102,99 +2265,121 @@ def one_galaxy(cfg,Current_Galaxy,Achieved):
     dummy[0].header['BMIN'] = 0.
 
     try:
-        del  dummy[0].header['BLANK']
+        del dummy[0].header['BLANK']
     except:
         pass
     # make the cube a typical size
-    dummy2 = np.zeros((velpix,required_pixels,required_pixels),dtype= np.float32)
-    dummy2[int(np.floor(velpix/2.)),int(np.floor(required_pixels/2.)),int(np.floor(required_pixels/2.))] = 5
-    fits.writeto(f"{cfg.general.main_directory}{name}/Input.fits",dummy2,dummy[0].header, output_verify='silentfix+ignore', overwrite = True)
+    dummy2 = np.zeros(
+        (velpix, required_pixels, required_pixels), dtype=np.float32)
+    dummy2[int(np.floor(velpix/2.)), int(np.floor(required_pixels/2.)),
+               int(np.floor(required_pixels/2.))] = 5
+    fits.writeto(f"{cfg.general.main_directory}{name}/Input.fits", dummy2,
+                 dummy[0].header, output_verify='silentfix+ignore', overwrite=True)
     dummy.close()
 
-    current_run = subprocess.Popen([cfg.general.tirific,"DEFFILE=tirific.def","ACTION=1"],\
-                           stdout = subprocess.PIPE, stderr = subprocess.PIPE,\
-                           cwd=f"{cfg.general.main_directory}{name}",universal_newlines = True)
+    current_run = subprocess.Popen([cfg.general.tirific, "DEFFILE=tirific.def", "ACTION=1"],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           cwd=f"{cfg.general.main_directory}{name}", universal_newlines=True)
     tirific_run, tirific_warnings_are_annoying = current_run.communicate()
     #print(tirific_run)
     if current_run.returncode == 1:
         pass
     else:
         print(tirific_warnings_are_annoying)
-        raise TirificRunError("AGC:Tirific did not execute properly. See screen for details")
-
+        raise TirificRunError(
+            "AGC:Tirific did not execute properly. See screen for details")
 
     # Make sure that our tirific output confirms with the FITs standard header
     fits_to_modify = f"{cfg.general.main_directory}{name}/unconvolved_cube.fits"
-    hdr = fits.getheader(fits_to_modify)
-    freq,cdelt,up_band,low_band = vel_to_freq(hdr)
-    fits.setval(fits_to_modify,'SPECSYS',value= 'BARYCENT')
-    fits.setval(fits_to_modify,'OBJECT',value= 'AGC_GALAXY')
-    fits.setval(fits_to_modify,'INSTRUME',value= 'AGC')
-    fits.setval(fits_to_modify,'CTYPE3',value= 'VELO-HEL')
-    fits.setval(fits_to_modify,'BMAJ',value= 0.)
-    fits.setval(fits_to_modify,'BMIN',value= 0.)
-    fits.setval(fits_to_modify,'BPA',value= 0.)
-    fits.setval(fits_to_modify,'RESTFRQ',value= HI_rest_freq)
-    fits.setval(fits_to_modify,'BUNIT',value= 'Jy/pixel')
-    fits.setval(fits_to_modify,'ALTRVAL',value= freq)
-    fits.setval(fits_to_modify,'ALTRPIX',value= fits.getval(fits_to_modify,'CRPIX3'))
+    unconvolved_cube = fits.open(fits_to_modify,
+                     uint=False, do_not_scale_image_data=True, ignore_blank=True)
+    hdr = unconvolved_cube[0].header
+
+
+    freq, cdelt, up_band, low_band = vel_to_freq(hdr)
+
+    hdr['SPECSYS'] = 'BARYCENT'
+    hdr['OBJECT'] = 'AGC_GALAXY'
+    hdr['INSTRUME'] = 'AGC'
+    hdr['CTYPE3']='VELO-HEL'
+    hdr['BMAJ']=0.
+    hdr['BMIN']=0.
+    hdr['BPA']=0.
+    hdr['RESTFRQ']=HI_rest_freq
+    hdr['BUNIT']='Jy/pixel'
+    hdr['ALTRVAL']=freq
+    hdr['ALTRPIX']=hdr['CRPIX3']
+
+
+    fits.writeto(fits_to_modify,
+                 unconvolved_cube[0].data, hdr, overwrite = True)
+
+
+    unconvolved_cube.close()
     # Now we want to corrupt this cube with some realistic noise
     # For this we first want to get the noise we want in terms of Jansky per beam
     # we will define the SNR as the mean(Intensity)/noiselevel hence noise =mean(In)/SNR
     if Current_Galaxy.Corruption == 'Casa_Sim' or Current_Galaxy.Corruption == 'Gaussian':
         if Current_Galaxy.Corruption == 'Casa_Sim':
-            fits.setval(fits_to_modify,'CTYPE3',value= 'VRAD')
+            fits.setval(fits_to_modify, 'CTYPE3', value = 'VRAD')
             from contextlib import redirect_stdout
 
             with open(f'{cfg.general.main_directory}{name}/Casa_Log.txt', 'w') as f:
                 with redirect_stdout(f):
-                    corrupt_casa(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam,Current_Galaxy.SNR,cfg.general.main_directory)
-
-            os.system(f"mv {cfg.general.main_directory}{name}/Casa_Log.txt {cfg.general.main_directory}{name}/Casa_Log/")
-            fits.setval(fits_to_modify,'CTYPE3',value= 'VELO-HEL')
-            fits.setval(f"{cfg.general.main_directory}{name}/mask.fits",'CTYPE3',value= 'VELO-HEL')
-            fits.setval(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",'CTYPE3',value= 'VELO-HEL')
-            Achieved.Corruption = 'Casa_Sim'
+                    corrupt_casa(f"{cfg.general.main_directory}{name}/",
+                                 Current_Galaxy.Res_Beam, Current_Galaxy.SNR, cfg.general.main_directory)
+            os.system(
+                f"mv {cfg.general.main_directory}{name}/Casa_Log.txt {cfg.general.main_directory}{name}/Casa_Log/")
+            fits.setval(fits_to_modify, 'CTYPE3', value = 'VELO-HEL')
+            fits.setval(
+                f"{cfg.general.main_directory}{name}/mask.fits", 'CTYPE3', value = 'VELO-HEL')
+            fits.setval(
+                f"{cfg.general.main_directory}{name}/Convolved_Cube.fits", 'CTYPE3', value = 'VELO-HEL')
+            Achieved.Corruption='Casa_Sim'
         else:
-            corrupt_gauss(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam,Current_Galaxy.SNR)
-            Achieved.Corruption = 'Gaussian'
+            corrupt_gauss(f"{cfg.general.main_directory}{name}/",
+                          Current_Galaxy.Res_Beam, Current_Galaxy.SNR)
+            Achieved.Corruption='Gaussian'
 
 
-        mask = fits.open(f"{cfg.general.main_directory}{name}/mask.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
-        Cube = fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
+        mask=fits.open(f"{cfg.general.main_directory}{name}/mask.fits",
+                         uint = False, do_not_scale_image_data = True, ignore_blank = True)
+        Cube=fits.open(f"{cfg.general.main_directory}{name}/Convolved_Cube.fits",
+                         uint = False, do_not_scale_image_data = True, ignore_blank = True)
         #Here we have no control over the BPA it is what it is.
 
         Current_Galaxy.Res_Beam[2]=Cube[0].header['BPA']
-        maskr = mask[0].data
-        sigma = (np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
-        Cube_Clean = Cube[0].data
-        Cube_Clean[maskr < 0.5] = 0.
-        beamarea=(np.pi*abs(Cube[0].header['BMAJ']*3600.*Cube[0].header['BMIN']*3600.))/(4.*np.log(2.))
-        pixperbeam=beamarea/(abs(Cube[0].header['CDELT1']*3600.)*abs(Cube[0].header['CDELT2']*3600.))
-        totalsignal = np.sum(Cube_Clean)/pixperbeam
-        mass = 2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
+        maskr=mask[0].data
+        sigma=(np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
+        Cube_Clean=Cube[0].data
+        Cube_Clean[maskr < 0.5]=0.
+        pixperbeam=cf.get_beam_area_in_pixels(Cube[0].header)
+        totalsignal=np.sum(Cube_Clean)/pixperbeam
+        mass=2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
         mean_signal=cf.get_mean_flux(Cube_Clean)
-        SNRachieved = mean_signal/(sigma)
-        Achieved.Res_Beam = [Cube[0].header['BMAJ']*3600.,
+        SNRachieved=float(mean_signal)/(float(sigma))
+        Achieved.Res_Beam=[Cube[0].header['BMAJ']*3600.,
                              Cube[0].header['BMIN']*3600.,
                              Cube[0].header['BPA']]
         if Current_Galaxy.Corruption == 'Casa_Sim':
-            catalog_cube_name = 'Convolved_Cube_CS'
-            os.system(f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_CS.fits")
+            catalog_cube_name= 'Convolved_Cube_CS'
+            os.system(
+                f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_CS.fits")
         else:
-            catalog_cube_name = 'Convolved_Cube'
+            catalog_cube_name='Convolved_Cube'
         #if we have
     else:
-        Cube = fits.open(f"{cfg.general.main_directory}{name}/unconvolved_cube.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
-        Achieved.Res_Beam = [0.,0.,0.]
-        SNRachieved = float('NaN')
+        Cube=fits.open(f"{cfg.general.main_directory}{name}/unconvolved_cube.fits",
+                         uint = False, do_not_scale_image_data = True, ignore_blank = True)
+        Achieved.Res_Beam= [0., 0., 0.]
+        SNRachieved=float('NaN')
         sigma=float('NaN')
         mass=float('NaN')
-        catalog_cube_name = 'unconvolved_cube'
-        mean_signal,hdr,data= create_mask(f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam)
-        beamarea=(np.pi*abs(hdr['BMAJ']*3600.*hdr['BMIN']*3600.))/(4.*np.log(2.))
-        pixperbeam=beamarea/(abs(hdr['CDELT1']*3600.)*abs(hdr['CDELT2']*3600.))
+        catalog_cube_name='unconvolved_cube'
+        mean_signal, hdr, data=create_mask(
+            f"{cfg.general.main_directory}{name}/",Current_Galaxy.Res_Beam)
 
+        pixperbeam=cf.get_beam_area_in_pixels(hdr)
         hdr=[]
         data=[]
         print("!!!!!!!This corruption method is unknown, leaving the cube uncorrupted and unconvolved!!!!!!!!")
@@ -2210,7 +2395,8 @@ def one_galaxy(cfg,Current_Galaxy,Achieved):
     setattr(Achieved, "Pixel_Beam", pixperbeam )
     setattr(Achieved, "Channelwidth", Cube[0].header['CDELT3']/1000. )
 
-    write_overview_file(f"{cfg.general.main_directory}{name}/{name}-Info.txt", Current_Galaxy,Template,Achieved)
+    write_overview_file(
+        f"{cfg.general.main_directory}{name}/{name}-Info.txt", Current_Galaxy,Template,Achieved)
 
 
     # We also want a file that contains initial estimates for all the parameters. We scramble them with gaussian variations
@@ -2225,7 +2411,8 @@ def one_galaxy(cfg,Current_Galaxy,Achieved):
     # and cleanup
     os.system(f"rm -f {cfg.general.main_directory}{name}/ModelInput.def")
     os.system(f"rm -f {cfg.general.main_directory}{name}/Input.fits")
-    os.system(f"mv {cfg.general.main_directory}{name}/tirific.def {cfg.general.main_directory}{name}/ModelInput.def")
+    os.system(
+        f"mv {cfg.general.main_directory}{name}/tirific.def {cfg.general.main_directory}{name}/ModelInput.def")
     return f'{int(Current_Galaxy.Model_Number):d}|{Distance:.2f}|{name}|{catalog_cube_name}\n'
 
 one_galaxy.__doc__= f'''
@@ -2268,16 +2455,19 @@ def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax):
         ax = plt.subplot(1, 1, 1)
         plt.plot(Rad,Vrot,c=c)
         #plt.plot(Rad,Vrot,'ko',label='M$_{\odot}$ = {:.1e}'.format(Current_Galaxy.Mass))
-        plt.plot(Rad,Vrot,'o',c=c,label='M$_{\odot}$ = '+' {:.1e}'.format(Mass))
+        plt.plot(Rad,Vrot,'o',c=c,
+                 label='M$_{\odot}$ = '+' {:.1e}'.format(Mass))
         plt.ylabel('V$_{rot}$ (km s$^{-1}$)',**labelfont)
         plt.xlabel('Radius (kpc)',**labelfont)
         ax.yaxis.set_minor_locator(AutoMinorLocator(4))
         ax.xaxis.set_minor_locator(AutoMinorLocator(4))
         for axis in ['top','bottom','left','right']:
             ax.spines[axis].set_linewidth(1.5)
-        plt.tick_params(axis='both', which='minor', bottom=True,left=True,length=3)
+        plt.tick_params(axis='both', which='minor',
+                        bottom=True,left=True,length=3)
         plt.tick_params(axis='both', which='major', labelsize=17, length=6)
-        plt.tick_params(axis='both', which='both', direction = 'in', width=1.5 , bottom=True,left=True ,right =True, top=True)
+        plt.tick_params(axis='both', which='both', direction = 'in',
+                        width=1.5 , bottom=True,left=True ,right =True, top=True)
         max_rad = np.max(Rad)+1
 
     else:
@@ -2288,7 +2478,8 @@ def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax):
             max_rad =  np.max(Rad)+1
         plt.plot(Rad,Vrot,c=c)
         #plt.plot(Rad,Vrot,'o',label=r'M$_{\odot}$ = {:.1e}'.format(Current_Galaxy.Mass),c=c)
-        plt.plot(Rad,Vrot,'o',label='M$_{\odot}$ = '+' {:.1e}'.format(Mass),c=c)
+        plt.plot(Rad,Vrot,'o',
+                 label='M$_{\odot}$ = '+' {:.1e}'.format(Mass),c=c)
 
     return set_done,max_rad,colors,ax
 plot_RC.__doc__ = f'''
@@ -2368,7 +2559,7 @@ def sort_results(All_Galaxies,Result_Galaxies,results):
     return results
 sort_results.__doc__ = f'''
 NAME:
-   sort_results(All_Galaxies,Result_Galaxies,results)
+   sort_results(All_Galaxies, Result_Galaxies, results)
 
 PURPOSE:
     sort the results into the final output
@@ -2377,9 +2568,9 @@ CATEGORY:
     agc
 
 INPUTS:
-    All_Galaxies= a list with the name of all galaxies
+    All_Galaxies = a list with the name of all galaxies
     Result_Galaxies = Part of the results to arrange
-    results= final sorted array where to plant Result_Galaxies
+    results = final sorted array where to plant Result_Galaxies
 
 OPTIONAL INPUTS:
 
@@ -2398,8 +2589,8 @@ def write_overview_file(filename,Current_Galaxy,Template,Achieved):
     RAhr,DEChr= cf.convertRADEC(*Current_Galaxy.Coord)
     RAhra,DEChra= cf.convertRADEC(*Achieved.Coord)
     with open(filename, 'w') as overview:
-            overview.write(f'''# This file contains the basic parameters of this galaxy. For the radial dependencies look at Overview.png or ModelInput.def.
-#{'Variable':<14s} {'Requested':<15s} {'Achieved':15s} {'Units':<15s}
+            overview.write(f'''  # This file contains the basic parameters of this galaxy. For the radial dependencies look at Overview.png or ModelInput.def.
+#{'Variable':<14s} {'Requested':<15s} {'Achieved':<15s} {'Units':<15s}
 {'Inclination':<15s} {Current_Galaxy.Inclination:<15.2f} {float(Template['INCL'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
 {'PA':<15s} {Current_Galaxy.PA:<15.2f} {float(Template['PA'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
 {'Sys. Velocity':<15s} {'':<15s} {float(Template['VSYS'].split('=')[1].split()[0]):<15.2f} {'km/s':<15s}
@@ -2440,9 +2631,9 @@ CATEGORY:
    agc
 
 INPUTS:
-   Current_Galaxy = the Current Gakaxy that is processed (The requested values)
+   Current_Galaxy = the Current Gakaxy that is processed(The requested values)
    Template = The tirific template that is used to create the galaxy
-   Achieved= Copy of Current_Galaxy that contains the values measured from the cube
+   Achieved = Copy of Current_Galaxy that contains the values measured from the cube
 
 OPTIONAL INPUTS:
 
