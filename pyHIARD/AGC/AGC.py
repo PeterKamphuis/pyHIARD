@@ -1264,7 +1264,7 @@ def create_inhomogeneity(mass, SNR, disks=1.):
             ndisk, req_flux)
     #print("We will create inhomogeneities on top of disk(s) ="+" ".join(str(e) for e in [disks]))
 
-def clean_up_casa(work_dir):
+def clean_up_casa(work_dir,ext):
     print('We are starting to remove the unnecessary products of the casa corrupt sequence')
     os.mkdir(f'{work_dir}Casa_Log')
     #check that it is created
@@ -1782,7 +1782,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     #    file.write(f"{SNR:<10.6f} {Achieved_SNR:<10.6f} {Achieved_SNR/SNR:<10.6f} {mean_signal:<10.7e} {noise:<10.7e} {outnoise:<10.7e} {visnoise:<10.7e} |{source}| \n")
 
     #clean up the mess
-    clean_up_casa(work_dir)
+    clean_up_casa(work_dir,ext)
 
     # As these are a lot of system operations on big files let's give the system time to catch up
     finished = False
@@ -1797,7 +1797,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
             time.sleep(1)
         if counter in [30,60,90]:
             #try again
-            clean_up_casa(work_dir)
+            clean_up_casa(work_dir,ext)
         if counter > 120:
             raise RunningError(
                 f'Something failed in CASA corruption. please check {work_dir} and the log there.')
