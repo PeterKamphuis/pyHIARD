@@ -1471,19 +1471,19 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
         if beam[1] < 8.:
             #nat beam ~ 2."
             ant_list = 'vla.a.cfg'
-            ext = 'vla.a'
+            ant_ext = 'vla.a'
         elif beam[1] < 22:
             #nat beam ~ 6"
             ant_list = 'vla.b.cfg'
-            ext = 'vla.b'
+            ant_ext = 'vla.b'
         elif beam[1] < 50:
             #nat beam ~ 20"
             ant_list = 'vla.c.cfg'
-            ext = 'vla.c'
+            ant_ext = 'vla.c'
         else:
             #nat beam ~75"
             ant_list = 'vla.d.cfg'
-            ext = 'vla.d'
+            ant_ext = 'vla.d'
     else:
         #if at low declination we need to use atca
         ant_list = 'atca_6c.cfg'
@@ -1551,7 +1551,7 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
 
     image_size = [su.getOptimumSize(int(hdr['NAXIS1'])),
                     su.getOptimumSize(int(hdr['NAXIS2']))]
-    tclean(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
+    tclean(vis=f'{work_dir}sim_data/sim_data.{ant_ext}.ms',
         usemask='user',
         restart=False,
         imagename=f'{work_dir}Uni_Cube',
@@ -1611,7 +1611,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
         np.sqrt(no_pol)*np.sqrt(no_baselines)*np.sqrt(no_integrations)*1.2
 
     print(f'Corrupting the visbilities with noise of {visnoise} Jy')
-    sm.openfromms(f'{work_dir}sim_data/sim_data.{ext}.ms');
+    sm.openfromms(f'{work_dir}sim_data/sim_data.{ant_ext}.ms');
     sm.setvp(dovp=False)
     sm.setseed(50)
     sm.setnoise(mode='simplenoise', simplenoise=f'{visnoise}Jy');
@@ -1631,10 +1631,10 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
            hdkey='date-obs', hdvalue='2019/10/4/00:00:00')
     # use simanalyze to produce an image
     #cleaning our visbilities
-    listobs(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
+    listobs(vis=f'{work_dir}sim_data/sim_data.{ant_ext}.ms',
             listfile=f'{work_dir}Observation_Overview.txt', verbose=True, overwrite=True)
 
-    tclean(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
+    tclean(vis=f'{work_dir}sim_data/sim_data.{ant_ext}.ms',
         usemask='user',
         restart=True,
         imagename=f'{work_dir}Uni_Cube',
@@ -1679,7 +1679,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
         print(f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
         shutil.move(f'{work_dir}Uni_Cube.image', f'{work_dir}Uni_Cube.image')
     else:
-        #imsmooth(imagename=f'{work_dir}sim_data/sim_data.{ext}.image', outfile=f'{work_dir}Final_Cube.image',
+        #imsmooth(imagename=f'{work_dir}sim_data/sim_data.{ant_ext}.image', outfile=f'{work_dir}Final_Cube.image',
         imsmooth(imagename=f'{work_dir}Uni_Cube.image', outfile=f'{work_dir}Final_Cube.image',
                     overwrite=True, major=f'{beam[0]}arcsec', minor=f'{beam[1]}arcsec',
                     pa=f'{beam[2]}deg', targetres=True)
@@ -1782,7 +1782,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     #    file.write(f"{SNR:<10.6f} {Achieved_SNR:<10.6f} {Achieved_SNR/SNR:<10.6f} {mean_signal:<10.7e} {noise:<10.7e} {outnoise:<10.7e} {visnoise:<10.7e} |{source}| \n")
 
     #clean up the mess
-    clean_up_casa(work_dir,ext)
+    clean_up_casa(work_dir,ant_ext)
 
     # As these are a lot of system operations on big files let's give the system time to catch up
     finished = False
@@ -1797,7 +1797,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
             time.sleep(1)
         if counter in [30,60,90]:
             #try again
-            clean_up_casa(work_dir,ext)
+            clean_up_casa(work_dir,ant_ext)
         if counter > 120:
             raise RunningError(
                 f'Something failed in CASA corruption. please check {work_dir} and the log there.')
