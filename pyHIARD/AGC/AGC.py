@@ -1263,6 +1263,64 @@ def create_inhomogeneity(mass, SNR, disks=1.):
             ndisk, req_flux)
     #print("We will create inhomogeneities on top of disk(s) ="+" ".join(str(e) for e in [disks]))
 
+def clean_up_casa(work_dir):
+    print('We are starting to remove the unnecessary products of the casa corrupt sequence')
+    os.mkdir(f'{work_dir}Casa_Log')
+    #check that it is created
+    succes = os.path.isdir(f'{work_dir}Casa_Log')
+    if not succes:
+        time.sleep(1)
+        succes = os.path.isdir(f'{work_dir}Casa_Log')
+        if not succes:
+            raise RunningError(
+                f'We failed to create the directory {work_dir}Casa_Log')
+    os.system(f'mv {work_dir}sim_data/*.png {work_dir}Casa_Log/')
+    os.system(f'mv {work_dir}Observation_Overview.txt {work_dir}Casa_Log/')
+
+    files_to_remove = ['testsmooth_cube.fits']
+
+    for files in files_to_remove:
+        os.remove(f'{work_dir}{files}')
+
+    directories_to_remove = ['sim_data','in_cube.image','Final_Cube.image','mask.image','mask.image.tmp','mask.image.tmp2', 'Uni_Cube.image',\
+        'Uni_Cube.psf','Uni_Cube.sumwt','Uni_Cube.mask','Uni_Cube.model','Uni_Cube.pb','Uni_Cube.residual']
+    for dir in directories_to_remove:
+        succes = os.path.isdir(f'{work_dir}{dir}')
+        if succes:
+            cf.delete_directory(f'{work_dir}{dir}')
+        succes = os.path.isdir(f'{work_dir}{dir}')
+        if succes:
+            time.sleep(1)
+            succes = os.path.isdir(f'{work_dir}{dir}')
+            if succes:
+                raise RunningError(
+                    f'We failed to delete the directory {work_dir}{dir}')
+clean_up_casa.__doc__ = f'''
+NAME:
+   clean_up_casa
+
+PURPOSE:
+   delete all the casa stuff
+
+CATEGORY:
+   agc
+
+INPUTS:
+   work_dir = directory to clean
+
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE: T
+'''
+
 
 def create_mask(work_dir, beam, casa=False):
     # First open the model cube
@@ -1353,6 +1411,7 @@ NOTE:
 
 
 def vel_to_freq(hdr):
+    '''obatin the frequency of the m/s cube'''
     central_freq = HI_rest_freq*(1-float(hdr['CRVAL3'])/c)
     cdelt_freq = -HI_rest_freq*float(hdr['CDELT3']/1000.)/c_kms
     top_freq = central_freq+(hdr['NAXIS3']-1-hdr['CRPIX3']-1)*cdelt_freq
@@ -1568,8 +1627,8 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
            hdkey='date-obs', hdvalue='2019/10/4/00:00:00')
     # use simanalyze to produce an image
     #cleaning our visbilities
-    #listobs(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
-    #        listfile=f'{work_dir}Observation_Overview.txt', verbose=True, overwrite=True)
+    listobs(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
+            listfile=f'{work_dir}Observation_Overview.txt', verbose=True, overwrite=True)
 
     tclean(vis=f'{work_dir}sim_data/sim_data.{ext}.ms',
         usemask='user',
@@ -1719,13 +1778,8 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     #    file.write(f"{SNR:<10.6f} {Achieved_SNR:<10.6f} {Achieved_SNR/SNR:<10.6f} {mean_signal:<10.7e} {noise:<10.7e} {outnoise:<10.7e} {visnoise:<10.7e} |{source}| \n")
 
     #clean up the mess
-    os.system(f'mkdir {work_dir}Casa_Log')
-    os.system(f'mv {work_dir}*.last {work_dir}Casa_Log/')
-    os.system(f'mv {work_dir}sim_data/*.png {work_dir}Casa_Log/')
-    os.system(f'mv {work_dir}Observation_Overview.txt {work_dir}Casa_Log/')
-    os.system(f'rm -Rf {work_dir}testsmooth_cube.fits')
-    os.system(f'rm -Rf {work_dir}sim_data {work_dir}in_cube.image {work_dir}sim_data.ms {work_dir}sim_predict.* {work_dir}mask.image  {work_dir}Uni_Cube.* {work_dir}Final_Cube.* {work_dir}Final_Cube_HR.*  {work_dir}casa*.log casa*.log')
-    os.system(f'mv {maindir}casa-*.log {work_dir}Casa_Log/')
+    clean_up_casa(work_dir)
+
     # As these are a lot of system operations on big files let's give the system time to catch up
     finished = False
     counter = 0
@@ -1737,10 +1791,12 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
         else:
             counter += 1
             time.sleep(1)
+        if counter in [30,60,90]:
+            #try again
+            clean_up_casa(work_dir)
         if counter > 120:
             raise RunningError(
                 f'Something failed in CASA corruption. please check {work_dir} and the log there.')
-
 
 corrupt_casa.__doc__ = f'''
 NAME:
@@ -1756,10 +1812,8 @@ INPUTS:
    work_dir = directory where to put the mask
    beam = size of the required beam
    SNR = is the requested SNR
-   Template_Casa = The template for the sim_observe python file for casa
 
 OPTIONAL INPUTS:
-   casa_call = casa command line command
 
 OUTPUTS:
    the Convolved and corrupted cube is writen to disk
@@ -1770,9 +1824,8 @@ OPTIONAL OUTPUTS:
 PROCEDURES CALLED:
    Unspecified
 
-NOTE: The final SNR is a guesstimate as the actuall observation is based on the time. This part could be improved.
+NOTE: The final SNR is a guesstimate.
 '''
-
 
 def corrupt_gauss(work_dir, beam, SNR, no_corrupt=False):
     '''Corrupt our artifical galaxy with the correct noise cube such that the average SNR over the galaxy is the required one'''
