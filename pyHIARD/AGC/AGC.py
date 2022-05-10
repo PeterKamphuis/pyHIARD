@@ -1415,7 +1415,7 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
             #nat beam ~ 6"
             ant_list = 'vla.b.cfg'
             ext = 'vla.b'
-        elif beam[1] < 80:
+        elif beam[1] < 50:
             #nat beam ~ 20"
             ant_list = 'vla.c.cfg'
             ext = 'vla.c'
@@ -1639,50 +1639,10 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
         interactive = False,
         parallel = True
     )
-    '''
-    os.chdir(f'{work_dir}')
-    simanalyze(
-        project     =      'sim_data'  ,      #  root prefix for output file names
-        #  (re)image $project.*.ms to $project.image
-        image       =       True  ,
-        vis         =  'default',       #  Measurement Set(s) to image
-        #  lower resolution prior image to use in clean e.g. existing total power image
-        modelimage  =         ''   ,
-        #  output image size in pixels (x,y) or 0 to match model
-        imsize      =          0   ,
-        #  set output image direction, (otherwise center on the model)
-        imdirection =         ''  ,
-        #  cell size with units e.g. "10arcsec"  or "" to equal model
-        cell        =         '' ,
-        #  interactive clean?  (make sure to set niter>0 also)
-        interactive =      False,
-        #  maximum number of iterations (0 for  dirty image)
-        niter       =          1000 ,
-        #  flux level (+units) to stop cleaning
-        threshold   =   f'{noise_at_uni/4.}Jy/beam',
-        #  weighting to apply to visibilities.   briggs will use robust=0.5
-        weighting   =  'natural',
-        #  Cleanbox(es), mask image(s), region(s), or a level
-        mask        =         [f'{casa_mask}'],
-        outertaper  =         [],        #  uv-taper on outer baselines in uv-plane
-        #  correct the output of synthesis images for primary beam response?
-        pbcor       =       False,
-        stokes      =        'I',        #  Stokes params to image
-        #  image (e.g. total power) to feather with new image
-        featherimage=         '',
-        #  (only first 6 selected outputs will be displayed)
-        analyze     =      False ,
-        #  display graphics at each stage to [screen|file|both|none]
-        graphics    =     'file',
-        verbose     =      True,
-        overwrite   =       True,        #  overwrite files starting with $project
-        #  only print information [experimental; only for interfermetric data]
-        dryrun      =      False ,
-        logfile     =         '')
-    os.chdir(f'{maindir}')
-    '''
+
     if beam[0] < uniform_beam[0] or beam[1] < uniform_beam[1]:
         print(f'!!!!!!!!!!!!!!!!!!!!!!We can not make the beam as small as you want it. We are simply copying the naturally weighted cube.')
+        print(f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
         os.system(f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
     else:
         #imsmooth(imagename=f'{work_dir}sim_data/sim_data.{ext}.image', outfile=f'{work_dir}Final_Cube.image',
@@ -1794,6 +1754,8 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     os.system(f'rm -Rf {work_dir}testsmooth_cube.fits')
     os.system(f'rm -Rf {work_dir}sim_data {work_dir}in_cube.image {work_dir}sim_data.ms {work_dir}sim_predict.* {work_dir}mask.image  {work_dir}Uni_Cube.* {work_dir}Final_Cube.* {work_dir}Final_Cube_HR.*  {work_dir}casa*.log casa*.log')
     os.system(f'mv {maindir}casa-*.log {work_dir}Casa_Log/')
+    # As these are a lot of system operations on big files let's give the system time to catch up
+    time.sleep(1)
 
 corrupt_casa.__doc__ = f'''
 NAME:
