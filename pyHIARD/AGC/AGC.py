@@ -1734,7 +1734,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
         final_cube_exists = os.path.isfile(f'{work_dir}Convolved_Cube.fits')
         if not ms_exists and final_cube_exists:
             finished = True
-        else
+        else:
             counter += 1
             time.sleep(1)
         if counter > 120:
@@ -2041,7 +2041,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
             time.sleep(0.1)
             counter += 1
         if counter == 60:
-            f"cp {cfg.general.main_directory}/Input.fits {cfg.general.main_directory}/{name}/Input.fits  ")
+            os.system(f"cp {cfg.general.main_directory}/Input.fits {cfg.general.main_directory}/{name}/Input.fits")
         if counter > 120:
             raise RunningError(
                 f'Something went wrong copying the input file to {name}. Please file an issue on Github')
