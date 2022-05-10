@@ -15,6 +15,7 @@ from astropy.io import fits
 import copy
 import numpy as np
 import os
+import shutil
 import psutil
 import pyHIARD.common_functions as cf
 import resource
@@ -1274,8 +1275,11 @@ def clean_up_casa(work_dir):
         if not succes:
             raise RunningError(
                 f'We failed to create the directory {work_dir}Casa_Log')
-    os.system(f'mv {work_dir}sim_data/*.png {work_dir}Casa_Log/')
-    os.system(f'mv {work_dir}Observation_Overview.txt {work_dir}Casa_Log/')
+
+
+    shutil.move(f'{work_dir}sim_data/sim_data.{ext}.skymodel.png',f'{work_dir}Casa_Log/sim_data.{ext}.skymodel.png')
+    shutil.move(f'{work_dir}sim_data/sim_data.{ext}.observe.png',f'{work_dir}Casa_Log/sim_data.{ext}.observe.png')
+    shutil.move(f'{work_dir}Observation_Overview.txt',f'{work_dir}Casa_Log/Observation_Overview.txt')
 
     files_to_remove = ['testsmooth_cube.fits']
 
@@ -1673,7 +1677,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     if beam[0] < uniform_beam[0] or beam[1] < uniform_beam[1]:
         print(f'!!!!!!!!!!!!!!!!!!!!!!We can not make the beam as small as you want it. We are simply copying the naturally weighted cube.')
         print(f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
-        os.system(f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
+        shutil.move(f'{work_dir}Uni_Cube.image', f'{work_dir}Uni_Cube.image')
     else:
         #imsmooth(imagename=f'{work_dir}sim_data/sim_data.{ext}.image', outfile=f'{work_dir}Final_Cube.image',
         imsmooth(imagename=f'{work_dir}Uni_Cube.image', outfile=f'{work_dir}Final_Cube.image',
@@ -2080,8 +2084,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     # But since python is the most alogical programming language ever invented
     # it does have to be declared because we  are in a function not in Global
     #Template=copy.deepcopy(Template_in)
-    os.system(
-        f"cp {cfg.general.main_directory}/Input.fits {cfg.general.main_directory}/{name}/Input.fits  ")
+    shutil.copy(f'{cfg.general.main_directory}/Input.fits',f'{cfg.general.main_directory}/{name}/Input.fits')
     #make sure it arrives
     counter = 0
     found = False
@@ -2093,8 +2096,8 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
         else:
             time.sleep(0.1)
             counter += 1
-        if counter == 60:
-            os.system(f"cp {cfg.general.main_directory}/Input.fits {cfg.general.main_directory}/{name}/Input.fits")
+        if counter in [30,60,90]:
+            shutil.copy(f'{cfg.general.main_directory}/Input.fits',f'{cfg.general.main_directory}/{name}/Input.fits')
         if counter > 120:
             raise RunningError(
                 f'Something went wrong copying the input file to {name}. Please file an issue on Github')
