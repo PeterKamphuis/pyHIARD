@@ -1411,7 +1411,7 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
             #nat beam ~ 2."
             ant_list = 'vla.a.cfg'
             ext = 'vla.a'
-        elif beam[1] < 18:
+        elif beam[1] < 22:
             #nat beam ~ 6"
             ant_list = 'vla.b.cfg'
             ext = 'vla.b'
@@ -1683,8 +1683,7 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     '''
     if beam[0] < uniform_beam[0] or beam[1] < uniform_beam[1]:
         print(f'!!!!!!!!!!!!!!!!!!!!!!We can not make the beam as small as you want it. We are simply copying the naturally weighted cube.')
-        os.system(
-            f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
+        os.system(f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
     else:
         #imsmooth(imagename=f'{work_dir}sim_data/sim_data.{ext}.image', outfile=f'{work_dir}Final_Cube.image',
         imsmooth(imagename = f'{work_dir}Uni_Cube.image', outfile = f'{work_dir}Final_Cube.image',
@@ -2239,7 +2238,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
             #nat beam ~2"
             if pix_size > 0.5:
                 pix_size = 0.5
-        elif Current_Galaxy.Res_Beam[1] < 18:
+        elif Current_Galaxy.Res_Beam[1] < 22:
             if pix_size > 1.5:
                 pix_size = 1.5
             #nat beam ~ 6"
