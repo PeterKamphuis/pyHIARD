@@ -151,7 +151,8 @@ def AGC(cfg):
         dummy2[60, 250, 250] = 5
         fits.writeto(cfg.general.main_directory+'/Input.fits', dummy2,
                      dummy[0].header, output_verify='silentfix+ignore', overwrite=True)
-        dummy.close()
+        dummy2 = []
+        dummy = []
 
     # All this went well
     templatethere = os.path.isfile(cfg.general.main_directory+'/Input.fits')
@@ -339,8 +340,8 @@ def AGC(cfg):
     plot_ax.set_xlim(xmin=0, xmax=max_rad)
     plt.legend(loc='lower right', fontsize=12)
     plt.savefig('Rotation_Curves.pdf', bbox_inches='tight')
+    plot_ax.cla()
     plt.close()
-
                 #print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
     if len(Casa_Galaxies) > 0:
         #with open(f"{cfg.general.main_directory}/Casa_Noise_Statistics.txt", 'w') as file:
@@ -2311,6 +2312,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     fits.writeto(f"{cfg.general.main_directory}{name}/Input.fits", dummy2,
                  dummy[0].header, output_verify='silentfix+ignore', overwrite=True)
     dummy.close()
+    dummy2 = []
 
     current_run = subprocess.Popen([cfg.general.tirific, "DEFFILE=tirific.def", "ACTION=1"],
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -2323,6 +2325,8 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
         print(tirific_warnings_are_annoying)
         raise TirificRunError(
             "AGC:Tirific did not execute properly. See screen for details")
+    tirific_run=[]
+    tirific_warnings_are_annoying = []
 
     # Make sure that our tirific output confirms with the FITs standard header
     fits_to_modify = f"{cfg.general.main_directory}{name}/Unconvolved_Cube.fits"
@@ -2393,10 +2397,14 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     sigma=(np.std(Cube[0].data[0])+np.std(Cube[0].data[-1]))/2.
     Cube_Clean=Cube[0].data
     Cube_Clean[maskr < 0.5]=0.
+    maskr = []
+    mask.close()
     pixperbeam=cf.get_beam_area_in_pixels(Cube[0].header)
     totalsignal=np.sum(Cube_Clean)/pixperbeam
     mass=2.36E5*Distance**2*totalsignal*Cube[0].header['CDELT3']/1000.
     mean_signal=cf.get_mean_flux(Cube_Clean)
+    Cube_Clean = []
+    Cube.close()
     SNRachieved=float(mean_signal)/(float(sigma))
     Achieved.Res_Beam=[Cube[0].header['BMAJ']*3600.,
                          Cube[0].header['BMIN']*3600.,
