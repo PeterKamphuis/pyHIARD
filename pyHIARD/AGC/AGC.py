@@ -12,6 +12,7 @@ from scipy import interpolate
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from astropy.io.fits.verify import VerifyWarning
 from astropy.io import fits
+from memory_profiler import profile
 import copy
 import numpy as np
 import os
@@ -1422,7 +1423,7 @@ def vel_to_freq(hdr):
     low_freq = central_freq-(hdr['CRPIX3']-1)*cdelt_freq
     return central_freq, cdelt_freq, top_freq, low_freq
 
-
+@profile
 def corrupt_casa(work_dir, beam, SNR, maindir):
     '''Corrupt our artifical galaxy with a casa's sim observe routines'''
     from casatools import simulator,  ctsys, measures, table, msmetadata, synthesisutils, ms
@@ -1774,6 +1775,10 @@ We are increasing the original noise({noise}) with {np.mean(uniform_beam[:2])/np
     dummymask[0].data = np.array(dummymask[0].data, dtype=int)
     fits.writeto(work_dir+'/mask.fits',
                  dummymask[0].data, dummy[0].header, overwrite=True)
+    dummy.close()
+    dummymask.close()
+    newdummy=[]
+    getscaling=[]
 
     #newdummy=dummy[0].data
 
@@ -2071,7 +2076,7 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-
+@profile
 def one_galaxy(cfg, Current_Galaxy, Achieved):
     # Build a name and a directory where to stor the specific output
     print(f'''This is the galaxy we are creating.''')
