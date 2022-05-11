@@ -2076,8 +2076,6 @@ PROCEDURES CALLED:
 
 NOTE:
 '''
-
-@profile
 def one_galaxy(cfg, Current_Galaxy, Achieved):
     # Build a name and a directory where to stor the specific output
     print(f'''This is the galaxy we are creating.''')
