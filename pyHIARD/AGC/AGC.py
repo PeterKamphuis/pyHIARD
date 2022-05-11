@@ -48,7 +48,7 @@ class RunningError(Exception):
     pass
 #------------------------------!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Main for creating the AGC!!!!!!!!!!!!!!!!!!!!!----------------------
 
-
+@profile
 def AGC(cfg):
     '''Create realistic artificial galaxies.'''
     # Let's give an overview of the database that will be created
