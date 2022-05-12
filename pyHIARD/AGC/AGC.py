@@ -1494,250 +1494,259 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     #!!!!!!!!!!!!!!!!!!!
     with open(f'{work_dir}casa_corrupt.py','w') as casa_program:
         casa_program.write(f'''
-from casatools import simulator,  ctsys, measures, table, msmetadata, synthesisutils, ms
-from casatasks import tclean,  imhead, exportfits, flagdata, simanalyze, \\
-                      importfits, listobs, vishead, imsmooth, simobserve
-from casatasks.private import simutil
-import os
-import numpy as np
+
+from memory_profiler import profile
 
 # Read the model into a casa format
-importfits(fitsimage='{work_dir}Unconvolved_Cube.fits', imagename='{casa_image}',            # Name of input image FITS file # Name of output CASA image # If fits image has multiple coordinate ,# If its file contains multiple images,Set blanked pixels to zero (not NaN)
-            whichrep=0, whichhdu=-1, zeroblanks=True,
-            overwrite=True, defaultaxes=True, defaultaxesvalues=['{RA}', '{DEC}','{up_band}Hz', 'I'])
+
+@profile
+def main():
+    from casatools import simulator,  ctsys, measures, table, msmetadata, synthesisutils, ms
+    from casatasks import tclean,  imhead, exportfits, flagdata, simanalyze, \\
+                          importfits, listobs, vishead, imsmooth, simobserve
+    from casatasks.private import simutil
+    import os
+    import numpy as np
+    importfits(fitsimage='{work_dir}Unconvolved_Cube.fits', imagename='{casa_image}',            # Name of input image FITS file # Name of output CASA image # If fits image has multiple coordinate ,# If its file contains multiple images,Set blanked pixels to zero (not NaN)
+                whichrep=0, whichhdu=-1, zeroblanks=True,
+                overwrite=True, defaultaxes=True, defaultaxesvalues=['{RA}', '{DEC}','{up_band}Hz', 'I'])
 
 
-# We have options to use different telescopes but lets's stick with the VLA
-if {hdr['CRVAL2']} > 90:
-    ant_list = 'WSRT.cfg'
-elif {hdr['CRVAL2']} > -30:
-    #If the requested beam is small we need to use a configuration
-    if {beam[1]} < 8.:
-        #nat beam ~ 2."
-        ant_list = 'vla.a.cfg'
-        ant_ext = 'vla.a'
-    elif {beam[1]} < 22:
-        #nat beam ~ 6"
-        ant_list = 'vla.b.cfg'
-        ant_ext = 'vla.b'
-    elif {beam[1]} < 50:
-        #nat beam ~ 20"
-        ant_list = 'vla.c.cfg'
-        ant_ext = 'vla.c'
+    # We have options to use different telescopes but lets's stick with the VLA
+    if {hdr['CRVAL2']} > 90:
+        ant_list = 'WSRT.cfg'
+    elif {hdr['CRVAL2']} > -30:
+        #If the requested beam is small we need to use a configuration
+        if {beam[1]} < 8.:
+            #nat beam ~ 2."
+            ant_list = 'vla.a.cfg'
+            ant_ext = 'vla.a'
+        elif {beam[1]} < 22:
+            #nat beam ~ 6"
+            ant_list = 'vla.b.cfg'
+            ant_ext = 'vla.b'
+        elif {beam[1]} < 50:
+            #nat beam ~ 20"
+            ant_list = 'vla.c.cfg'
+            ant_ext = 'vla.c'
+        else:
+            #nat beam ~75"
+            ant_list = 'vla.d.cfg'
+            ant_ext = 'vla.d'
     else:
-        #nat beam ~75"
-        ant_list = 'vla.d.cfg'
-        ant_ext = 'vla.d'
-else:
-    #if at low declination we need to use atca
-    ant_list = 'atca_6c.cfg'
+        #if at low declination we need to use atca
+        ant_list = 'atca_6c.cfg'
 
-print(f"We selected {{ant_list}} as the antenna layout")
-# Instantiate all the required tools for the simulation
-sm = simulator()
-msmd = msmetadata()
-me = measures()
-ms = ms()
-#ms =measurementset()
-mysu = simutil.simutil()
-su = synthesisutils()
-tb = table()
-print(f"starting the simulation")
-# First clean up
-os.system(f'rm -rf {msname}')
-# Open the simulator
-# We will use simobserve as it works better
-#simobserve need to work in the directory
-sm.setvp(dovp=False)
+    print(f"We selected {{ant_list}} as the antenna layout")
+    # Instantiate all the required tools for the simulation
+    sm = simulator()
+    msmd = msmetadata()
+    me = measures()
+    ms = ms()
+    #ms =measurementset()
+    mysu = simutil.simutil()
+    su = synthesisutils()
+    tb = table()
+    print(f"starting the simulation")
+    # First clean up
+    os.system(f'rm -rf {msname}')
+    # Open the simulator
+    # We will use simobserve as it works better
+    #simobserve need to work in the directory
+    sm.setvp(dovp=False)
 
 
-simobserve(
-    #  simobserve :: visibility simulation task
-    project='sim_data',  # root prefix for output file names
-    skymodel='{casa_image}',  # model image to observe
-    complist='',  # componentlist to observe
-    setpointings=True,
-    integration='20s',  # integration (sampling) time
-    inbright='{np.max(data)}Jy/pixel',
-    indirection=f'J2000 {RA} {DEC}',
-    incenter='{freq}Hz',
-    inwidth='{cdelt}Hz',
-    incell='{hdr["CDELT2"]*3600.}arcsec',
-    # observation mode to simulate [int(interferometer)|sd(singledish)|""(none)]
-    obsmode='int',
-    outframe='{vel_frame}',
-    antennalist=f'{{ant_list}}',  # interferometer antenna position file
-    # hour angle of observation center e.g. "-3:00:00", "5h", "-4.5" (a number without units will be
-    hourangle='transit',
-    #   interpreted as hours), or "transit"
-    totaltime='12h',  # total time of observation or number of repetitions
-    thermalnoise='',  # No noise to be able to add the correct noise""]
-    # display graphics at each stage to [screen|file|both|none]. Have to be off to be able to run in screen.
-    graphics='file',
-    verbose=False,
-    overwrite=True)  # overwrite files starting with $project
-#There is a memeory leak in simobserve in  1109 sm.predict(imagename=newmodel,complist=complist)
+    simobserve(
+        #  simobserve :: visibility simulation task
+        project='sim_data',  # root prefix for output file names
+        skymodel='{casa_image}',  # model image to observe
+        complist='',  # componentlist to observe
+        setpointings=True,
+        integration='20s',  # integration (sampling) time
+        inbright='{np.max(data)}Jy/pixel',
+        indirection=f'J2000 {RA} {DEC}',
+        incenter='{freq}Hz',
+        inwidth='{cdelt}Hz',
+        incell='{hdr["CDELT2"]*3600.}arcsec',
+        # observation mode to simulate [int(interferometer)|sd(singledish)|""(none)]
+        obsmode='int',
+        outframe='{vel_frame}',
+        antennalist=f'{{ant_list}}',  # interferometer antenna position file
+        # hour angle of observation center e.g. "-3:00:00", "5h", "-4.5" (a number without units will be
+        hourangle='transit',
+        #   interpreted as hours), or "transit"
+        totaltime='12h',  # total time of observation or number of repetitions
+        thermalnoise='',  # No noise to be able to add the correct noise""]
+        # display graphics at each stage to [screen|file|both|none]. Have to be off to be able to run in screen.
+        graphics='file',
+        verbose=False,
+        overwrite=True)  # overwrite files starting with $project
+    #There is a memeory leak in simobserve in  1109 sm.predict(imagename=newmodel,complist=complist)
 
-antennalist = os.path.join(ctsys.resolve("alma/simmos"), ant_list)
-## Fictitious telescopes can be simulated by specifying x, y, z, d, an, telname, antpos.
-##     x,y,z are locations in meters in ITRF (Earth centered) coordinates.
-##     d, an are lists of antenna diameter and name.
-##     telname and obspos are the name and coordinates of the observatory.
-(x, y, z, d, an, an2, telname, obspos) = mysu.readantenna(antennalist)
-#calculate the number of baselines
-no_integrations = 12.*3600./20.
-source = '{work_dir.split('/')[-2]}'
+    antennalist = os.path.join(ctsys.resolve("alma/simmos"), ant_list)
+    ## Fictitious telescopes can be simulated by specifying x, y, z, d, an, telname, antpos.
+    ##     x,y,z are locations in meters in ITRF (Earth centered) coordinates.
+    ##     d, an are lists of antenna diameter and name.
+    ##     telname and obspos are the name and coordinates of the observatory.
+    (x, y, z, d, an, an2, telname, obspos) = mysu.readantenna(antennalist)
+    #calculate the number of baselines
+    no_integrations = 12.*3600./20.
+    source = '{work_dir.split('/')[-2]}'
 
-sm.setvp(dovp=False)
+    sm.setvp(dovp=False)
 
-image_size = [su.getOptimumSize({int(hdr['NAXIS1'])}),
-                su.getOptimumSize({int(hdr['NAXIS2'])})]
-tclean(vis=f'{work_dir}sim_data/sim_data.{{ant_ext}}.ms',
-    usemask='user',
-    restart=False,
-    imagename='{work_dir}Uni_Cube',
-    niter=0,
-    threshold='1Jy/beam',
-    mask='{casa_mask}',
-    normtype='{skynormalistation}',
-    datacolumn='observed',
-    imsize=image_size,
-    smallscalebias=0.6,
-    cell=["{abs(hdr['CDELT1']*3600.)}arcsec",
-                 "{abs(hdr['CDELT2']*3600.)}arcsec"],
-    pblimit=-1.0,
-    pbmask=0.0,
-    pbcor=False,
-    restoringbeam='common',
-    specmode='cube',
-    start=0,
-    cfcache='sim_predict.cfcache',
-    outframe='{vel_frame}',
-    width=1,
-    calcres=False,
-    calcpsf=True,
-    restfreq='{HI_rest_freq}Hz',
-    veltype='radio',
-    field='0',
-    weighting='natural',
-    gridder='standard',
-    deconvolver='clark',
-    interactive=False,
-    parallel=True
-)
-#Tclean also has a memory leak.
-#Get the uniform weighted beam size
+    image_size = [su.getOptimumSize({int(hdr['NAXIS1'])}),
+                    su.getOptimumSize({int(hdr['NAXIS2'])})]
+    tclean(vis=f'{work_dir}sim_data/sim_data.{{ant_ext}}.ms',
+        usemask='user',
+        restart=False,
+        imagename='{work_dir}Uni_Cube',
+        niter=0,
+        threshold='1Jy/beam',
+        mask='{casa_mask}',
+        normtype='{skynormalistation}',
+        datacolumn='observed',
+        imsize=image_size,
+        smallscalebias=0.6,
+        cell=["{abs(hdr['CDELT1']*3600.)}arcsec",
+                     "{abs(hdr['CDELT2']*3600.)}arcsec"],
+        pblimit=-1.0,
+        pbmask=0.0,
+        pbcor=False,
+        restoringbeam='common',
+        specmode='cube',
+        start=0,
+        cfcache='sim_predict.cfcache',
+        outframe='{vel_frame}',
+        width=1,
+        calcres=False,
+        calcpsf=True,
+        restfreq='{HI_rest_freq}Hz',
+        veltype='radio',
+        field='0',
+        weighting='natural',
+        gridder='standard',
+        deconvolver='clark',
+        interactive=False,
+        parallel=True
+    )
+    #Tclean also has a memory leak.
+    #Get the uniform weighted beam size
 
-summary = imhead(imagename='{work_dir}Uni_Cube.psf', mode='summary')
+    summary = imhead(imagename='{work_dir}Uni_Cube.psf', mode='summary')
 
-uniform_beam = [summary['perplanebeams']['beams']['*4']['*0']['major']['value'],
-                summary['perplanebeams']['beams']['*4']['*0']['minor']['value'],
-                summary['perplanebeams']['beams']['*4']['*0']['positionangle']['value']]
-print(
-    f'We find the following beam from the uniform weighted image {{uniform_beam}}')
-print(f"Adding noise to the observations")
+    uniform_beam = [summary['perplanebeams']['beams']['*4']['*0']['major']['value'],
+                    summary['perplanebeams']['beams']['*4']['*0']['minor']['value'],
+                    summary['perplanebeams']['beams']['*4']['*0']['positionangle']['value']]
+    print(
+        f'We find the following beam from the uniform weighted image {{uniform_beam}}')
+    print(f"Adding noise to the observations")
 
-print(f' For the beam {beam} We are increasing the original noise({noise}) with {{ np.mean(uniform_beam[:2])/{np.mean(beam[:2])} }} to obtain untapered noise.')
-no_baselines = len(an)*(len(an)-1.)/2.
-no_pol = 2
-noise_at_uni = {noise}*np.mean(uniform_beam[:2])/np.mean({beam[:2]})
-visnoise = noise_at_uni * \
-    np.sqrt(no_pol)*np.sqrt(no_baselines)*np.sqrt(no_integrations)*1.2
+    print(f' For the beam {beam} We are increasing the original noise({noise}) with {{ np.mean(uniform_beam[:2])/{np.mean(beam[:2])} }} to obtain untapered noise.')
+    no_baselines = len(an)*(len(an)-1.)/2.
+    no_pol = 2
+    noise_at_uni = {noise}*np.mean(uniform_beam[:2])/np.mean({beam[:2]})
+    visnoise = noise_at_uni * \
+        np.sqrt(no_pol)*np.sqrt(no_baselines)*np.sqrt(no_integrations)*1.2
 
-print(f'Corrupting the visbilities with noise of {{visnoise}} Jy')
-sm.openfromms(f'{work_dir}sim_data/sim_data.{{ant_ext}}.ms');
-sm.setvp(dovp=False)
-sm.setseed(50)
-sm.setnoise(mode='simplenoise', simplenoise=f'{{visnoise}}Jy');
-#sm.setgain(mode='fbm',amplitude=0.025) #Minimal amplitude errors
-sm.corrupt();
-sm.close();
+    print(f'Corrupting the visbilities with noise of {{visnoise}} Jy')
+    sm.openfromms(f'{work_dir}sim_data/sim_data.{{ant_ext}}.ms');
+    sm.setvp(dovp=False)
+    sm.setseed(50)
+    sm.setnoise(mode='simplenoise', simplenoise=f'{{visnoise}}Jy');
+    #sm.setgain(mode='fbm',amplitude=0.025) #Minimal amplitude errors
+    sm.corrupt();
+    sm.close();
 
-# read mask
-importfits(fitsimage='{work_dir}mask.fits', imagename='{casa_mask}',            # Name of input image FITS file # Name of output CASA image
-            # If fits image has multiple coordinate ,# If its file contains multiple images,Set blanked pixels to zero (not NaN)
-            whichrep=0, whichhdu=-1, zeroblanks=True,
-            overwrite=True, defaultaxes=True,
-            defaultaxesvalues=['{RA}', '{DEC}', '{up_band}Hz', 'I'])
-#Create the final Cube
-imhead(imagename='{casa_mask}', mode='put', hdkey='telescope', hdvalue=telname)
-imhead(imagename='{casa_mask}', mode='put',
-       hdkey='date-obs', hdvalue='2019/10/4/00:00:00')
-# use simanalyze to produce an image
-#cleaning our visbilities
-listobs(vis=f'{work_dir}sim_data/sim_data.{{ant_ext}}.ms',
-        listfile=f'{work_dir}Observation_Overview.txt', verbose=True, overwrite=True)
+    # read mask
+    importfits(fitsimage='{work_dir}mask.fits', imagename='{casa_mask}',            # Name of input image FITS file # Name of output CASA image
+                # If fits image has multiple coordinate ,# If its file contains multiple images,Set blanked pixels to zero (not NaN)
+                whichrep=0, whichhdu=-1, zeroblanks=True,
+                overwrite=True, defaultaxes=True,
+                defaultaxesvalues=['{RA}', '{DEC}', '{up_band}Hz', 'I'])
+    #Create the final Cube
+    imhead(imagename='{casa_mask}', mode='put', hdkey='telescope', hdvalue=telname)
+    imhead(imagename='{casa_mask}', mode='put',
+           hdkey='date-obs', hdvalue='2019/10/4/00:00:00')
+    # use simanalyze to produce an image
+    #cleaning our visbilities
+    listobs(vis=f'{work_dir}sim_data/sim_data.{{ant_ext}}.ms',
+            listfile=f'{work_dir}Observation_Overview.txt', verbose=True, overwrite=True)
 
-tclean(vis=f'{work_dir}sim_data/sim_data.{{ant_ext}}.ms',
-    usemask='user',
-    restart=True,
-    imagename=f'{work_dir}Uni_Cube',
-    #imagename=f'{work_dir}Final_Cube',
-    niter=1000,
-    threshold=f'{{noise_at_uni/4.}}Jy/beam',
-    mask='{casa_mask}',
-    normtype='{skynormalistation}',
-    datacolumn='observed',
-    imsize=image_size,
-    smallscalebias=0.6,
-    cell=[f"{abs(hdr['CDELT1']*3600.)}arcsec",
-                 f"{abs(hdr['CDELT2']*3600.)}arcsec"],
-    pblimit=-1.0,
-    pbmask=0.0,
-    pbcor=False,
-    restoringbeam='common',
-    specmode='cube',
-    start=0,
-    cfcache='sim_predict.cfcache',
-    outframe='{vel_frame}',
-    width=1,
-    calcres=True,
-    calcpsf=False,
-    restfreq=f'{HI_rest_freq}Hz',
-    veltype='radio',
-    field='0',
-    weighting='natural',
-    gridder='standard',
-    deconvolver='clark',
-    interactive=False,
-    parallel=True
-)
-if {beam[0]} < uniform_beam[0] or {beam[1]} < uniform_beam[1]:
-    print(f'!!!!!!!!!!!!!!!!!!!!!!We can not make the beam as small as you want it. We are simply copying the naturally weighted cube.')
-    print(f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
-    shutil.move(f'{work_dir}Uni_Cube.image', f'{work_dir}Uni_Cube.image')
-else:
-    #imsmooth(imagename=f'{work_dir}sim_data/sim_data.{{ant_ext}}.image', outfile=f'{work_dir}Final_Cube.image',
-    imsmooth(imagename=f'{work_dir}Uni_Cube.image', outfile=f'{work_dir}Final_Cube.image',
-                overwrite=True, major=f'{beam[0]}arcsec', minor=f'{beam[1]}arcsec',
-                pa=f'{beam[2]}deg', targetres=True)
+    tclean(vis=f'{work_dir}sim_data/sim_data.{{ant_ext}}.ms',
+        usemask='user',
+        restart=True,
+        imagename=f'{work_dir}Uni_Cube',
+        #imagename=f'{work_dir}Final_Cube',
+        niter=1000,
+        threshold=f'{{noise_at_uni/4.}}Jy/beam',
+        mask='{casa_mask}',
+        normtype='{skynormalistation}',
+        datacolumn='observed',
+        imsize=image_size,
+        smallscalebias=0.6,
+        cell=[f"{abs(hdr['CDELT1']*3600.)}arcsec",
+                     f"{abs(hdr['CDELT2']*3600.)}arcsec"],
+        pblimit=-1.0,
+        pbmask=0.0,
+        pbcor=False,
+        restoringbeam='common',
+        specmode='cube',
+        start=0,
+        cfcache='sim_predict.cfcache',
+        outframe='{vel_frame}',
+        width=1,
+        calcres=True,
+        calcpsf=False,
+        restfreq=f'{HI_rest_freq}Hz',
+        veltype='radio',
+        field='0',
+        weighting='natural',
+        gridder='standard',
+        deconvolver='clark',
+        interactive=False,
+        parallel=True
+    )
+    if {beam[0]} < uniform_beam[0] or {beam[1]} < uniform_beam[1]:
+        print(f'!!!!!!!!!!!!!!!!!!!!!!We can not make the beam as small as you want it. We are simply copying the naturally weighted cube.')
+        print(f'cp -r {work_dir}Uni_Cube.image {work_dir}Final_Cube.image')
+        shutil.move(f'{work_dir}Uni_Cube.image', f'{work_dir}Uni_Cube.image')
+    else:
+        #imsmooth(imagename=f'{work_dir}sim_data/sim_data.{{ant_ext}}.image', outfile=f'{work_dir}Final_Cube.image',
+        imsmooth(imagename=f'{work_dir}Uni_Cube.image', outfile=f'{work_dir}Final_Cube.image',
+                    overwrite=True, major=f'{beam[0]}arcsec', minor=f'{beam[1]}arcsec',
+                    pa=f'{beam[2]}deg', targetres=True)
 
-imhead(imagename=f'{work_dir}Final_Cube.image',
-       mode='put', hdkey='object', hdvalue='AGC Galaxy')
+    imhead(imagename=f'{work_dir}Final_Cube.image',
+           mode='put', hdkey='object', hdvalue='AGC Galaxy')
 
-exportfits(imagename=f'{work_dir}Final_Cube.image',  # Name of input CASA image
-           # Name of output image FITS file
-           fitsimage=f'{work_dir}Convolved_Cube.fits',
-           # Use velocity (rather than frequency) as spectral axis
-           velocity=True,
-           # Use the optical (rather than radio) velocity convention
-           optical=False,
-           bitpix=-32,  # Bits per pixel
-           # Minimum pixel value (if minpix > maxpix, value is automatically determined)
-           minpix=0,
-           # Maximum pixel value (if minpix > maxpix, value is automatically determined)
-           maxpix=-1,
-           overwrite=True,  # Overwrite pre-existing imagename
-           dropstokes=True,  # Drop the Stokes axis?
-           stokeslast=False,  # Put Stokes axis last in header?
-           history=True,  # Write history to the FITS image?
-           dropdeg=True)
-    ''')
+    exportfits(imagename=f'{work_dir}Final_Cube.image',  # Name of input CASA image
+               # Name of output image FITS file
+               fitsimage=f'{work_dir}Convolved_Cube.fits',
+               # Use velocity (rather than frequency) as spectral axis
+               velocity=True,
+               # Use the optical (rather than radio) velocity convention
+               optical=False,
+               bitpix=-32,  # Bits per pixel
+               # Minimum pixel value (if minpix > maxpix, value is automatically determined)
+               minpix=0,
+               # Maximum pixel value (if minpix > maxpix, value is automatically determined)
+               maxpix=-1,
+               overwrite=True,  # Overwrite pre-existing imagename
+               dropstokes=True,  # Drop the Stokes axis?
+               stokeslast=False,  # Put Stokes axis last in header?
+               history=True,  # Write history to the FITS image?
+               dropdeg=True)
+if __name__ == '__main__':
+    main()
+        ''')
     del data
     current_run = subprocess.Popen(['python', "casa_corrupt.py"],
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                            cwd=f"{work_dir}", universal_newlines=True)
     casa_run, casa_warnings_are_annoying = current_run.communicate()
+    print(casa_run)
+    print(casa_warnings_are_annoying)
     #print(tirific_run)
     #if current_run.returncode == 1:
     #    pass
