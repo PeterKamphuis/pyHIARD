@@ -1282,9 +1282,9 @@ def clean_up_casa(work_dir):
                 f'We failed to create the directory {work_dir}Casa_Log')
 
     os.system(f'mv {work_dir}sim_data/*.png {work_dir}Casa_Log/')
-    #shutil.move(f'{work_dir}sim_data/sim_data.vla.*.skymodel.png',f'{work_dir}Casa_Log/sim_data.skymodel.png')
-    #shutil.move(f'{work_dir}sim_data/sim_data.vla*.observe.png',f'{work_dir}Casa_Log/sim_data.observe.png')
+    os.system(f'mv {work_dir}casa*.log {work_dir}Casa_Log/')
     shutil.move(f'{work_dir}Observation_Overview.txt',f'{work_dir}Casa_Log/Observation_Overview.txt')
+    shutil.move(f'{work_dir}casa_corrupt.py',f'{work_dir}Casa_Log/casa_corrupt.py')
 
     files_to_remove = ['testsmooth_cube.fits']
 
@@ -1494,12 +1494,7 @@ def corrupt_casa(work_dir, beam, SNR, maindir):
     #!!!!!!!!!!!!!!!!!!!
     with open(f'{work_dir}casa_corrupt.py','w') as casa_program:
         casa_program.write(f'''
-
-from memory_profiler import profile
-
 # Read the model into a casa format
-
-@profile
 def main():
     from casatools import simulator,  ctsys, measures, table, msmetadata, synthesisutils, ms
     from casatasks import tclean,  imhead, exportfits, flagdata, simanalyze, \\
@@ -1747,15 +1742,7 @@ if __name__ == '__main__':
     casa_run, casa_warnings_are_annoying = current_run.communicate()
     print(casa_run)
     print(casa_warnings_are_annoying)
-    #print(tirific_run)
-    #if current_run.returncode == 1:
-    #    pass
-    #else:
-    #    print(casa_warnings_are_annoying)
-    #    raise TirificRunError(
-    #        "AGC:CASA did not execute properly. See screen for details")
-    #os.system(
-    #        f'cp -r {work_dir}Convolved_Cube.fits {work_dir}Unscaled_Convolved_Cube.fits')
+
     fits.setval(f'{work_dir}Unconvolved_Cube.fits', 'SPECSYS', value=inframe)
     dummy = fits.open(work_dir+'/Convolved_Cube.fits', uint=False,
                       do_not_scale_image_data=True, ignore_blank=True)
@@ -1829,12 +1816,6 @@ if __name__ == '__main__':
     del hdr
     del newdummy
     del getscaling
-
-    #newdummy=dummy[0].data
-
-    #Achieved_SNR = mean_signal/outnoise
-    #with open(f"{maindir}/Casa_Noise_Statistics.txt", 'a') as file:
-    #    file.write(f"{SNR:<10.6f} {Achieved_SNR:<10.6f} {Achieved_SNR/SNR:<10.6f} {mean_signal:<10.7e} {noise:<10.7e} {outnoise:<10.7e} {visnoise:<10.7e} |{source}| \n")
 
     #clean up the mess
     clean_up_casa(work_dir)
