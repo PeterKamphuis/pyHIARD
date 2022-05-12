@@ -17,7 +17,8 @@ class AGC:
         default_factory=lambda: [1, 2, 3, 4, 5, 6])
     inhomogenous: bool = True  # Add homogenieties?
     symmetric: bool = False  # Keep galaxies symmetric
-    corruption_method: str = 'Gaussian'  # options are Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5
+    # options are Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5
+    corruption_method: str = 'Tres'
     variables_to_vary: List[str] = field(default_factory=lambda: ['Base', 'Inclination', 'Beams', 'Radial_Motions',
                                          'Flare', 'Arms', 'Bar', 'Mass', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Resolution'])
     # Each base is created with the variations in the following parameters if they are listed to be varied.

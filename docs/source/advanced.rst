@@ -36,9 +36,9 @@ Individual Keywords
 
     configuration input file
 
-    General settings
-    --------
-    *Specified with general*
+General settings
+--------
+*Specified with general*
 
   **main_directory**:
 
@@ -58,7 +58,7 @@ Individual Keywords
 
     Command to call sofia 2 from the python subprocess
 
-    **tirific**:
+  **tirific**:
 
       *str, optional, default = tirific*
 
@@ -75,9 +75,7 @@ Individual Keywords
     *bool, optional, default = True*
 
     pyHIARD alows for multiprocessing through the multiprocessing module of python. This works like a charm for the AGC with Gaussian corruption.
-    However, the casa corruption method and the ROC become memory limited very quickly resulting in  a limited increase of speed in case of limited available RAM.
-    In case pyHIARD freezes the system it is using up all RAM. In that case it is better to turn off the multiprocessing. We are looking to improve this in furture releases.
-
+    In case of casa corruption or the ROC the system might freeze in limited amounts of RAM. In this case please turn of the multiprocessing to create the data base.
 
 
 The Artificial Galaxy Catalogue (AGC) keywords
@@ -118,7 +116,7 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
 **corruption_method**:
 
-    *str, optinal, default = 'Gaussian'*
+    *str, optinal, default = 'Tres'*
 
     How the artificial galaxies are corrupted. The options are No_Corrupt, Gaussian, Casa_Sim, Tres and Casa_5.
 
@@ -128,7 +126,7 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
       -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned
 
-      -Tres: Mix the the three corruption methods 1 uncorrupted, 1 Gaussian corrupted and 1 CASA corrupted.
+      -Tres: Mix the the three corruption methods. If set pyHIARD produces three Gaussian corrupted galaxies, one uncorrupted, and one Casa corrupted galaxy.
 
       -Casa_5: As CASA's simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
 
