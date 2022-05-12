@@ -12,10 +12,7 @@ from pyHIARD.ROC.ROC import ROC, add_template, remove_template
 from pyHIARD.conf.config import Config
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from pyHIARD.Resources import Cubes as cubes
-from memory_profiler import profile
 
-
-@profile
 def main(argv):
     #Get default settings
     if '-v' in argv or '--version' in argv:
