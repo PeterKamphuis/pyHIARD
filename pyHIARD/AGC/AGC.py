@@ -2255,16 +2255,16 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
             Vrot, Rad, SBRprof, WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
         phase, arm_brightness, arm_width = create_arms(
             Vrot, Rad, SBRprof, disk=2, WarpStart=WarpStart, Bar=Current_Galaxy.Bar)
-        Achieved.Arms = 'Arms Added'
+        Achieved.Arms = 'Arms'
     else:
-        Achieved.Arms = 'No Arms'
+        Achieved.Arms = 'No_Arms'
     # A possible Bar
-    if Current_Galaxy.Bar == 'Barred':
+    if Current_Galaxy.Bar == 'Bar':
         bar_length = create_bar(
             Vrot, Rad, SBRprof, Template, WarpStart=WarpStart)
-        Achieved.Bar = 'Bar Added'
+        Achieved.Bar = 'Bar'
     else:
-        Achieved.Bar = 'No Bar'
+        Achieved.Bar = 'No_Bar'
     # and possible inhomogeneities
     if cfg.agc.inhomogenous:
         inhomogeneity_amp = create_inhomogeneity(
