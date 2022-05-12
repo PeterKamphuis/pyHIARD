@@ -37,9 +37,10 @@ Individual Keywords
     configuration input file
 
 
-General settings
---------
+General Settings
+-------
 *Specified with general*
+
 
   **main_directory**:
 
