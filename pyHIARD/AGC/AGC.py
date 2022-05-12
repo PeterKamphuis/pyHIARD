@@ -12,7 +12,7 @@ from scipy import interpolate
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from astropy.io.fits.verify import VerifyWarning
 from astropy.io import fits
-from memory_profiler import profile
+
 import copy
 import gc
 import numpy as np
@@ -1459,7 +1459,7 @@ def memoryhog(input):
         overwrite=True)  # overwrite files starting with $project
     # Read/create an antenna configuration from the casa directory.
 
-@profile
+
 def corrupt_casa(work_dir, beam, SNR, maindir):
     # the casa tasks ooze memory so they should be  run in a subprocess
     '''Corrupt our artifical galaxy with a casa's sim observe routines'''
@@ -2116,7 +2116,7 @@ PROCEDURES CALLED:
 
 NOTE:
 '''
-@profile
+
 def one_galaxy(cfg, Current_Galaxy, Achieved):
     # Build a name and a directory where to stor the specific output
     print(f'''This is the galaxy we are creating.''')
