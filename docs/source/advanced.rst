@@ -13,6 +13,7 @@ Below we explain what each section in the yaml file does.
 The yaml file is divided  in three different sections and has three independent keywords. All keywords are optional.
 All these options can also be called directly from the command line when calling pyHIARD. For example whether or not to delete the existing artificial galaxies can easily be adapted by calling 'pyHIARD agc.delete_existing=True'. In the case of a list the option has to be bracketed in apostrophes, i.e. 'pyHIARD "agc.base_galaxies=[2,4]"'.
 
+
 Individual Keywords
  --------
 *No specifier*
