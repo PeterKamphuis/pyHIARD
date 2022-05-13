@@ -185,7 +185,7 @@ Please choose from {','.join([x for x in channel_options])}:''')
 
         question_variations = False
         changes_poss = ['Inclination', 'PA', 'Beams', 'Radial_Motions', 'Flare', 'Arms',
-            'Dispersion', 'Bar', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Resolution', 'Base']
+            'Dispersion', 'Bar', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Size', 'Base']
         changes_poss_lower = [x.lower() for x in changes_poss]
         for i, variables in enumerate(cfg.agc.variables_to_vary):
             while variables.lower() not in changes_poss_lower:
@@ -211,7 +211,24 @@ replace with:''')
                     incs = float(
                         input(f'please choose a value between 0.- 360.:'))
                 cfg.agc.pa[i] = incs
+        #the double lists to be proper, OmegaConf will throw a error when list is not list
+        list_to_check = ['warp','dispersion','beam_size']
+        elements = [2,2,3]
+        for var_to_check in list_to_check:
+            if var_to_check in [x.lower() for x in cfg.agc.variables_to_vary]:
+                current =getattr(cfg.agc,var_to_check)
+                try:
+                    if len(current[0]) == elements[list_to_check.index(var_to_check)]:
+                        pass
+                except TypeError:
+                    if len(current) == elements[list_to_check.index(var_to_check)]:
+                        #We assume that the user wanted a single variation
+                        setattr(cfg.agc,var_to_check,[[x for x in current]])
+                    else:
+                        raise  InputError(f'''You wanted variations in {var_to_check} which should have {elements[list_to_check.index(var_to_check)]} per variation.
+                        Your list has {len(current)} elements and we do not know what to do with that. Note that this is a double list, i.e. [[]]''')
 
+                
     if cfg.roc.enable:
 
         path_to_resources = os.path.dirname(os.path.abspath(cubes.__file__))

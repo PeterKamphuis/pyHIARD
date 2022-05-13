@@ -59,3 +59,7 @@ or
   `pyHIARD`
 
 answer the questions about what you want to create.
+
+Setting can also be specified from the command line. These will take preference over the configuration file. For example if you want to recreate your data base with a slightly different beam. you could rerun pyHIARD as:
+
+  'pyHIARD configuration_file=pyHIARD_tests.yml "agc.variables_to_vary=[beam_size]" "agc.beam_size=[[7.5,7.5,30.]]"

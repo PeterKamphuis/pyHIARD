@@ -20,7 +20,7 @@ class AGC:
     # options are Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5
     corruption_method: str = 'Tres'
     variables_to_vary: List[str] = field(default_factory=lambda: ['Base', 'Inclination', 'Beams', 'Radial_Motions',
-                                         'Flare', 'Arms', 'Bar', 'Mass', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Resolution'])
+                                         'Flare', 'Arms', 'Bar', 'Mass', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Size'])
     # Each base is created with the variations in the following parameters if they are listed to be varied.
     inclination: List[float] = field(default_factory=lambda: [
                                      15., 20., 30., 50., 70., 80., 88., 90.])

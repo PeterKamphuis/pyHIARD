@@ -140,7 +140,7 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
   **variables_to_vary**:
 
-      *str List, optional, default  = ['Inclination','Beams','Radial_Motions','Flare','Arms','Bar','Mass','Channelwidth','SNR','Warp','Mass','Beam_Resolution']*
+      *str List, optional, default  = ['Inclination','Beams','Radial_Motions','Flare','Arms','Bar','Mass','Channelwidth','SNR','Warp','Mass','Beam_Size']*
 
       A list of the variables that should be varied within each base. If no variations on the base are required set this to ['Base'].
       The Arms, Bar and Flare will be swapped when present in this list. For the other variables values should be set in the yml file or the defaults will be used.

@@ -105,7 +105,7 @@ def AGC(cfg):
             f"Varying the theta angle of the angular momentum vector with: {','.join([str(e) for e in cfg.agc.warp[:][0]])}.\n")
         print(
             f"Varying the phi angle of the angular momentum vector with: {','.join([str(e) for e in cfg.agc.warp[:][1]])}.\n")
-    if 'Beam_Resolution' in cfg.agc.variables_to_vary:
+    if 'Beam_Size' in cfg.agc.variables_to_vary:
         print(
             f"Varying the beam size with: {','.join([str(e) for e in cfg.agc.beam_size])}.\n")
 
@@ -215,7 +215,7 @@ def AGC(cfg):
             elif cfg.agc.variables_to_vary[ix] == 'Beams': numloops = len(cfg.agc.beams)
             elif cfg.agc.variables_to_vary[ix] == 'SNR': numloops = len(cfg.agc.snr)
             elif cfg.agc.variables_to_vary[ix] == 'Channelwidth': numloops = len(cfg.agc.channelwidth)
-            elif cfg.agc.variables_to_vary[ix] == 'Beam_Resolution': numloops = len(cfg.agc.beam_size)
+            elif cfg.agc.variables_to_vary[ix] == 'Beam_Size': numloops = len(cfg.agc.beam_size)
             elif cfg.agc.variables_to_vary[ix] == 'Radial_Motions': numloops = len(cfg.agc.radial_motions)
             elif cfg.agc.variables_to_vary[ix] == 'Dispersion': numloops = len(cfg.agc.dispersion)
             elif cfg.agc.variables_to_vary[ix] == 'Mass': numloops = len(cfg.agc.masses)
@@ -253,7 +253,7 @@ def AGC(cfg):
                 elif cfg.agc.variables_to_vary[ix] == 'Beams': Current_Galaxy.Beams = cfg.agc.beams[jx]
                 elif cfg.agc.variables_to_vary[ix] == 'SNR': Current_Galaxy.SNR = cfg.agc.snr[jx]
                 elif cfg.agc.variables_to_vary[ix] == 'Channelwidth': Current_Galaxy.Channelwidth = cfg.agc.channelwidth[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Beam_Resolution': Current_Galaxy.Res_Beam = [cfg.agc.beam_size[jx][0], cfg.agc.beam_size[jx][1], cfg.agc.beam_size[jx][2]]
+                elif cfg.agc.variables_to_vary[ix] == 'Beam_Size': Current_Galaxy.Res_Beam = [cfg.agc.beam_size[jx][0], cfg.agc.beam_size[jx][1], cfg.agc.beam_size[jx][2]]
                 elif cfg.agc.variables_to_vary[ix] == 'Arms':
                     if Current_Galaxy.Arms == 'Arms':
                         Current_Galaxy.Arms = "No_Arms"
