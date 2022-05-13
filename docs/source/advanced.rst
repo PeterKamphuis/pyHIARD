@@ -15,7 +15,7 @@ All these options can also be called directly from the command line when calling
 
 
 Individual Keywords
- --------
+---------
 *No specifier*
 
   **print_examples**:
