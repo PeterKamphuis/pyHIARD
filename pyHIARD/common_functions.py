@@ -134,8 +134,8 @@ def check_input(cfg):
 
     if cfg.agc.enable:
         cfg.general.tirific = find_program(cfg.general.tirific, 'TiRiFiC')
-        if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5']:
-            cfg.general.casa = find_program(cfg.general.casa, 'CASA')
+        #if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5']:
+        #    cfg.general.casa = find_program(cfg.general.casa, 'CASA')
     if cfg.roc.enable:
         cfg.general.sofia2 = find_program(cfg.general.sofia2, 'SoFiA2')
 
@@ -162,9 +162,9 @@ def check_input(cfg):
                     "\s+|\s*,\s*|\s+$", vals.strip()) if 1 <= int(x) <= 6]
                 if len(cfg.agc.base_galaxies) == 0:
                     cfg.agc.base_galaxies = [7]
-        while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian', 'casa_5']:
+        while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian','no_corrupt', 'casa_5','tres']:
             cfg.agc.corruption_method = input(
-                'Your method of corruption is not acceptable please choose from Casa_Sim, Gaussian, Casa_5 (Default = Gaussian):')
+                'Your method of corruption is not acceptable please choose from Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5 (Default = Gaussian):')
             if cfg.agc.corruption_method == '':
                 cfg.agc.corruption_method = 'Gaussian'
 
@@ -185,7 +185,7 @@ Please choose from {','.join([x for x in channel_options])}:''')
 
         question_variations = False
         changes_poss = ['Inclination', 'PA', 'Beams', 'Radial_Motions', 'Flare', 'Arms',
-            'Dispersion', 'Bar', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Resolution', 'Base']
+            'Dispersion', 'Bar', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Size', 'Base']
         changes_poss_lower = [x.lower() for x in changes_poss]
         for i, variables in enumerate(cfg.agc.variables_to_vary):
             while variables.lower() not in changes_poss_lower:
@@ -196,8 +196,8 @@ replace with:''')
             cfg.agc.variables_to_vary[i] = changes_poss[changes_poss_lower.index(
                 variables.lower())]
         #We always make the base
-        if 'Base' not in cfg.agc.variables_to_vary:
-            cfg.agc.variables_to_vary.append('Base')
+        #if 'Base' not in cfg.agc.variables_to_vary:
+        #    cfg.agc.variables_to_vary.append('Base')
 
         if 'inclination' in [x.lower() for x in cfg.agc.variables_to_vary]:
             for i, incs in enumerate(cfg.agc.inclination):
@@ -211,7 +211,24 @@ replace with:''')
                     incs = float(
                         input(f'please choose a value between 0.- 360.:'))
                 cfg.agc.pa[i] = incs
+        #the double lists to be proper, OmegaConf will throw a error when list is not list
+        list_to_check = ['warp','dispersion','beam_size']
+        elements = [2,2,3]
+        for var_to_check in list_to_check:
+            if var_to_check in [x.lower() for x in cfg.agc.variables_to_vary]:
+                current =getattr(cfg.agc,var_to_check)
+                try:
+                    if len(current[0]) == elements[list_to_check.index(var_to_check)]:
+                        pass
+                except TypeError:
+                    if len(current) == elements[list_to_check.index(var_to_check)]:
+                        #We assume that the user wanted a single variation
+                        setattr(cfg.agc,var_to_check,[[x for x in current]])
+                    else:
+                        raise  InputError(f'''You wanted variations in {var_to_check} which should have {elements[list_to_check.index(var_to_check)]} per variation.
+                        Your list has {len(current)} elements and we do not know what to do with that. Note that this is a double list, i.e. [[]]''')
 
+                
     if cfg.roc.enable:
 
         path_to_resources = os.path.dirname(os.path.abspath(cubes.__file__))
@@ -459,6 +476,7 @@ def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
     hdr = copy.deepcopy(hdr_in)
     # First we smooth our template
     # We smooth this to 1.25 the input beam
+    '''
     bmaj = hdr["BMAJ"]*3600.
     bmin = hdr["BMIN"]*3600.
     FWHM_conv_maj = np.sqrt((1.25 * bmaj) ** 2 - bmaj ** 2)
@@ -468,8 +486,10 @@ def create_masks(data_in,hdr_in, working_dir, name, sofia_call='sofia2'):
                abs(hdr["CDELT1"] * 3600.)
     sig_min = (FWHM_conv_min / np.sqrt(8 * np.log(2))) / \
                abs(hdr["CDELT2"] * 3600.)
+    '''
     #We replace zeros with NAN
     data[data == 0.] = float('NaN')
+    # It seems that I do not smooth the mask anymore, why not?
     Tmp_Cube=data
     #Tmp_Cube = gaussian_filter(data, sigma=(0, sig_min, sig_maj), order=0)
     # Replace 0. with Nan
@@ -558,6 +578,61 @@ create_masks.__doc__ = f'''
 
  NOTE:
 '''
+
+
+def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025):
+    #firt guess of the pixel noise
+    pixel_noise = requested_noise *np.mean(smoothing_sigma)*2. * np.sqrt(np.pi)
+    #  we need a shape for testing. something say 100 * smoothing kernel
+    test_shape= np.array([int(x*100.) for x in smoothing_sigma],dtype=int)
+    rng = np.random.default_rng()
+    achieved_noise = 0.
+    while abs(achieved_noise - requested_noise) / requested_noise > 0.025:
+        #If not the first run update our pixel noise
+        if achieved_noise != 0:
+            pixel_noise = pixel_noise*requested_noise/achieved_noise
+        #We only need to estimate this in a single channel there is no spectral component
+        #fill with gaussian values
+        test_noise = rng.normal(scale=pixel_noise, size=test_shape)
+        # and smooth to the final beam
+        test_noise_smoothed = gaussian_filter(test_noise,sigma=smoothing_sigma,\
+                                order=0)
+        achieved_noise = np.std(test_noise_smoothed)
+        #print(f"The current pixel noise estimate leads to {achieved_noise} mJy/beam (Requested = {requested_noise} mJy/beam).")
+
+
+
+    return achieved_noise,pixel_noise
+calculate_pixel_noise.__doc__ = f'''
+ NAME:
+    calculate_pixel_noise
+
+ PURPOSE:
+    calculate the noise that is required as input to random value generator to end up with the required noise after smoothing
+
+ CATEGORY:
+    common_functions
+
+ INPUTS:
+    requested_noise = the finale requested noise in smoothed images
+    smoothing_sigma = the sigma of the final beam in pixels
+
+
+ OPTIONAL INPUTS:
+    tolerance = the accepted difference between the requested noise and the achieved noise
+
+ OUTPUTS:
+    achieved_noise = the smoothed standard deviation
+    pixel_noise = the input pixel standard deviation
+
+ OPTIONAL OUTPUTS:
+
+ PROCEDURES CALLED:
+    Unspecified
+
+ NOTE:
+'''
+
 
 
 def cut_input_cube(file_in, sizes, name='EMPTY', debug=False):
@@ -755,6 +830,7 @@ find_program.__doc__=f'''
 def get_beam_area_in_pixels(Template_Header, beam= [-1,-1.]):
     if np.sum(beam) == -2.:
         beam = [Template_Header["BMAJ"],Template_Header["BMIN"]]
+    #  https://science.nrao.edu/facilities/vla/proposing/TBconv
     beamarea=(np.pi*abs((beam[0]*beam[1])))/(4.*np.log(2.))
     return beamarea/(abs(Template_Header['CDELT1'])*abs(Template_Header['CDELT2']))
 get_beam_area_in_pixels.__doc__=f'''
@@ -886,8 +962,9 @@ def get_mask(Cube_In, factor = 5.2):
     if pix_smooth > 3:
         pix_smooth=3.
     Mask =  gaussian_filter(Mask,sigma=(0.,pix_smooth,pix_smooth),order=0)
-    Mask[Mask > 0.95] = 1.
-    Mask[Mask < 0.05] = 0.
+    Mask[Mask > 0.95] = 1
+    Mask[Mask < 0.05] = 0
+    Mask = np.array(Mask,dtype=int)
     return Mask
 
 def get_mean_flux(Cube_In,Mask=[-1]):
@@ -1262,7 +1339,7 @@ def scrambled_initial(directory, Model):
     sdec=profile['YPOS']+rng.uniform(-10./3600., -10./3600.)
     svsys= profile['VSYS']+rng.uniform(-4., 4.)
     with open(f"{directory}Initial_Estimates.txt", 'w') as overview:
-        overview.write(f'''#This file contains the initial estimates.
+        overview.write(f'''#This file contains the random varied initial estimates.
 #{'VROT':<15s} {'INCL':<15s} {'PA':<15s} {'Z0':<15s} {'SBR':<15s} {'DISP':<15s} {'VRAD':<15s} {'RA':<15s} {'DEC':<15s}  {'VSYS':<15s}
 #{'km/s':<15s} {'Degree':<15s} {'Degree':<15s} {'arcsec':<15s} {'Jy km/s/arcsec^2':<15s} {'km/s':<15s} {'km/s':<15s} {'Degree':<15s} {'Degree':<15s}  {'km/s':<15s}
 {svrot:<15.2f} {sincl:<15.2f} {spa:<15.2f} {sz0:<15.3f} {ssbr:<15.7f} {ssdis:<15.2f} {svrad:<15.2f} {sra:<15.5f} {sdec:<15.5f}  {svsys:<15.2f}''')

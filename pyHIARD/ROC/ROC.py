@@ -3,7 +3,7 @@
 # It take 6 publicly available well resolved galaxy data cubes and smooths them to 3,4,5,6,7,8,10,12,16 beams across the major axis based on the extend of the best fit model.
 # The galaxies used are
 from pyHIARD.Resources import Cubes as cubes
-from pyHIARD.constants import c_kms, H_0
+from pyHIARD.constants import c_kms, H_0, G_agc
 from pyHIARD import Templates as templates
 from multiprocessing import Pool, get_context
 from astropy.wcs import WCS
@@ -149,10 +149,10 @@ def add_template(cfg, path_to_resources, existing_galaxies):
     cf.create_directory(galaxy_parameters['Galaxy'], path_to_resources)
 
     fits.writeto(
-        f'{new_resource}/{galaxy_parameters["Galaxy"]}.fits', Cube[0].data, Cube[0].header, overwrite=False)
+        f'{new_resource}/{galaxy_parameters["Galaxy"]}_Original.fits', Cube[0].data, Cube[0].header, overwrite=False)
     Cube.close()
-    Mask_Inner, Mask_Outer = cf.create_masks(
-        new_resource, cfg.general.main_directory, galaxy_parameters['Galaxy'], sofia_call=cfg.general.sofia2)
+    #Mask_Inner, Mask_Outer = cf.create_masks(
+    #    new_resource, cfg.general.main_directory, galaxy_parameters['Galaxy'], sofia_call=cfg.general.sofia2)
     ext = {'Tir': 'def', 'Bar': 'txt', 'RC': 'rotcur'}
     os.system(
         f"cp {cfg.general.main_directory}{model_file} {new_resource}{galaxy_parameters['Galaxy']}.{ext[galaxy_parameters['Original_Model']]}")
@@ -230,22 +230,10 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
         template_cube = Galaxy_Template['Galaxy_Template_Cube']
         template_hdr = Galaxy_Template['Galaxy_Template_Header']
         template_noise = Galaxy_Template['Original_Noise']
-    #fits.writeto('After_Regrid.fits', template_cube,
-    #             template_hdr, overwrite=True)
+
     template_mask = cf.get_mask(template_cube,factor = initial_factor)
-    #fits.writeto('After_Regrid_Mask.fits', template_mask,
-    #             template_hdr, overwrite=True)
 
-    #print("And after the regrid")
-    #print(f"Currently the template is {template_cube.size*template_cube.itemsize/(1024**2)} Mb")
-    #print('nois, Total flux, Mean flux')
-    #print(template_noise)
-    #print(f"The new  beam size {template_hdr['BMAJ']*3600.} x {template_hdr['BMIN']*3600.}")
-
-    #newme = cf.get_mean_flux(template_cube,Mask=template_mask)
     new_mean = cf.get_mean_flux(template_cube,Mask=template_mask)
-    #print(f"The new mean from the cube is {new_mean}, and the noise {template_noise} so the maximum SNR = {new_mean/template_noise}")
-    #print(f'The regrid factor = {regrid_factor}, the degradation factor = {smooth_factor}')
 
     # And the new bmin has the same factor
     new_beam.append(template_hdr['BMIN'] * regrid_factor)
@@ -507,17 +495,7 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
     Galaxy_Template['Disclaimer'](galaxy_dir)
     # The noise in the final cube should be
     final_req_noise = Galaxy_Template['Final_Mean_Flux']/required_noise
-
-    #fits.writeto(f"{galaxy_dir}Template_Cube.fits",Galaxy_Template['Shifted_Template_Cube'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
-    #fits.writeto(f"{galaxy_dir}Template_Mask.fits",Galaxy_Template['Shifted_Mask'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
-
-
-
-
     # We first find the noise in pixels that matches this
-    #print(f''' We are requesting a SNR of {required_noise} and the expected mean in the final cube is = {Galaxy_Template['Final_Mean_Flux']}
-#Creating the noise cube. The Noise in the final cube should be {final_req_noise} Jy/beam.''')
-    #fits.writeto(f"{galaxy_dir}Shift_temp.fits",Galaxy_Template['Shifted_Template_Cube'],Galaxy_Template['Shifted_Template_Header'],overwrite=True)
     #As we will be adding to the uncorrected cube we need to convert the noise back to its uncorrected value.
     # first we estimate what will be the noise we want for a cube with the resolution of the template
     # so we scale with the beam area new_beam/old_beam
@@ -536,7 +514,7 @@ def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
         (2. * np.sqrt(2. * np.log(2.)))
     # Fine tune the pixel noise estimate to achieve the final noise
     #setup the random number generator
-    achieved_shifted_noise,pixel_noise = calculate_pixel_noise(shifted_req_noise,template_pixel_sigma)
+    achieved_shifted_noise,pixel_noise = cf.calculate_pixel_noise(shifted_req_noise,template_pixel_sigma)
 
     # If this noise differs significantly from the original noise in the cube then we want to add noise to the emission part as well.
     diff_noise = achieved_shifted_noise - Galaxy_Template['Shifted_Original_Noise']
@@ -557,7 +535,7 @@ We continue with the next SNR value.''')
     # calculate the noise to be added to the template
     # If we want to add noise  we construct a new noise cube for this purpose
     if diff_noise > 0.:
-        achieved_diff_noise,pixel_diff_noise = calculate_pixel_noise(diff_noise,template_pixel_sigma)
+        achieved_diff_noise,pixel_diff_noise = cf.calculate_pixel_noise(diff_noise,template_pixel_sigma)
         #create a cube with this noise
         diff_noise_cube = rng.normal(scale=pixel_diff_noise, size=Galaxy_Template['Shifted_Template_Cube'].shape)
         # smooth it to the template resolution
@@ -657,39 +635,25 @@ We continue with the next SNR value.''')
     fits.writeto(f"{galaxy_dir}mask.fits", final_mask, final_hdr,overwrite=True,output_verify='ignore')
     # This completes cube manupulation
     channel_width = final_hdr['CDELT3']
+    # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
+    R_HI=[cf.convertskyangle(Galaxy_Template['Final_DHI_arcsec'],distance=\
+            Galaxy_Template['Final_Distance'])/2.,0.,0.]
+    V_max=float(Galaxy_Template['Shifted_TRM_Model']['VROT'].split('=')[1].split()[-1])
+    DynMass=R_HI[0]*10**3*V_max**2/G_agc
+    Achieved = {'SNR':Achieved_SNR, 'Mean_Signal': Achieved_Mean, 'Noise': Achieved_Noise,\
+            'Channel_Width': channel_width,'Res_Beam':\
+            [final_hdr['BMAJ']*3600.,final_hdr['BMIN']*3600.,final_hdr['BPA']],\
+            'Pixel_Beam': cf.get_beam_area_in_pixels(final_hdr), 'Mass': DynMass,\
+            'Corruption': 'Gaussian' }
     del final_mask ; del final_cube; del final_hdr
-
-    # Then we also want to write some info about the galaxy
-    RAdeg = float(Galaxy_Template['Shifted_TRM_Model']['XPOS'].split('=')[1].split()[0])
-    DECdeg = float(Galaxy_Template['Shifted_TRM_Model']['YPOS'].split('=')[1].split()[0])
-    RAhr, DEChr = cf.convertRADEC(RAdeg, DECdeg)
-    with open(f"{galaxy_dir}{dirstring}-Info.txt", 'w') as overview:
-        overview.write(f'''This file contains the basic parameters of this galaxy.
-For the radial dependencies look at Overview.png or ModelInput.def.
-Inclination = {Galaxy_Template['Shifted_TRM_Model']['INCL'].split('=')[1].split()[0]}.
-The dispersion = {float(Galaxy_Template['Shifted_TRM_Model']['SDIS'].split('=')[1].split()[0]):.2f}-{float(Galaxy_Template['Shifted_TRM_Model']['SDIS'].split('=')[1].split()[-1]):.2f}.
-The type of galaxy = {Galaxy_Template['Name']}.
-PA = {Galaxy_Template['Shifted_TRM_Model']['PA'].split('=')[1].split()[0]}.
-Beams across the major axis = {Galaxy_Template['Beams']}.
-SNR Requested = {required_noise} SNR Achieved = {Achieved_SNR}.
-Mean Signal = {Achieved_Mean}.
-Channelwidth = {channel_width}.
-Major axis beam = {Galaxy_Template['New_Beam'][0]} Minor axis beam= {Galaxy_Template['New_Beam'][1]}.
-It's central coordinates are RA={RAhr} DEC={DEChr} vsys={float(Galaxy_Template['Shifted_TRM_Model']['VSYS'].split('=')[1].split()[0]):.2f} km/s.
-At a Distance of {Galaxy_Template['Final_Distance']:.2f} Mpc.
-HI_Mass {Galaxy_Template['M_HI']:.2e} (M_solar).
-The final noise level is {Achieved_Noise} Jy/beam.
-h_z =  {float(Galaxy_Template['Shifted_TRM_Model']['Z0'].split('=')[1].split()[0]):.2f}-{float(Galaxy_Template['Shifted_TRM_Model']['Z0'].split('=')[1].split()[-1]):.2f} (arcsec).''')
-
+    write_overview_file(f"{galaxy_dir}{dirstring}-Info.txt", Galaxy_Template,Achieved,required_noise)
     # We need to make the model input
     with open(f"{galaxy_dir}ModelInput.def", 'w') as tri:
         tri.writelines([Galaxy_Template['Shifted_TRM_Model'][key] + "\n" for key in Galaxy_Template['Shifted_TRM_Model']])
 
     # And an overview plot
     #print("Start plotting")
-    # the mass leads to the radius at which we need to hit 1 M/pc^2 from Wang (2016) in kpc
-    R_HI=[cf.convertskyangle(Galaxy_Template['Final_DHI_arcsec'],distance=\
-            Galaxy_Template['Final_Distance'])/2.,0.,0.]
+
     #Profiles are fitted by an exponential with scale length 0.2*RHI i.e. SigHI = C*exp(-R/(0.2*RHI)) so that weay we get the Warp end at Sigma = 0.5
     Warp = [0,np.log(0.5*np.exp(-1./0.2))*-0.2*R_HI[0]]
     cf.plot_input(galaxy_dir,Galaxy_Template['Shifted_TRM_Model']
@@ -698,7 +662,7 @@ h_z =  {float(Galaxy_Template['Shifted_TRM_Model']['Z0'].split('=')[1].split()[0
                 )
     # And a file with scrambled initial estimates
     cf.scrambled_initial(galaxy_dir,Galaxy_Template['Shifted_TRM_Model'])
-    return_line = f"{Galaxy_Template['Final_Distance']}|{dirstring}|Convolved_Cube\n"
+    return_line = f"{Galaxy_Template['Final_Distance']:.2f}|{dirstring}|Convolved_Cube\n"
     del Galaxy_Template
     return return_line
 
@@ -730,29 +694,6 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025):
-    #firt guess of the pixel noise
-    pixel_noise = requested_noise *np.mean(smoothing_sigma)*2. * np.sqrt(np.pi)
-    #  we need a shape for testing. something say 100 * smoothing kernel
-    test_shape= np.array([int(x*100.) for x in smoothing_sigma],dtype=int)
-    rng = np.random.default_rng()
-    achieved_noise = 0.
-    while abs(achieved_noise - requested_noise) / requested_noise > 0.025:
-        #If not the first run update our pixel noise
-        if achieved_noise != 0:
-            pixel_noise = pixel_noise*requested_noise/achieved_noise
-        #We only need to estimate this in a single channel there is no spectral component
-        #fill with gaussian values
-        test_noise = rng.normal(scale=pixel_noise, size=test_shape)
-        # and smooth to the final beam
-        test_noise_smoothed = scipy.ndimage.gaussian_filter(test_noise,\
-            sigma=smoothing_sigma,order=0)
-        achieved_noise = np.std(test_noise_smoothed)
-        #print(f"The current pixel noise estimate leads to {achieved_noise} mJy/beam (Requested = {requested_noise} mJy/beam).")
-
-
-
-    return achieved_noise,pixel_noise
 
 def extend_cube(cube_in, hdr_in, new_beam=0., Mask=[-1., -1.], rotation_pa=0.):
     cube = copy.deepcopy(cube_in)
@@ -1189,7 +1130,8 @@ def ROC(cfg,path_to_resources):
         #calculate the amount of allowed processes
         no_template_processes,no_beam_processes,no_snr_processes = \
             calculate_processes(All_Galaxies,cfg.roc.beams,cfg.roc.snr)
-        if cfg.roc.snr == 1:
+        if  no_snr_processes == 1:
+            # if we can not do multiple SNR processes even there is no point in MP
             cfg.general.multiprocessing =False
             del needed_templates
 
@@ -1395,7 +1337,7 @@ def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = [-1],
         original_pixel_sigma=(np.array([hdr[key] for key in ['BMAJ','BMIN'] ],dtype=float)/ \
             np.abs(np.array([hdr[key] for key in ['CDELT2','CDELT1'] ],dtype=float)))/\
             (2. * np.sqrt(2. * np.log(2.)))
-        achieved_noise,pixel_noise = calculate_pixel_noise(track_noise,original_pixel_sigma,tolerance=0.01)
+        achieved_noise,pixel_noise = cf.calculate_pixel_noise(track_noise,original_pixel_sigma,tolerance=0.01)
         #create a cube with this noise
         rng = np.random.default_rng()
         noise_channel = rng.normal(scale=pixel_noise, size=Cube.shape[1:])
@@ -1488,4 +1430,63 @@ PROCEDURES CALLED:
    Unspecified
 
 NOTE:
+'''
+
+def write_overview_file(filename,Galaxy_Template,Achieved,SNR):
+    Template = Galaxy_Template['Shifted_TRM_Model']
+    # Then we also want to write some info about the galaxy
+    RAdeg = float(Galaxy_Template['Shifted_TRM_Model']['XPOS'].split('=')[1].split()[0])
+    DECdeg = float(Galaxy_Template['Shifted_TRM_Model']['YPOS'].split('=')[1].split()[0])
+    RAhr, DEChr = cf.convertRADEC(RAdeg, DECdeg)
+    RHI = cf.convertskyangle(Galaxy_Template['Final_DHI_arcsec'],float(Template['DISTANCE'].split('=')[1]))/2.
+    with open(filename, 'w') as overview:
+            overview.write(f'''# This file contains the basic parameters of this galaxy. For the radial dependencies look at Overview.png or ModelInput.def.
+#{'Variable':<14s} {'Requested':<15s} {'Achieved':15s} {'Units':<15s}
+{'Inclination':<15s} {'':<15s} {float(Template['INCL'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
+{'PA':<15s} {'':<15s} {float(Template['PA'].split('=')[1].split()[0]):<15.2f} {'degree':<15s}
+{'Sys. Velocity':<15s} {'':<15s} {float(Template['VSYS'].split('=')[1].split()[0]):<15.2f} {'km/s':<15s}
+{'RA':<15s} {'':<15s} {RAhr.strip():<15s} {'':<15s}
+{'Declination':<15s} {'':<15s} {DEChr.strip():<15s} {'':<15s}
+{'Dispersion':<15s} {'':<15s} {f"{float(Template['SDIS'].split('=')[1].split()[0]):.2f}-{float(Template['SDIS'].split('=')[1].split()[-1]):.2f}":<15s} {'km/s':<15s}
+{'Scale height':<15s} {'':<15s} {f"{float(Template['Z0'].split('=')[1].split()[0]):.2f}-{float(Template['Z0'].split('=')[1].split()[-1]):.2f}":<15s} {'arcsec':<15s}
+{'HI Radius':<15s} {'':<15s} {RHI:<15.3f} {'kpc':<15s}
+{'Maj Axis':<15s} {Galaxy_Template['Beams']:<15.3f} {'':15s} {'Beams'}
+{'Total Mass':<15s} {'':<15s} {Achieved['Mass']:<15.1e} {'M_solar':<15s}
+{'HI Mass':<15s} {'':<15s} {Galaxy_Template['M_HI']:<15.1e} {'M_solar':<15s}
+{'Chan. Width':<15s} {'':<15s} {Achieved['Channel_Width']:<15.3f} {'km/s':<15.2s}
+{'SNR':<15s} {SNR:<15.3f} {Achieved['SNR']:<15.3f}
+{'Mean Signal':<15s} {'':<15s} {Achieved['Mean_Signal']*1000.:<15.3f} {'mJy/beam':<15s}
+{'Noise':<15s} {'':<15s} {Achieved['Noise']*1000.:<15.3f} {'mJy/beam':<15s}
+{'Distance':<15s} {'':<15s} {float(Template['DISTANCE'].split('=')[1]):<15.3f} {'Mpc':<15s}
+{'Maj. FWHM':<15s} {'':<15s} {Achieved['Res_Beam'][0]:<15.2f} {'arcsec':<15s}
+{'Min. FWHM':<15s} {'':<15s} {Achieved['Res_Beam'][1]:<15.2f} {'arcsec':<15s}
+{'Beam BPA':<15s} {'':<15s} {Achieved['Res_Beam'][2]:<15.2f} {'degree':<15s}
+{'Pixel per Beam':<15s} {'':<15s} {Achieved['Pixel_Beam']:<15.2f} {'pixel':<15s}
+{'Corruption':<15s} {'':<15s} {Achieved['Corruption']:<15s}''')
+
+write_overview_file.__doc__ = f'''
+NAME:
+   write_overview_file
+
+PURPOSE:
+    write the overview file with requested and achieved values
+
+CATEGORY:
+   ROC
+
+INPUTS:
+   Current_Galaxy = the Current Gakaxy that is processed (The requested values)
+   Template = The tirific template that is used to create the galaxy
+   Achieved= Copy of Current_Galaxy that contains the values measured from the cube
+
+OPTIONAL INPUTS:
+
+OUTPUTS:
+    file with a table with the requested and achieved values
+OPTIONAL OUTPUTS:
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE: For now the Achieved.Flare and Achieved.Warp are merely copies of the input simply assumed to be implemented correctly
 '''

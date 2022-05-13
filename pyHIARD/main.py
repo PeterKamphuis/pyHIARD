@@ -13,9 +13,6 @@ from pyHIARD.conf.config import Config
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from pyHIARD.Resources import Cubes as cubes
 
-
-
-
 def main(argv):
     #Get default settings
     if '-v' in argv or '--version' in argv:

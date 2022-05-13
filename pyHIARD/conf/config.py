@@ -17,9 +17,10 @@ class AGC:
         default_factory=lambda: [1, 2, 3, 4, 5, 6])
     inhomogenous: bool = True  # Add homogenieties?
     symmetric: bool = False  # Keep galaxies symmetric
-    corruption_method: str = 'Gaussian'  # options are Casa_Sim, Gaussian, Casa_5
-    variables_to_vary: List[str] = field(default_factory=lambda: ['Inclination', 'Beams', 'Radial_Motions',
-                                         'Flare', 'Arms', 'Bar', 'Mass', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Resolution'])
+    # options are Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5
+    corruption_method: str = 'Tres'
+    variables_to_vary: List[str] = field(default_factory=lambda: ['Base', 'Inclination', 'Beams', 'Radial_Motions',
+                                         'Flare', 'Arms', 'Bar', 'Mass', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Size'])
     # Each base is created with the variations in the following parameters if they are listed to be varied.
     inclination: List[float] = field(default_factory=lambda: [
                                      15., 20., 30., 50., 70., 80., 88., 90.])
@@ -42,7 +43,7 @@ class AGC:
     # The channel dependency
     # 'Options are independent, sinusoidal, hanning
     channel_dependency: str = 'sinusoidal'
-    corrupt_models: bool = True
+    retain_unconvolved_model: bool = False
 
 
 @dataclass
@@ -73,8 +74,8 @@ class General:
     main_directory: str = os.getcwd()
     tirific: str = "tirific"  # Command to call tirific
     sofia2: str = "sofia2"  # Command to call sofia 2
-    casa: str = "casa"  # Command to call sofia 2
     multiprocessing: bool = True
+
 
 @dataclass
 class Config:

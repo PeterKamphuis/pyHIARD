@@ -22,6 +22,9 @@ Gsol = G/(1000.**3)*solar_mass  # km^3/M_sol*s^2
 # transform (pc x km^2)/(s^2 x solarmass)
 global G_agc
 G_agc = Gsol/(pc/(1000.*100.))
+global HI_rest_freq
+HI_rest_freq=1.4204057517667e+9  # Hz
+
 # G=6.674 x 10^neg20 #km^3⋅kg^neg1⋅s^neg2 pc=3.086e+13 km solarmass=1.98855e30 kg
 # transform (pc x km^2)/(s^2 x solarmass)
 #G= 4.30058*10**-3
