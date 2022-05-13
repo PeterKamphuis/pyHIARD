@@ -46,7 +46,7 @@ General Settings
 
     *str, optional, default = './'*
 
-    The main directory where the create the database. The default is the directory where pyHIARD is started
+    The main directory where to create the database. The default is the directory where pyHIARD is started
 
   **tirific**:
 
