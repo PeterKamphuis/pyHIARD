@@ -17,30 +17,29 @@ Individual Keywords
  --------
 *No specifier*
 
-**print_examples**:
-
-  *bool, optional, default = False*
-
-  Print an example input yaml file and an example catalogue.
-
-**print_bases**:
+  **print_examples**:
 
     *bool, optional, default = False*
 
-    Print the pyHIARD standard included galaxies.
+    Print an example input yaml file and an example catalogue.
+
+  **print_bases**:
+
+      *bool, optional, default = False*
+
+      Print the pyHIARD standard included galaxies.
 
 
-**configuration_file**:
+  **configuration_file**:
 
-    *str, optional, default = None*
+      *str, optional, default = None*
 
-    configuration input file
+      configuration input file
 
 
 General Settings
--------
+--------
 *Specified with general*
-
 
   **main_directory**:
 
@@ -84,183 +83,183 @@ The Artificial Galaxy Catalogue (AGC) keywords
 --------
 *Specified with agc*
 
-**enable**:
+  **enable**:
 
-    *bool, optional, default = True*
+      *bool, optional, default = True*
 
-    Boolean to indicate whether artificial galaxies should be made (True) or not (False)
+      Boolean to indicate whether artificial galaxies should be made (True) or not (False)
 
-**delete_existing**
+  **delete_existing**
 
-    *bool, optional, default = False*
+      *bool, optional, default = False*
 
-    If true the database checks whether the base galaxies already has existing variations of the base galaxies and removes all these directories.
-    If false, the code checks whether existing directories already have the final convolved cube and skips the galaxy if so.
+      If true the database checks whether the base galaxies already has existing variations of the base galaxies and removes all these directories.
+      If false, the code checks whether existing directories already have the final convolved cube and skips the galaxy if so.
 
-**base_galaxies**:
+  **base_galaxies**:
 
-    *integer List, optional, default = [1,2,3,4,5]*
+      *integer List, optional, default = [1,2,3,4,5]*
 
-    An integer list that selectes the base for the artificial galaxies. pyHIARD has 5 standard base galaxies for the AGC. These can be listed by running pyHIARD print_bases=True.
-    Selecting 6 will allow the user to create their own base galaxy through answering questions about the input parameters.
+      An integer list that selectes the base for the artificial galaxies. pyHIARD has 5 standard base galaxies for the AGC. These can be listed by running pyHIARD print_bases=True.
+      Selecting 6 will allow the user to create their own base galaxy through answering questions about the input parameters.
 
-**inhomogenous**:
+  **inhomogenous**:
 
-    *bool, optional, default = True*
+      *bool, optional, default = True*
 
-    If set to True random variation on top of the cylindrically symmetric disks will be created.
+      If set to True random variation on top of the cylindrically symmetric disks will be created.
 
-**symmetric**:
+  **symmetric**:
 
-    *bool, optional, default = False*
+      *bool, optional, default = False*
 
-    If set to true the approaching and receding side of the galaxies will differ in their warping and surface brightness profiles
+      If set to true the approaching and receding side of the galaxies will differ in their warping and surface brightness profiles
 
-**corruption_method**:
+  **corruption_method**:
 
-    *str, optinal, default = 'Tres'*
+      *str, optinal, default = 'Tres'*
 
-    How the artificial galaxies are corrupted. The options are No_Corrupt, Gaussian, Casa_Sim, Tres and Casa_5.
+      How the artificial galaxies are corrupted. The options are No_Corrupt, Gaussian, Casa_Sim, Tres and Casa_5.
 
-      -No_Corrupt: Do not add any noise to the model simply smooth to the required beam.
+        -No_Corrupt: Do not add any noise to the model simply smooth to the required beam.
 
-      -Gaussian: Random noise with a gaussian distribution is added.
+        -Gaussian: Random noise with a gaussian distribution is added.
 
-      -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned
+        -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned
 
-      -Tres: Mix the the three corruption methods. If set pyHIARD produces three Gaussian corrupted galaxies, one uncorrupted, and one Casa corrupted galaxy.
+        -Tres: Mix the the three corruption methods. If set pyHIARD produces three Gaussian corrupted galaxies, one uncorrupted, and one Casa corrupted galaxy.
 
-      -Casa_5: As CASA's simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
+        -Casa_5: As CASA's simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
 
-**retain_unconvolved_model**
+  **retain_unconvolved_model**
 
-  *bool, optinal, default = False*
+    *bool, optinal, default = False*
 
-  retain a version of the unconvolved model, if you are only interested in these models the best way to run pyHIARD is to set the corruption method to No_Corrupt
+    retain a version of the unconvolved model, if you are only interested in these models the best way to run pyHIARD is to set the corruption method to No_Corrupt
 
-**variables_to_vary**:
+  **variables_to_vary**:
 
-    *str List, optional, default  = ['Inclination','Beams','Radial_Motions','Flare','Arms','Bar','Mass','Channelwidth','SNR','Warp','Mass','Beam_Resolution']*
+      *str List, optional, default  = ['Inclination','Beams','Radial_Motions','Flare','Arms','Bar','Mass','Channelwidth','SNR','Warp','Mass','Beam_Resolution']*
 
-    A list of the variables that should be varied within each base. If no variations on the base are required set this to ['Base'].
-    The Arms, Bar and Flare will be swapped when present in this list. For the other variables values should be set in the yml file or the defaults will be used.
+      A list of the variables that should be varied within each base. If no variations on the base are required set this to ['Base'].
+      The Arms, Bar and Flare will be swapped when present in this list. For the other variables values should be set in the yml file or the defaults will be used.
 
-**masses**:
+  **masses**:
 
-    *float List, optional, default = [2.5e11]*
+      *float List, optional, default = [2.5e11]*
 
-    List of variations of the base mass. The mass determines the rotation curve, surface brightness profile and scale height.
+      List of variations of the base mass. The mass determines the rotation curve, surface brightness profile and scale height.
 
-**inclination**:
+  **inclination**:
 
-    *float List, optional, default = [15.,20.,30.,50.,70.,80.,88.,90.]*
+      *float List, optional, default = [15.,20.,30.,50.,70.,80.,88.,90.]*
 
-    List of variations of the base inclination
+      List of variations of the base inclination
 
-**warp**:
+  **warp**:
 
-    *float List, optional, default = [[0.15,0.05],[0.05,0.2]]*
+      *float List, optional, default = [[0.15,0.05],[0.05,0.2]]*
 
-    List of variations of the base warp angles
+      List of variations of the base warp angles
 
-**radial_motons**:
+  **radial_motons**:
 
-    *float List, optional, default = [-5.,-10.]*
+      *float List, optional, default = [-5.,-10.]*
 
-    List of variations of the radial motions in the galaxy. Negative values indicate inflows positive values indicate outflows.
+      List of variations of the radial motions in the galaxy. Negative values indicate inflows positive values indicate outflows.
 
 
-**beams**:
+  **beams**:
 
-    *float List, optional, default = [2.,4.,6.,7.,8.,10.,12.]*
+      *float List, optional, default = [2.,4.,6.,7.,8.,10.,12.]*
 
-    List of variations of the base beams across the major axis. Note that these also set v_sys through distance on a pure Hubble flow as the size in kpc will be determined by the relation presented in Wang et al 2016 from the SBR profile.
+      List of variations of the base beams across the major axis. Note that these also set v_sys through distance on a pure Hubble flow as the size in kpc will be determined by the relation presented in Wang et al 2016 from the SBR profile.
 
-**snr**:
+  **snr**:
 
-    *float List, optional, default = [1.,3.,5.]*
+      *float List, optional, default = [1.,3.,5.]*
 
-    List of variations of the base signal to noise ration. This is the average SNR over the whole galaxy.
+      List of variations of the base signal to noise ration. This is the average SNR over the whole galaxy.
 
-**channelwidth**:
+  **channelwidth**:
 
-    *float List, optional, default = [2.,8.]*
+      *float List, optional, default = [2.,8.]*
 
-    List of variations of the base channel width in km/s.
+      List of variations of the base channel width in km/s.
 
-**beam_size**:
+  **beam_size**:
 
-    *float List, optional, default = [[5.,5.]]*
+      *float List, optional, default = [[5.,5.]]*
 
-    List of variations of the resolution of the synthesized beam in arcsec
+      List of variations of the resolution of the synthesized beam in arcsec
 
 
 The Real Observations Catalogue (ROC) keywords
 --------
 *Specified with roc*
 
-**enable**:
+  **enable**:
 
-    *bool, optional, default = True*
+      *bool, optional, default = True*
 
-    Boolean to indicate whether observed and shifted galaxies should be made (True) or not (False)
+      Boolean to indicate whether observed and shifted galaxies should be made (True) or not (False)
 
-**add_template**:
+  **add_template**:
 
-    *bool, optional, default = False*
+      *bool, optional, default = False*
 
-    Boolean to allow a new galaxy template to the ROC. If set to True all other options are ignored.
+      Boolean to allow a new galaxy template to the ROC. If set to True all other options are ignored.
 
-**remove_template**:
+  **remove_template**:
 
-    *bool, optional, default = False*
+      *bool, optional, default = False*
 
-    Boolean to the removal of unwanted galaxy templates in the ROC. If set to True all other options are ignored.
+      Boolean to the removal of unwanted galaxy templates in the ROC. If set to True all other options are ignored.
 
-**delete_existing**
+  **delete_existing**
 
-    *bool, optional, default = False*
+      *bool, optional, default = False*
 
-    If true the database checks whether the base galaxies already has existing variations of the base galaxies and removes all these directories.
-    If false, the code checks whether existing directories already have the final convolved cube and skips the galaxy if so.
+      If true the database checks whether the base galaxies already has existing variations of the base galaxies and removes all these directories.
+      If false, the code checks whether existing directories already have the final convolved cube and skips the galaxy if so.
 
-**base_galaxies**:
+  **base_galaxies**:
 
-    *integer List, optional, default = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774','ESO_223_G009']*
+      *integer List, optional, default = ['M_83','Circinus','NGC_5023','NGC_2903','NGC_3198','NGC_5204','UGC_1281','UGC_7774','ESO_223_G009']*
 
-    List of base galaxies to vary. The default contains all possible options. Only the galaxies NGC_5204 and UGC_1281 come with the python distribution.
-    Other options are downloaded from their respective survey websites and thus require an internet connection the first time they are used.
+      List of base galaxies to vary. The default contains all possible options. Only the galaxies NGC_5204 and UGC_1281 come with the python distribution.
+      Other options are downloaded from their respective survey websites and thus require an internet connection the first time they are used.
 
-**variables_to_vary**:
+  **variables_to_vary**:
 
-    *str List, optional, default  = ['Beams','SNR']*
+      *str List, optional, default  = ['Beams','SNR']*
 
-    A list of the variables that should be varied within each base. If no variations on the base are required set this to ['Beams'] and set roc.beams: [-1].
+      A list of the variables that should be varied within each base. If no variations on the base are required set this to ['Beams'] and set roc.beams: [-1].
 
-**beams**:
+  **beams**:
 
-    *float List, optional, default = [2.,4.,6.,8.,-1.]*
+      *float List, optional, default = [2.,4.,6.,8.,-1.]*
 
-    List of variations of the base beams across the major axis. Note that these also set v_sys through distance on a pure Hubble flow.
-    -1 indicates the largest galaxy possible. This is slightly smaller than the input source extend to ensure proper blending with the noise.
-    The maximums are M 83 = 21.9, Circinus = 18.2, NGC 5023 = 23.4, NGC 2903 = 16.5, NGC 3198 = 36.9, NGC 5204 = 15.0, UGC 1281 = 12.4, UGC 7774 = 13.8
-    If the number of beams requested is larger than this the galaxy is skipped.
+      List of variations of the base beams across the major axis. Note that these also set v_sys through distance on a pure Hubble flow.
+      -1 indicates the largest galaxy possible. This is slightly smaller than the input source extend to ensure proper blending with the noise.
+      The maximums are M 83 = 21.9, Circinus = 18.2, NGC 5023 = 23.4, NGC 2903 = 16.5, NGC 3198 = 36.9, NGC 5204 = 15.0, UGC 1281 = 12.4, UGC 7774 = 13.8
+      If the number of beams requested is larger than this the galaxy is skipped.
 
-**snr**:
+  **snr**:
 
-    *float List, optional, default = [1.,3.]*
+      *float List, optional, default = [1.,3.]*
 
-    List of variations of the base signal to noise ration. This is the average SNR over the whole galaxy. -1 indicates the original ratio.
+      List of variations of the base signal to noise ration. This is the average SNR over the whole galaxy. -1 indicates the original ratio.
 
-**minimum_degradation_factor**
+  **minimum_degradation_factor**
 
-    *float, optional, default = 1.25*
+      *float, optional, default = 1.25*
 
-    The templates in the ROC have to be smoothed with a gaussian in order to have a smooth connection between the template and the artificial noise. The minimum degradation factor control how much the original template at least has to be shrank.
-    This sets the maximum size in the output of the ROC.
+      The templates in the ROC have to be smoothed with a gaussian in order to have a smooth connection between the template and the artificial noise. The minimum degradation factor control how much the original template at least has to be shrank.
+      This sets the maximum size in the output of the ROC.
 
-**max_degradation_factor**
+  **max_degradation_factor**
 
-    *float, optional, default = 1.6*
+      *float, optional, default = 1.6*
 
-    The ROC can take a lot of memory this factor sets the size at which pixel resolution the beam template is maintained. At large degradadtion this can save a lot of memory.
+      The ROC can take a lot of memory this factor sets the size at which pixel resolution the beam template is maintained. At large degradadtion this can save a lot of memory.
