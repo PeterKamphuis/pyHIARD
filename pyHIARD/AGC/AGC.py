@@ -193,6 +193,7 @@ def AGC(cfg):
     Gauss_Galaxies = []
     Casa_Galaxies = []
     created = []
+    rc_counter=0
     for base in range(len(cfg.agc.base_galaxies)):
         base_defined = False
         # We want to keep the center constant per base galaxy, for easy comparison as well as to be able to investigate how center determination is affected
@@ -335,16 +336,17 @@ def AGC(cfg):
                         Current_Galaxy, symmetric=cfg.agc.symmetric, no_template=True)  # Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
                     set_done, max_rad, colors, plot_ax = plot_RC(
                         set_done, Current_Galaxy.Mass, Rad, Vrot, colors, max_rad, sub_ring, plot_ax)
-    plt.figure(59)
-
-    plot_ax.set_ylim(ymin=0)
-    plot_ax.set_xlim(xmin=0, xmax=max_rad)
-    plt.legend(loc='lower right', fontsize=12)
-    plt.savefig('Rotation_Curves.pdf', bbox_inches='tight')
-    # this is not closing properly
-    plot_ax.cla()
-    plt.clf()
-    plt.close()
+                    rc_counter += 1
+    if rc_counter > 0:
+        plt.figure(59)
+        plot_ax.set_ylim(ymin=0)
+        plot_ax.set_xlim(xmin=0, xmax=max_rad)
+        plt.legend(loc='lower right', fontsize=12)
+        plt.savefig('Rotation_Curves.pdf', bbox_inches='tight')
+        # this is not closing properly
+        plot_ax.cla()
+        plt.clf()
+        plt.close()
                 #print(f"This is the parameter to vary {cfg.agc.variables_to_vary[ix]}.")
     if len(Casa_Galaxies) > 0:
         #with open(f"{cfg.general.main_directory}/Casa_Noise_Statistics.txt", 'w') as file:
@@ -1921,6 +1923,7 @@ def corrupt_gauss(work_dir, beam, SNR, no_corrupt=False):
     hdr['BMAJ'] = beam[0]/3600.
     hdr['BMIN'] = beam[1]/3600.
     hdr['BPA'] = beam[2]
+    hdr['BUNIT'] = 'Jy/beam'
     fits.writeto(work_dir+'/Convolved_Cube.fits', final, hdr, overwrite=True)
 
 

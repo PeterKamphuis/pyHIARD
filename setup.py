@@ -11,7 +11,7 @@ requirements = [
     'numpy>=1.14',
     'scipy',
     'astropy',
-    'omegaconf',
+    'omegaconf>=2.2.2',
     'psutil',
     'casatasks',
     'matplotlib',
@@ -20,7 +20,7 @@ requirements = [
 ]
 
 PACKAGE_NAME = 'pyHIARD'
-__version__ = '1.1.3'
+__version__ = '1.1.4'
 
 
 with open("README.md", "r") as fh:
