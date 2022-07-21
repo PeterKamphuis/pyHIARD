@@ -328,7 +328,7 @@ def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_dir
         galaxy_dir_exists = os.path.isdir(galaxy_dir)
         if galaxy_dir_exists:
     # Do we have a cube
-            galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+            galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube_Gauss.fits")
             if galaxy_cube_exist:
                 Galaxy_Template['Requested_SNR'].remove(-1.)
                 print(f"The galaxy {dirstring} galaxy appears fully produced")
@@ -627,7 +627,7 @@ We continue with the next SNR value.''')
 
     final_hdr['DATAMAX'] = np.max(final_cube)
     final_hdr['DATAMIN'] = np.min(final_cube)
-    fits.writeto(f"{galaxy_dir}Convolved_Cube.fits", final_cube, final_hdr,
+    fits.writeto(f"{galaxy_dir}Convolved_Cube_Gauss.fits", final_cube, final_hdr,
                  overwrite=True)#ANd write to our directory
     final_hdr['DATAMAX'] = np.max(final_mask)
     final_hdr['DATAMIN'] = np.min(final_mask)
@@ -662,7 +662,7 @@ We continue with the next SNR value.''')
                 )
     # And a file with scrambled initial estimates
     cf.scrambled_initial(galaxy_dir,Galaxy_Template['Shifted_TRM_Model'])
-    return_line = f"{Galaxy_Template['Final_Distance']:.2f}|{dirstring}|Convolved_Cube\n"
+    return_line = f"{Galaxy_Template['Final_Distance']:.2f}|{dirstring}|Convolved_Cube_Gauss\n"
     del Galaxy_Template
     return return_line
 
@@ -1102,7 +1102,7 @@ def ROC(cfg,path_to_resources):
                 galaxy_dir_exists = os.path.isdir(galaxy_dir)
                 if galaxy_dir_exists:
             # Do we have a cube
-                    galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+                    galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube_Gauss.fits")
 
                     if galaxy_cube_exist:
                         beams_to_produce.remove(nobeams)
@@ -1177,7 +1177,7 @@ def ROC(cfg,path_to_resources):
                             galaxy_dir_exists = os.path.isdir(galaxy_dir)
                             if galaxy_dir_exists:
                         # Do we have a cube
-                                galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+                                galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube_Gauss.fits")
 
                                 if galaxy_cube_exist:
                                     noise_to_produce.remove(reqnoise)
@@ -1254,7 +1254,7 @@ def ROC(cfg,path_to_resources):
                         galaxy_dir_exists = os.path.isdir(galaxy_dir)
                         if galaxy_dir_exists:
                             # Do we have a cube
-                            galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube.fits")
+                            galaxy_cube_exist = os.path.isfile(f"{galaxy_dir}Convolved_Cube_Gauss.fits")
 
                             if galaxy_cube_exist:
                                 noise_to_produce.remove(reqnoise)
