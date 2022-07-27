@@ -122,11 +122,11 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
       How the artificial galaxies are corrupted. The options are No_Corrupt, Gaussian, Casa_Sim, Tres and Casa_5.
 
-        -No_Corrupt: Do not add any noise to the model simply smooth to the required beam.
+        -No_Corrupt: Do not add any noise to the model simply smooth to the required beam. Cubes names will end in '_UC' to indicate uncorrupted.
 
-        -Gaussian: Random noise with a gaussian distribution is added.
+        -Gaussian: Random noise with a gaussian distribution is added. Cubes names will end in '_Gauss'
 
-        -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned
+        -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned. Cubes names will end in '_CS'.
 
         -Tres: Mix the the three corruption methods. If set pyHIARD produces three Gaussian corrupted galaxies, one uncorrupted, and one Casa corrupted galaxy.
 

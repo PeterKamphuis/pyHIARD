@@ -2451,7 +2451,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
             f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_Gauss.fits")
 
     elif Current_Galaxy.Corruption == 'No_Corrupt':
-        catalog_cube_name='Convolved_Cube'
+        catalog_cube_name='Convolved_Cube_UC'
 
     if not cfg.agc.retain_unconvolved_model:
         os.remove(f'{cfg.general.main_directory}{name}/Unconvolved_Cube.fits')
