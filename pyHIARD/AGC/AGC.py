@@ -2441,17 +2441,20 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     Achieved.Res_Beam=[Cube[0].header['BMAJ']*3600.,
                          Cube[0].header['BMIN']*3600.,
                          Cube[0].header['BPA']]
+
     if Current_Galaxy.Corruption == 'Casa_Sim':
         catalog_cube_name= 'Convolved_Cube_CS'
-        os.system(
-            f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_CS.fits")
     elif Current_Galaxy.Corruption == 'Gaussian':
         catalog_cube_name='Convolved_Cube_Gauss'
-        os.system(
-            f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/Convolved_Cube_Gauss.fits")
-
     elif Current_Galaxy.Corruption == 'No_Corrupt':
         catalog_cube_name='Convolved_Cube_UC'
+    else:
+        catalog_cube_name='Convolved_Cube'
+
+    if  catalog_cube_name != 'Convolved_Cube':
+        os.system(
+            f"mv {cfg.general.main_directory}{name}/Convolved_Cube.fits {cfg.general.main_directory}{name}/{catalog_cube_name}.fits")
+
 
     if not cfg.agc.retain_unconvolved_model:
         os.remove(f'{cfg.general.main_directory}{name}/Unconvolved_Cube.fits')
