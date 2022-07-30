@@ -1429,40 +1429,7 @@ def vel_to_freq(hdr):
     low_freq = central_freq-(hdr['CRPIX3']-1)*cdelt_freq
     return central_freq, cdelt_freq, top_freq, low_freq
 
-def memoryhog(input):
-    #As there is a ridiculous memory leak in sim observe we need to ensure to run it in a subprocess
-    #easiest through a mp call
-    #cellsize = [f'{abs(hdr['CDELT1']*3600.),abs(hdr['CDELT2']*3600.)]
-    from casatasks import simobserve
-    simobserve(
-        #  simobserve :: visibility simulation task
-        project='sim_data',  # root prefix for output file names
-        skymodel=input[0],  # model image to observe
-        complist='',  # componentlist to observe
-        setpointings=True,
-        integration='20s',  # integration (sampling) time
-        inbright=f'{input[1]}Jy/pixel',
-        indirection=f'J2000 {input[2]} {input[3]}',
-        incenter=f'{input[4]}Hz',
-        inwidth=f'{input[5]}Hz',
-        incell=f'{input[6]*3600.}arcsec',
-        # observation mode to simulate [int(interferometer)|sd(singledish)|""(none)]
-        obsmode='int',
-        outframe=input[7],
-        antennalist=input[8],  # interferometer antenna position file
-        # hour angle of observation center e.g. "-3:00:00", "5h", "-4.5" (a number without units will be
-        hourangle='transit',
-        #   interpreted as hours), or "transit"
-        totaltime='12h',  # total time of observation or number of repetitions
-        thermalnoise='',  # No noise to be able to add the correct noise""]
-        # display graphics at each stage to [screen|file|both|none]. Have to be off to be able to run in screen.
-        graphics='file',
-        verbose=False,
-        overwrite=True)  # overwrite files starting with $project
-    # Read/create an antenna configuration from the casa directory.
-
-
-def corrupt_casa(work_dir, beam, SNR, maindir):
+def corrupt_casa(work_dir, beam, SNR, maindir,sim_observe_graphics = 'none'):
     # the casa tasks ooze memory so they should be  run in a subprocess
     '''Corrupt our artifical galaxy with a casa's sim observe routines'''
 
@@ -1575,7 +1542,7 @@ def main():
         totaltime='12h',  # total time of observation or number of repetitions
         thermalnoise='',  # No noise to be able to add the correct noise""]
         # display graphics at each stage to [screen|file|both|none]. Have to be off to be able to run in screen.
-        graphics='none',
+        graphics= '{sim_observe_graphics}',
         verbose=False,
         overwrite=True)  # overwrite files starting with $project
     #There is a memeory leak in simobserve in  1109 sm.predict(imagename=newmodel,complist=complist)
@@ -2395,11 +2362,15 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     if Current_Galaxy.Corruption == 'Casa_Sim':
         fits.setval(fits_to_modify, 'CTYPE3', value = 'VRAD')
         from contextlib import redirect_stdout
-
+        if cfg.agc.sim_observe_graphics:
+            graphs= 'file'
+        else:
+            graphs= 'none'
         with open(f'{cfg.general.main_directory}{name}/Casa_Log.txt', 'w') as f:
             with redirect_stdout(f):
                 corrupt_casa(f"{cfg.general.main_directory}{name}/",
-                             Current_Galaxy.Res_Beam, Current_Galaxy.SNR, cfg.general.main_directory)
+                             Current_Galaxy.Res_Beam, Current_Galaxy.SNR, cfg.general.main_directory,
+                             sim_observe_graphics=graphs)
         os.system(
             f"mv {cfg.general.main_directory}{name}/Casa_Log.txt {cfg.general.main_directory}{name}/Casa_Log/")
         fits.setval(fits_to_modify, 'CTYPE3', value = 'VELO-HEL')

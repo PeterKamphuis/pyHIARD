@@ -19,6 +19,12 @@ class AGC:
     symmetric: bool = False  # Keep galaxies symmetric
     # options are Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5
     corruption_method: str = 'Tres'
+    # The channel dependency
+    # 'Options are independent, sinusoidal, hanning
+    channel_dependency: str = 'sinusoidal'
+    retain_unconvolved_model: bool = False
+    #Produce and retain the simobserve graphics. This will crash the code when running in screen as it needs to connect to the local host
+    sim_observe_graphics: bool = False
     variables_to_vary: List = field(default_factory=lambda: ['Base', 'Inclination', 'Beams', 'Radial_Motions',
                                          'Flare', 'Arms', 'Bar', 'Mass', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Size'])
     # Each base is created with the variations in the following parameters if they are listed to be varied.
@@ -40,10 +46,6 @@ class AGC:
     beam_size: List = field(default_factory=lambda: [[5., 5., 0.]])
     #Resolution of the beam in arcsec
     masses:  List = field(default_factory=lambda: [2.5e11])
-    # The channel dependency
-    # 'Options are independent, sinusoidal, hanning
-    channel_dependency: str = 'sinusoidal'
-    retain_unconvolved_model: bool = False
 
 
 @dataclass

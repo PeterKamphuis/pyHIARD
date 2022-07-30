@@ -132,11 +132,23 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
         -Casa_5: As CASA's simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
 
+  **channel_dependency**:
+
+    *str, optional, default = sinusoidal*
+
+    How the channels of the input cubes overlap. Possible options are independent, sinusoidal, hanning.
+
   **retain_unconvolved_model**
 
-    *bool, optinal, default = False*
+    *bool, optional, default = False*
 
     retain a version of the unconvolved model, if you are only interested in these models the best way to run pyHIARD is to set the corruption method to No_Corrupt
+
+  **sim_observe_graphics**
+
+    *bool,optional, default = False*
+
+    Option to have sim observe produce it's graphical output. CASA's simobserve produces graphics through the front end Tcl, this means the code needs to be attached to localhost and truning this on would crash the code when running in, e.g. screen.
 
   **variables_to_vary**:
 
@@ -193,6 +205,8 @@ The Artificial Galaxy Catalogue (AGC) keywords
       *float List, optional, default = [[5.,5.]]*
 
       List of variations of the resolution of the synthesized beam in arcsec
+
+
 
 
 The Real Observations Catalogue (ROC) keywords
