@@ -1271,7 +1271,7 @@ def create_inhomogeneity(mass, SNR, disks=1.):
             ndisk, req_flux)
     #print("We will create inhomogeneities on top of disk(s) ="+" ".join(str(e) for e in [disks]))
 
-def clean_up_casa(work_dir):
+def clean_up_casa(work_dir,sim_observe_graphics = 'none'):
     print('We are starting to remove the unnecessary products of the casa corrupt sequence')
     os.mkdir(f'{work_dir}Casa_Log')
     #check that it is created
@@ -1282,8 +1282,8 @@ def clean_up_casa(work_dir):
         if not succes:
             raise RunningError(
                 f'We failed to create the directory {work_dir}Casa_Log')
-
-    os.system(f'mv {work_dir}sim_data/*.png {work_dir}Casa_Log/')
+    if sim_observe_graphics == 'file':
+        os.system(f'mv {work_dir}sim_data/*.png {work_dir}Casa_Log/')
     os.system(f'mv {work_dir}casa*.log {work_dir}Casa_Log/')
     shutil.move(f'{work_dir}Observation_Overview.txt',f'{work_dir}Casa_Log/Observation_Overview.txt')
     shutil.move(f'{work_dir}casa_corrupt.py',f'{work_dir}Casa_Log/casa_corrupt.py')
@@ -1787,7 +1787,7 @@ if __name__ == '__main__':
     del getscaling
 
     #clean up the mess
-    clean_up_casa(work_dir)
+    clean_up_casa(work_dir,sim_observe_graphics=sim_observe_graphics)
 
     # As these are a lot of system operations on big files let's give the system time to catch up
     finished = False
@@ -1802,7 +1802,7 @@ if __name__ == '__main__':
             time.sleep(1)
         if counter in [30,60,90]:
             #try again
-            clean_up_casa(work_dir)
+            clean_up_casa(work_dir,sim_observe_graphics=sim_observe_graphics)
         if counter > 120:
             raise RunningError(
                 f'Something failed in CASA corruption. please check {work_dir} and the log there.')

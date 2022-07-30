@@ -148,7 +148,7 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
     *bool,optional, default = False*
 
-    Option to have sim observe produce it's graphical output. CASA's simobserve produces graphics through the front end Tcl, this means the code needs to be attached to localhost and truning this on would crash the code when running in, e.g. screen.
+    Option to have sim observe produce it's graphical output. CASA's simobserve produces graphics through the front end Tcl, this means the code needs to be attached to localhost and turning this on would crash the code when running in, e.g. screen.
 
   **variables_to_vary**:
 
