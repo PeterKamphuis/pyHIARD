@@ -1575,7 +1575,7 @@ def main():
         totaltime='12h',  # total time of observation or number of repetitions
         thermalnoise='',  # No noise to be able to add the correct noise""]
         # display graphics at each stage to [screen|file|both|none]. Have to be off to be able to run in screen.
-        graphics='file',
+        graphics='none',
         verbose=False,
         overwrite=True)  # overwrite files starting with $project
     #There is a memeory leak in simobserve in  1109 sm.predict(imagename=newmodel,complist=complist)
