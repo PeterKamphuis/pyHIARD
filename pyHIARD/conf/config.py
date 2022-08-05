@@ -77,7 +77,7 @@ class General:
     tirific: str = "tirific"  # Command to call tirific
     sofia2: str = "sofia2"  # Command to call sofia 2
     multiprocessing: bool = True
-
+    font_file: str = "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf"
 
 @dataclass
 class Config:

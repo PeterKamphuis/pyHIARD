@@ -475,7 +475,7 @@ PROCEDURES CALLED:
 
 NOTE:
 '''
-def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
+def create_final_cube(required_noise,main_directory,Galaxy_Template_In,font_file):
     Galaxy_Template = copy.deepcopy(Galaxy_Template_In)
     # Make a new directory
     native_noise = False
@@ -658,8 +658,8 @@ We continue with the next SNR value.''')
     Warp = [0,np.log(0.5*np.exp(-1./0.2))*-0.2*R_HI[0]]
     cf.plot_input(galaxy_dir,Galaxy_Template['Shifted_TRM_Model']
                 ,Title=f'{Galaxy_Template["Name"]} with {Galaxy_Template["Beams"]} Beams'
-                ,Distance= Galaxy_Template['Final_Distance'],RHI=R_HI,WarpR=Warp
-                )
+                ,Distance= Galaxy_Template['Final_Distance'],RHI=R_HI,WarpR=Warp,
+                font_file = font_file )
     # And a file with scrambled initial estimates
     cf.scrambled_initial(galaxy_dir,Galaxy_Template['Shifted_TRM_Model'])
     return_line = f"{Galaxy_Template['Final_Distance']:.2f}|{dirstring}|Convolved_Cube_Gauss\n"
@@ -668,7 +668,7 @@ We continue with the next SNR value.''')
 
 create_final_cube.__doc__= f'''
 NAME:
-   create_final_cube(required_noise, main_directory, Galaxy_Template)
+   create_final_cube(required_noise, main_directory, Galaxy_Template,font_file = 'empty.ttf')
 
 PURPOSE:
     Add the requested noise and produce the output products
@@ -680,7 +680,7 @@ INPUTS:
     required_noise = the requested noise
     main_directory = 'The main directory to branch from'
     Galaxy_Template = dictionary as created by beam_template
-
+    font_file = location of the font to be used
 OPTIONAL INPUTS:
 
 OUTPUTS:
@@ -1213,7 +1213,7 @@ def ROC(cfg,path_to_resources):
                 all_noise = []
                 for galaxy in All_Beam_Templates:
                     for value in galaxy['Requested_SNR']:
-                        all_noise.append((value,cfg.general.main_directory,galaxy))
+                        all_noise.append((value,cfg.general.main_directory,galaxy,cfg.general.font_file))
 
                 while len(all_noise) > 0:
                     current_noise= all_noise[:int(no_snr_processes*no_beam_processes*no_template_processes)]
@@ -1270,7 +1270,7 @@ def ROC(cfg,path_to_resources):
 
                 beam_template = beam_templates(*beam_input)
                 for req_snr in beam_template['Requested_SNR']:
-                    result = create_final_cube(float(req_snr),cfg.general.main_directory,beam_template)
+                    result = create_final_cube(float(req_snr),cfg.general.main_directory,beam_template,cfg.general.font_file)
                     results.append(result)
 
 

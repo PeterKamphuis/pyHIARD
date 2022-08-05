@@ -79,6 +79,13 @@ General Settings
     pyHIARD alows for multiprocessing through the multiprocessing module of python. This works like a charm for the AGC with Gaussian corruption.
     In case of casa corruption or the ROC the system might freeze in limited amounts of RAM. In this case please turn of the multiprocessing to create the data base.
 
+  **font_file**
+
+    *str, optional, default =  "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf"*
+
+    As fonts are a nightmare in matplotlib one can set the location of their preferred font for the plotting.
+    On Ubuntu the default can be obtained by installing apt-get install ttf-mscorefonts-installer. This should point to the actual font, if the file is not fond we will fall back to DejaVu Sans.
+
 
 The Artificial Galaxy Catalogue (AGC) keywords
 --------
