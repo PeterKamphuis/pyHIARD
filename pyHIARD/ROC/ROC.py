@@ -444,10 +444,14 @@ def check_templates(name,path_to_resources,work_dir,sofia_call='sofia2'):
 
     #First check if the main cube is there
     file_exists = os.path.isfile(f"{path_to_resources}{name}/{name}.fits")
-    if not file_exists:
+    file_exists_uni = os.path.isfile(f"{path_to_resources}{name}/{name}_uniform.def")
+    if not file_exists or not file_exists_uni:
         galaxy_module = importlib.import_module(f'pyHIARD.Resources.Cubes.{name}.{name}')
         Template_All=galaxy_module.get_data(work_dir,sofia_call)
+        if not file_exists_uni:
+            Model_Template = get_main_template(name,Template_All[0].header,galaxy_module)
         Template_All.close()
+        
     return file_exists
 check_templates.__doc__= f'''
 NAME:
