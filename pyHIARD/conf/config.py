@@ -53,6 +53,7 @@ class ROC:
     enable: bool = True
     add_template: bool = False
     remove_template: bool = False
+    download_templates: bool = False 
     delete_existing: bool = False
     base_galaxies: List = field(default_factory=lambda: [
                                      'M_83', 'Circinus', 'NGC_5023', 'NGC_2903', 'NGC_3198', 'NGC_5204', 'UGC_1281', 'UGC_7774', 'ESO_223_G009'])

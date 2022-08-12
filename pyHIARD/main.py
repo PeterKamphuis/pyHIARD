@@ -8,7 +8,7 @@ import sys
 
 from omegaconf import OmegaConf, MissingMandatoryValue
 from pyHIARD.AGC.AGC import AGC
-from pyHIARD.ROC.ROC import ROC, add_template, remove_template
+from pyHIARD.ROC.ROC import ROC, add_template, remove_template,download_templates
 from pyHIARD.conf.config import Config
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
 from pyHIARD.Resources import Cubes as cubes
@@ -106,6 +106,12 @@ configuration_file = ''')
             else:
                 succes = remove_template(
                     galaxy, path_to_resources, roc_galaxies)
+        sys.exit()
+    if cfg.roc.download_templates:
+        download_templates(roc_galaxies,path_to_resources, mp = cfg.general.multiprocessing,\
+                            ncpu = cfg.general.ncpu,work_dir = cfg.general.main_directory,\
+                            sofia2 = cfg.general.sofia2)
+
         sys.exit()
     if cfg.agc.enable:
         AGC(cfg)

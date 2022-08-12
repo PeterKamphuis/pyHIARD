@@ -238,6 +238,13 @@ The Real Observations Catalogue (ROC) keywords
 
       Boolean to the removal of unwanted galaxy templates in the ROC. If set to True all other options are ignored.
 
+  **download_templates**:
+
+      *bool, optional, default = False*
+
+      When a template does not come with the distribution pyHIARD in principle attempt to download and store it whenever it is requested.
+      However for installations where the internet connection can be unstable this switch allows to download and store all missing templates.
+
   **delete_existing**
 
       *bool, optional, default = False*
