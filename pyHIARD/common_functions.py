@@ -436,9 +436,9 @@ def convertskyangle(angle, distance=1., unit='arcsec', distance_unit='Mpc', phys
         if unit.lower() == 'kpc':
             kpc = angle
         elif unit.lower() == 'mpc':
-            kpc = angle / (10 ** 3)
-        elif unit.lower() == 'pc':
             kpc = angle * (10 ** 3)
+        elif unit.lower() == 'pc':
+            kpc = angle / (10 ** 3)
         else:
             print('CONVERTSKYANGLE: ' + unit
                   + ' is an unknown unit to convertskyangle.\n')
