@@ -1048,8 +1048,7 @@ please provide one of the following types {', '.join(allowed_types)}:''')
     ext={'tir': 'def', 'bar': 'txt', 'rc': 'rotcur'}
     if package_file:
 
-        model=__import__(
-            f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename, 0)
+
         if float(sys.version[:3]) < 3.9:
             model=__import__(
                 f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename, 0)
@@ -1059,7 +1058,7 @@ please provide one of the following types {', '.join(allowed_types)}:''')
             print(model,filename,ext[type])
             from importlib import import_module
             model = import_module( f'pyHIARD.Resources.Cubes.{filename}')
-            
+
             with import_res.files(model).joinpath(f'{filename}.{ext[type]}').open('r') as tmp:
                 unarranged = tmp.readlines()
 
