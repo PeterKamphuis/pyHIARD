@@ -38,7 +38,8 @@ class SofiaFaintError(Exception):
     pass
 class InputError(Exception):
     pass
-
+class CasaInstallError(Exception):
+    pass
 
 class SofiaRunError(Exception):
     pass
