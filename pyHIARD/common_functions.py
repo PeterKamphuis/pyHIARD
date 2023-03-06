@@ -138,15 +138,6 @@ def check_input(cfg):
 
     if cfg.agc.enable:
         cfg.general.tirific = find_program(cfg.general.tirific, 'TiRiFiC')
-        if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5', 'c_5', 'c_s']:
-            try:
-                import casatasks
-            except ModuleNotFoundError:
-                print(sys.version,pyHIARD.__casa_max__)
-                if float(sys.version[:3]) > pyHIARD.__casa_max__:
-                    raise CasaInstallError(f'''Your modular casa is not installed.
-Most likely because it is not available for python version {sys.version}
-As such you can not run the corrupt casa method''')
 
         #    cfg.general.casa = find_program(cfg.general.casa, 'CASA')
     if cfg.roc.enable:
@@ -174,7 +165,7 @@ As such you can not run the corrupt casa method''')
                 cfg.agc.base_galaxies = [int(x) for x in re.split(
                     "\s+|\s*,\s*|\s+$", vals.strip()) if 1 <= int(x) <= 6]
                 if len(cfg.agc.base_galaxies) == 0:
-                    cfg.agc.base_galaxies = [7]
+                    cfg.agc.base_galaxiesimport sys = [7]
         while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian','no_corrupt', 'casa_5','tres']:
             cfg.agc.corruption_method = input(
                 'Your method of corruption is not acceptable please choose from Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5 (Default = Gaussian):')
@@ -192,9 +183,22 @@ As such you can not run the corrupt casa method''')
             print(
                 "You are using the casa corruption method please make sure python can access casa.")
         channel_options = ['independent', 'sinusoidal', 'hanning']
-        while cfg.agc.channel_dependency.lower() not in channel_options:
+        while cfg.agc.channel_dependencyimport sys.lower() not in channel_options:
             cfg.agc.channel_dependency = input(f''' {cfg.agc.channel_dependency} is not a valid channel dependency
 Please choose from {','.join([x for x in channel_options])}:''')
+
+        if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5', 'tres']:
+            try:
+                import casatasks
+            except ModuleNotFoundError:
+                if pyHIARD.__casa_max__ != 'OK':
+                    raise CasaInstallError(f'''Your modular casa is not installed.
+Most likely because it is not available for python version {sys.version}
+As such you can not run the corrupt casa method''')
+                else:
+                    raise CasaInstallError(f'''Your modular casa is not installed.
+We do not know the reason for this but it means you cannot run the casa corrput method.
+''')
 
         question_variations = False
         changes_poss = ['Inclination', 'PA', 'Beams', 'Radial_Motions', 'Flare', 'Arms',

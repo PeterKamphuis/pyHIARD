@@ -36,3 +36,10 @@ def report_version():
 
 
 __version__ = report_version()
+
+packages = [x.project_name in pkg_resources.require("pyHIARD")]
+
+if casatasks in packages:
+    __casa_max__ =  'OK'
+else:
+    __casa_max__ =  'Smaller' 
