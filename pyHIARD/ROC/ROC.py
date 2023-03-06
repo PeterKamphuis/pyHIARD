@@ -1316,6 +1316,7 @@ def ROC(cfg,path_to_resources):
                                 print(f"The galaxy {dirstring} galaxy appears fully produced")
                     if len(noise_to_produce) == 0:
                         print(f"All galaxies with {name} and {nobeams} across the major axis are  thought to be produced already")
+                        continue
                     else:
                         galaxy_template_out['Requested_SNR'] = noise_to_produce
                         beam_input = [nobeams,galaxy_template_out,cfg.roc.max_degradation_factor,cfg.general.main_directory]
