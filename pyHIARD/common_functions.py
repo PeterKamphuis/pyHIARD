@@ -1055,10 +1055,9 @@ please provide one of the following types {', '.join(allowed_types)}:''')
             with import_res.open_text(model, f'{filename}.{ext[type]}') as tmp:
                 unarranged = tmp.readlines()
         else:
-        
+
             from importlib import import_module
             model = import_module( f'pyHIARD.Resources.Cubes.{filename}')
-            print(model,filename,ext[type])
             with import_res.files(model).joinpath(f'{filename}.{ext[type]}').open('r') as tmp:
                 unarranged = tmp.readlines()
 

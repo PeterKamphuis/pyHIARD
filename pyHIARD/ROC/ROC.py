@@ -162,7 +162,8 @@ def add_template(cfg, path_to_resources, existing_galaxies):
         f"cp {cfg.general.main_directory}{model_file} {new_resource}{galaxy_parameters['Galaxy']}.{ext[galaxy_parameters['Original_Model']]}")
     with open(f"{new_resource}{galaxy_parameters['Galaxy']}.py", 'w') as f:
         f.writelines(module_template)
-
+    with open(f"{new_resource}__init__.py", 'w') as f:
+        f.write(f'   ')
 
 add_template.__doc__ = f'''
 NAME:
