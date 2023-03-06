@@ -141,7 +141,8 @@ def check_input(cfg):
             try:
                 import casatasks
             except ModuleNotFoundError:
-                if float(sys.version[0:3]) > pyHIARD.__casa_max__:
+                print(sys.version,pyHIARD.__casa_max__)
+                if float(sys.version[:3]) > pyHIARD.__casa_max__:
                     raise CasaInstallError(f'''Your modular casa is not installed.
 Most likely because it is not available for python version {sys.version}
 As such you can not run the corrupt casa method''')
