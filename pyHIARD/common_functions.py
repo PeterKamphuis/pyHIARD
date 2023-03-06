@@ -183,7 +183,7 @@ def check_input(cfg):
             print(
                 "You are using the casa corruption method please make sure python can access casa.")
         channel_options = ['independent', 'sinusoidal', 'hanning']
-        while cfg.agc.channel_dependencyimport sys.lower() not in channel_options:
+        while cfg.agc.channel_dependency.lower() not in channel_options:
             cfg.agc.channel_dependency = input(f''' {cfg.agc.channel_dependency} is not a valid channel dependency
 Please choose from {','.join([x for x in channel_options])}:''')
 
