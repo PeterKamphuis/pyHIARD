@@ -19,11 +19,11 @@ import sys
 import re
 import warnings
 
-try:
-    import importlib.resources as import_res
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
+# be explicit
+if float(sys.version[:3]) < 3.7:
     import importlib_resources as import_res
+else:
+    import importlib.resources as import_res
 
 
 class ProgramError(Exception):
@@ -124,8 +124,12 @@ def add_template(cfg, path_to_resources, existing_galaxies):
 
     #galaxy_parameters = {'Galaxy': 'New_Galaxy', 'DHIkpc': '9.6', 'Distance': '4.1', 'Original_Model': 'Tir', 'RMS': '0.00038', 'MHI': '0.54e9'}
     #read or template and modify it
-    with import_res.open_text(templates, 'roc_galaxy_template.py') as tmp:
-        module_template = tmp.readlines()
+    if float(sys.version[:3]) < 3.9:
+        with import_res.open_text(templates, 'roc_galaxy_template.py') as tmp:
+            module_template = tmp.readlines()
+    else:
+        with import_res.files(template).joinpath('roc_galaxy_template.py').open('r') as tmp:
+            module_template = tmp.readlines()
 
     galaxy_line = "galaxy_parameters = {"
     for key in galaxy_parameters:
@@ -451,7 +455,7 @@ def check_templates(name,path_to_resources,work_dir,sofia_call='sofia2'):
         if not file_exists_uni:
             Model_Template = get_main_template(name,Template_All[0].header,galaxy_module)
         Template_All.close()
-        
+
     return file_exists
 check_templates.__doc__= f'''
 NAME:

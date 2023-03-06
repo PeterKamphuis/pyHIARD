@@ -6,7 +6,8 @@ The Python HI Artificial and Real Database (pyHIARD ) is a project to create a c
 
 pyHIARD Requires working versions of tirific and sofia2  for full functionality.
 
-CASA is required for full simulations which are achieved through the casa python modules and they should be installed through the pip install.
+CASA is required for full simulations which are achieved through the casa python modules and they should be installed through the pip install. Note however that currently the modules are only available up to python 3.8.
+!!!!!!!!For python versions > 3.8 the install will progress normally but the casatasks will not be installed and the casa corruption method will be unavailable!!!!!!!!
 
 tirific is required for the Artificial branch and can be installed trough kern-suite https://kernsuite.info/ for ubuntu or it can be downloaded from https://github.com/gigjozsa/tirific. If you are struggling with tirific's pg plot dependency the branch no_pgp can be installed from the github. It wll work with pyHIARD
 
