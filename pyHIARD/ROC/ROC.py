@@ -128,7 +128,7 @@ def add_template(cfg, path_to_resources, existing_galaxies):
         with import_res.open_text(templates, 'roc_galaxy_template.py') as tmp:
             module_template = tmp.readlines()
     else:
-        with import_res.files(template).joinpath('roc_galaxy_template.py').open('r') as tmp:
+        with import_res.files(templates).joinpath('roc_galaxy_template.py').open('r') as tmp:
             module_template = tmp.readlines()
 
     galaxy_line = "galaxy_parameters = {"

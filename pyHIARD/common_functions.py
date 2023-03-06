@@ -1404,7 +1404,7 @@ def read_template_file(filename, package_file = True):
         with import_res.open_text(templates, filename) as tmp:
             unarranged = tmp.readlines()
     elif package_file:
-        with import_res.files(template).joinpath(filename).open('r') as tmp:
+        with import_res.files(templates).joinpath(filename).open('r') as tmp:
             unarranged = tmp.readlines()
     else:
         with open(filename, 'r') as tmp:
