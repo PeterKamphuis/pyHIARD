@@ -165,7 +165,7 @@ def check_input(cfg):
                 cfg.agc.base_galaxies = [int(x) for x in re.split(
                     "\s+|\s*,\s*|\s+$", vals.strip()) if 1 <= int(x) <= 6]
                 if len(cfg.agc.base_galaxies) == 0:
-                    cfg.agc.base_galaxiesimport sys = [7]
+                    cfg.agc.base_galaxies = [7]
         while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian','no_corrupt', 'casa_5','tres']:
             cfg.agc.corruption_method = input(
                 'Your method of corruption is not acceptable please choose from Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5 (Default = Gaussian):')
