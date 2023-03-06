@@ -41,7 +41,7 @@ The different sections in the yml file are explained in general terms below and 
 The Artificial Galaxies Catalogue (AGC) Section
 ----
 This section controls how the completely artificial galaxies are created. The advantage here is that we know exactly the structure of the input galaxies.
-The intrinsic shape and size are almost all derived through empirical relations from the mass.
+The intrinsic shape and size are almost all derived through empirical relations from the mass. It allows for different corruption methods.
 
 
 The Real Observations Catalogue (ROC) Section

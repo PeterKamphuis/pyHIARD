@@ -19,11 +19,11 @@ import sys
 import re
 import warnings
 
-try:
-    import importlib.resources as import_res
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
+# be explicit
+if float(sys.version[:3]) < 3.7:
     import importlib_resources as import_res
+else:
+    import importlib.resources as import_res
 
 
 class ProgramError(Exception):
@@ -124,8 +124,12 @@ def add_template(cfg, path_to_resources, existing_galaxies):
 
     #galaxy_parameters = {'Galaxy': 'New_Galaxy', 'DHIkpc': '9.6', 'Distance': '4.1', 'Original_Model': 'Tir', 'RMS': '0.00038', 'MHI': '0.54e9'}
     #read or template and modify it
-    with import_res.open_text(templates, 'roc_galaxy_template.py') as tmp:
-        module_template = tmp.readlines()
+    if float(sys.version[:3]) < 3.9:
+        with import_res.open_text(templates, 'roc_galaxy_template.py') as tmp:
+            module_template = tmp.readlines()
+    else:
+        with import_res.files(templates).joinpath('roc_galaxy_template.py').open('r') as tmp:
+            module_template = tmp.readlines()
 
     galaxy_line = "galaxy_parameters = {"
     for key in galaxy_parameters:
@@ -158,7 +162,8 @@ def add_template(cfg, path_to_resources, existing_galaxies):
         f"cp {cfg.general.main_directory}{model_file} {new_resource}{galaxy_parameters['Galaxy']}.{ext[galaxy_parameters['Original_Model']]}")
     with open(f"{new_resource}{galaxy_parameters['Galaxy']}.py", 'w') as f:
         f.writelines(module_template)
-
+    with open(f"{new_resource}__init__.py", 'w') as f:
+        f.write(f'   ')
 
 add_template.__doc__ = f'''
 NAME:
@@ -451,7 +456,7 @@ def check_templates(name,path_to_resources,work_dir,sofia_call='sofia2'):
         if not file_exists_uni:
             Model_Template = get_main_template(name,Template_All[0].header,galaxy_module)
         Template_All.close()
-        
+
     return file_exists
 check_templates.__doc__= f'''
 NAME:
@@ -1311,6 +1316,7 @@ def ROC(cfg,path_to_resources):
                                 print(f"The galaxy {dirstring} galaxy appears fully produced")
                     if len(noise_to_produce) == 0:
                         print(f"All galaxies with {name} and {nobeams} across the major axis are  thought to be produced already")
+                        continue
                     else:
                         galaxy_template_out['Requested_SNR'] = noise_to_produce
                         beam_input = [nobeams,galaxy_template_out,cfg.roc.max_degradation_factor,cfg.general.main_directory]

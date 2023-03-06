@@ -7,7 +7,7 @@ copyright = '2021, P. Kamphuis'
 author = 'P. Kamphuis'
 
 release = '1.1'
-version = '1.1.8'
+version = '1.1.9'
 
 # -- General configuration
 

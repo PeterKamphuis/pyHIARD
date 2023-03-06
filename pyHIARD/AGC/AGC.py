@@ -33,11 +33,6 @@ with warnings.catch_warnings():
      import matplotlib.pyplot as plt
      import matplotlib.font_manager as mpl_fm
      from matplotlib.ticker import AutoMinorLocator
-try:
-    import importlib.resources as import_res
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
-    import importlib_resources as import_res
 
 
 #Some errors
@@ -123,38 +118,8 @@ def AGC(cfg):
     #templatethere =False
     # If it doesn't exist copy it into the directory
     if not templatethere:
-        my_resources = import_res.files('pyHIARD.Templates')
-        data = (my_resources / 'Input.fits').read_bytes()
-        with open(f"{cfg.general.main_directory}/Input.fits", 'w+b') as tmp:
-            tmp.write(data)
-        # let's make sure it has BMAJ, BMIN and BPA
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=VerifyWarning)
-            dummy = fits.open(cfg.general.main_directory+'/Input.fits',
-                              uint=False, do_not_scale_image_data=True, ignore_blank=True)
-        sizex = 500
-        sizey = 500
-        sizez = 120
-        header_sets = {'BMAJ': 0., 'BMIN': 0., 'BPA': 0.,
-                       'CRPIX1': 200., 'CRPIX2': 200., 'CRPIX3': 60.,
-                       'CDELT1': -4./3600., 'CDELT2': 4./3600., 'CDELT3': 4.,
-                       'CUNIT2': 'M/S', 'CRVAL3': 500.,
-                       'CTYPE1': 'RA---SIN',  'CTYPE2': 'DEC--SIN', 'CTYPE3': 'VELO-HEL',
-                       'BITPIX': -32, 'NAXIS': 3,
-                       'NAXIS1': sizex, 'NAXIS2': sizey, 'NAXIS3': sizez}
-        for key, value in header_sets.items():
-            dummy[0].header[key] = value
-        header_deletes = ['CROTA1', 'CROTA2', 'DRVAL3', 'DTYPE3', 'DUNIT3', 'HISTORY',
-                            'BMMAJ', 'BMMIN', 'BMPA', 'MAPLAB', 'BLANK']
-        for key in header_deletes:
-            del dummy[0].header[key]
-        # make the cube a typical size
-        dummy2 = np.zeros((sizez, sizey, sizex))
-        dummy2[60, 250, 250] = 5
-        fits.writeto(cfg.general.main_directory+'/Input.fits', dummy2,
-                     dummy[0].header, output_verify='silentfix+ignore', overwrite=True)
-        dummy2 = []
-        dummy = []
+        create_template_fits(cfg.general.main_directory)
+
 
     # All this went well
     templatethere = os.path.isfile(cfg.general.main_directory+'/Input.fits')
@@ -323,7 +288,7 @@ def AGC(cfg):
                             continue
                         else:
                             print(
-                                "The directory was made but there is no full cube avalaible")
+                                "The directory was made but there is no full cube available")
                             #print("Reproducing the galaxy. Be aware of Double Table entries")
                             print("This is too dangerous. Breaking the code.")
                             exit()
@@ -1086,6 +1051,34 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
+#A function to create the template fits file
+def create_template_fits(directory):
+    from pyHIARD.Templates.Template_Header import sample_header_dictionary
+    new_cube = np.full([120,500,500],1.)
+    new_cube[60, 250, 250] = 5.
+    new_list = fits.PrimaryHDU(new_cube)
+    new_cube = []
+    header_keys = [x for x in new_list.header]
+    for key, value in sample_header_dictionary.items() :
+        if key not in header_keys:
+            new_list.header[key] = value
+
+    dummy = fits.HDUList([new_list])
+
+    header_sets = {'BMAJ': 0., 'BMIN': 0., 'BPA': 0.,
+                   'CRPIX1': 200., 'CRPIX2': 200., 'CRPIX3': 60.,
+                   'CDELT1': -4./3600., 'CDELT2': 4./3600., 'CDELT3': 4.,
+                   'CUNIT2': 'M/S', 'CRVAL3': 500.,
+                   'CTYPE1': 'RA---SIN',  'CTYPE2': 'DEC--SIN', 'CTYPE3': 'VELO-HEL',
+                   'BITPIX': -32, 'NAXIS': 3,
+                   }
+    for key, value in header_sets.items():
+        dummy[0].header[key] = value
+
+    dummy.writeto(f'{directory}/Input.fits',\
+                    output_verify='silentfix+ignore', overwrite=True)
+    dummy.close()
+
 # A function for varying the PA and inclination as function of radius
 
 
@@ -1431,6 +1424,7 @@ def vel_to_freq(hdr):
     return central_freq, cdelt_freq, top_freq, low_freq
 
 def corrupt_casa(work_dir, beam, SNR, maindir,sim_observe_graphics = 'none'):
+
     # the casa tasks ooze memory so they should be  run in a subprocess
     '''Corrupt our artifical galaxy with a casa's sim observe routines'''
 

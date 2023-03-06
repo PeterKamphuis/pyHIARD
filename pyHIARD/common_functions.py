@@ -12,10 +12,12 @@ from scipy.ndimage import gaussian_filter, rotate, zoom,map_coordinates
 import copy  # Used in columndensities
 import numpy as np  # Used in convertskyangle and columndensity and
 import os
+import pyHIARD
 import re
 import resource
 import signal
 import subprocess
+import sys
 import time
 import traceback
 import warnings
@@ -26,19 +28,19 @@ with warnings.catch_warnings():
     matplotlib.use('pdf')
     import matplotlib.pyplot as plt
     import matplotlib.font_manager as mpl_fm
-
-try:
-    import importlib.resources as import_res
-except ImportError:
-    # Try backported to PY<37 `importlib_resources`.
+if float(sys.version[:3]) < 3.7:
     import importlib_resources as import_res
+else:
+    import importlib.resources as import_res
+
 
 
 class SofiaFaintError(Exception):
     pass
 class InputError(Exception):
     pass
-
+class CasaInstallError(Exception):
+    pass
 
 class SofiaRunError(Exception):
     pass
@@ -135,7 +137,7 @@ def check_input(cfg):
 
     if cfg.agc.enable:
         cfg.general.tirific = find_program(cfg.general.tirific, 'TiRiFiC')
-        #if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5']:
+
         #    cfg.general.casa = find_program(cfg.general.casa, 'CASA')
     if cfg.roc.enable:
         cfg.general.sofia2 = find_program(cfg.general.sofia2, 'SoFiA2')
@@ -183,6 +185,19 @@ def check_input(cfg):
         while cfg.agc.channel_dependency.lower() not in channel_options:
             cfg.agc.channel_dependency = input(f''' {cfg.agc.channel_dependency} is not a valid channel dependency
 Please choose from {','.join([x for x in channel_options])}:''')
+
+        if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5', 'tres']:
+            try:
+                import casatasks
+            except ModuleNotFoundError:
+                if pyHIARD.__casa_max__ != 'OK':
+                    raise CasaInstallError(f'''Your modular casa is not installed.
+Most likely because it is not available for python version {sys.version}
+As such you can not run the corrupt casa method''')
+                else:
+                    raise CasaInstallError(f'''Your modular casa is not installed.
+We do not know the reason for this but it means you cannot run the casa corrupt method.
+''')
 
         question_variations = False
         changes_poss = ['Inclination', 'PA', 'Beams', 'Radial_Motions', 'Flare', 'Arms',
@@ -436,9 +451,9 @@ def convertskyangle(angle, distance=1., unit='arcsec', distance_unit='Mpc', phys
         if unit.lower() == 'kpc':
             kpc = angle
         elif unit.lower() == 'mpc':
-            kpc = angle / (10 ** 3)
-        elif unit.lower() == 'pc':
             kpc = angle * (10 ** 3)
+        elif unit.lower() == 'pc':
+            kpc = angle / (10 ** 3)
         else:
             print('CONVERTSKYANGLE: ' + unit
                   + ' is an unknown unit to convertskyangle.\n')
@@ -1032,10 +1047,20 @@ please provide one of the following types {', '.join(allowed_types)}:''')
 
     ext={'tir': 'def', 'bar': 'txt', 'rc': 'rotcur'}
     if package_file:
-        model=__import__(
-            f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename, 0)
-        with import_res.open_text(model, f'{filename}.{ext[type]}') as tmp:
-            unarranged=tmp.readlines()
+
+
+        if float(sys.version[:3]) < 3.9:
+            model=__import__(
+                f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename, 0)
+            with import_res.open_text(model, f'{filename}.{ext[type]}') as tmp:
+                unarranged = tmp.readlines()
+        else:
+
+            from importlib import import_module
+            model = import_module( f'pyHIARD.Resources.Cubes.{filename}')
+            with import_res.files(model).joinpath(f'{filename}.{ext[type]}').open('r') as tmp:
+                unarranged = tmp.readlines()
+
     else:
         with open(filename, 'r') as tmp:
             unarranged=tmp.readlines()
@@ -1377,73 +1402,15 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def read_casa_template(filename):
-    with import_res.open_text(templates, filename) as tmp:
-        unarranged= tmp.readlines()
-    Template_Casa_In= Proper_Dictionary({})
-    # Separate the keyword names
-    current_task="pre_task"
-    counter=0
-    tasks=["pre_task"]
-    task_counter= 0
-    #deccounter = 0
-    #decin= np.arange(43.951946,84,5.)
-    for tmp in unarranged:
-    # python is really annoying with needing endlines. Let's strip them here and add them when writing
-        if re.split('\(|\)', tmp)[0] == 'default':
-            task_counter= 0
-            for_task= 0
-            current_task=re.split('\(|\)', tmp)[1]
-            while current_task in tasks:
-                for_task += 1
-                current_task=re.split('\(|\)', tmp)[1]+"_{:d}".format(for_task)
-            tasks.append(current_task)
-        if len(tmp.split('=',1)) > 1:
-            variable=tmp.split('=', 1)[0].strip().lower()
-            same_var= 0
-            while current_task+'_'+variable in Template_Casa_In:
-                same_var += 1
-                variable=tmp.split('=', 1)[0].strip().lower()+"_{:d}".format(same_var)
-        elif len(tmp.split('#',1)) > 1:
-            counter += 1
-            variable= "comment_{:d}".format(counter)
-        else:
-            task_counter += 1
-            variable= "run_{:d}".format(task_counter)
-        Template_Casa_In[current_task+'_'+variable]=tmp.rstrip()
-    return Template_Casa_In
-
-read_casa_template.__doc__=f'''
- NAME:
-    read_casa_template
-
- PURPOSE:
-    read a casa template file into a proper dictionary
-
- CATEGORY:
-    common_functions
-
- INPUTS:
-    filename = name of the template file
-
- OPTIONAL INPUTS:
-
- OUTPUTS:
-    Organized template dictionary
- OPTIONAL OUTPUTS:
-
- PROCEDURES CALLED:
-    Unspecified
-
- NOTE:
- '''
-
 #Function to read simple input files that  use = as a separator between ithe required input and the values
 
 def read_template_file(filename, package_file = True):
-    if package_file:
+    if float(sys.version[:3]) < 3.9 and package_file:
         with import_res.open_text(templates, filename) as tmp:
-            unarranged= tmp.readlines()
+            unarranged = tmp.readlines()
+    elif package_file:
+        with import_res.files(templates).joinpath(filename).open('r') as tmp:
+            unarranged = tmp.readlines()
     else:
         with open(filename, 'r') as tmp:
             unarranged= tmp.readlines()

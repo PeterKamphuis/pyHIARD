@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 
 try:
     from setuptools import setup
@@ -13,14 +14,21 @@ requirements = [
     'astropy',
     'omegaconf>=2.2.2',
     'psutil',
-    'casatasks',
     'matplotlib',
     'future-fstrings',
-    'importlib_resources>=3.3.0',
 ]
+__casa_max__ = 3.8
+
+if 3.6 <= float(sys.version[:3]) <= __casa_max__:
+    requirements.append('casatasks')
+else:
+    print(f'You are running a python version ({sys.version[:3]}) for which modular casa is not avaliable.')
+
+if float(sys.version[:3]) < 3.7:
+    requirements.append('importlib_resources>=3.3.0')
 
 PACKAGE_NAME = 'pyHIARD'
-__version__ = '1.1.8'
+__version__ = '1.1.9'
 
 
 with open("README.md", "r") as fh:
