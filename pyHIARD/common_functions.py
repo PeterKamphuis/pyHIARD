@@ -12,6 +12,7 @@ from scipy.ndimage import gaussian_filter, rotate, zoom,map_coordinates
 import copy  # Used in columndensities
 import numpy as np  # Used in convertskyangle and columndensity and
 import os
+import pyHIARD
 import re
 import resource
 import signal
