@@ -18,8 +18,9 @@ requirements = [
     'future-fstrings',
     'importlib_resources>=3.3.0',
 ]
+__casa_max__ = 3.8
 
-if 3.6 <= float(sys.version[:3]) <= 3.8:
+if 3.6 <= float(sys.version[:3]) <= __casa_max__:
     requirements.append('casatasks')
 else:
     print(f'You are running a python version ({sys.version[:3]}) for which modular casa is not avaliable.')

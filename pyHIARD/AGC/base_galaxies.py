@@ -111,7 +111,8 @@ class Base_Galaxy:
         else:
             #Self construct a base by asking
             single = ['Inclination', 'PA', 'Beams','SNR','Channelwidth','Radial_Motions','Mass']
-            double = ['Warp','Res_Beam','Dispersion']
+            double = ['Warp','Dispersion']
+            triple = ['Beam_resolution']
             bool = ['Flare','Arms','Bar']
             for parameter in single:
                 val = ''
@@ -128,6 +129,23 @@ class Base_Galaxy:
                     except:
                         val = ''
                 self.__dict__[parameter] = val
+            for parameter in triple:
+                val=''
+                while len(val) != 3:
+                    vals = input(f"Please provide 1, 2 or 3 values for the {parameter}: ")
+                    tmp = re.split("\s+|\s*,\s*|\s+$",vals.strip())
+                    if isinstance(tmp,str):
+                        tmp=[tmp]
+                    try:
+                        if len(tmp) == 1:
+                            val = [float(tmp[0]),float(tmp[0]), 0.]
+                        elif len(tmp) == 2:
+                            val = [float(tmp[0]),float(tmp[1]), 0.]
+                        elif len(tmp) == 3:
+                            val = [float(tmp[0]),float(tmp[1]), float(tmp[2])]
+                    except:
+                        continue
+                self.__dict__['Res_Beam'] = val
             for parameter in bool:
                 add = get_bool(f"Do you want to add {parameter}? (Yes/No, default=No): ",default=False)
                 if add:

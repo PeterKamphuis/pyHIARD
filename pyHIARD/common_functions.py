@@ -135,7 +135,15 @@ def check_input(cfg):
 
     if cfg.agc.enable:
         cfg.general.tirific = find_program(cfg.general.tirific, 'TiRiFiC')
-        #if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5']:
+        if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5', 'c_5', 'c_s']:
+            try:
+                import casatasks
+            except ModuleNotFoundError:
+                if float(sys.version[0:3]) > pyHIARD.__casa_max__:
+                    raise CasaInstallError(f'''Your modular casa is not installed.
+Most likely because it is not available for python version {sys.version}
+As such you can not run the corrupt casa method''')
+
         #    cfg.general.casa = find_program(cfg.general.casa, 'CASA')
     if cfg.roc.enable:
         cfg.general.sofia2 = find_program(cfg.general.sofia2, 'SoFiA2')

@@ -44,7 +44,8 @@ except ImportError:
 class TirificRunError(Exception):
     pass
 #Some errors
-
+class CasaInstallError(Exception):
+    pass
 
 class RunningError(Exception):
     pass
@@ -1431,6 +1432,7 @@ def vel_to_freq(hdr):
     return central_freq, cdelt_freq, top_freq, low_freq
 
 def corrupt_casa(work_dir, beam, SNR, maindir,sim_observe_graphics = 'none'):
+
     # the casa tasks ooze memory so they should be  run in a subprocess
     '''Corrupt our artifical galaxy with a casa's sim observe routines'''
 
