@@ -1400,7 +1400,7 @@ NOTE:
 #Function to read simple input files that  use = as a separator between ithe required input and the values
 
 def read_template_file(filename, package_file = True):
-    if float(sys.version[:3]) < 3.9 and package file:
+    if float(sys.version[:3]) < 3.9 and package_file:
         with import_res.open_text(templates, filename) as tmp:
             unarranged = tmp.readlines()
     elif package_file:
