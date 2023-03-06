@@ -44,8 +44,7 @@ except ImportError:
 class TirificRunError(Exception):
     pass
 #Some errors
-class CasaInstallError(Exception):
-    pass
+
 
 class RunningError(Exception):
     pass
