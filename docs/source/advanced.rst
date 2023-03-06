@@ -79,6 +79,13 @@ General Settings
     pyHIARD alows for multiprocessing through the multiprocessing module of python. This works like a charm for the AGC with Gaussian corruption.
     In case of casa corruption or the ROC the system might freeze in limited amounts of RAM. In this case please turn of the multiprocessing to create the data base.
 
+  **font_file**
+
+    *str, optional, default =  "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf"*
+
+    As fonts are a nightmare in matplotlib one can set the location of their preferred font for the plotting.
+    On Ubuntu the default can be obtained by installing apt-get install ttf-mscorefonts-installer. This should point to the actual font, if the file is not fond we will fall back to DejaVu Sans.
+
 
 The Artificial Galaxy Catalogue (AGC) keywords
 --------
@@ -230,6 +237,13 @@ The Real Observations Catalogue (ROC) keywords
       *bool, optional, default = False*
 
       Boolean to the removal of unwanted galaxy templates in the ROC. If set to True all other options are ignored.
+
+  **download_templates**:
+
+      *bool, optional, default = False*
+
+      When a template does not come with the distribution pyHIARD in principle attempt to download and store it whenever it is requested.
+      However for installations where the internet connection can be unstable this switch allows to download and store all missing templates.
 
   **delete_existing**
 

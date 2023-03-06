@@ -31,6 +31,7 @@ with warnings.catch_warnings():
      import matplotlib
      matplotlib.use('pdf')
      import matplotlib.pyplot as plt
+     import matplotlib.font_manager as mpl_fm
      from matplotlib.ticker import AutoMinorLocator
 try:
     import importlib.resources as import_res
@@ -335,7 +336,7 @@ def AGC(cfg):
                     SBRprof, Rad, sclength, MHI, Rad_HI, Vrot, sub_ring, molecular_profile, DynMass = build_sbr_prof(
                         Current_Galaxy, symmetric=cfg.agc.symmetric, no_template=True)  # Column densities,Raii in kpc, Opt_scalelength in kpc, HI mass in M_solar
                     set_done, max_rad, colors, plot_ax = plot_RC(
-                        set_done, Current_Galaxy.Mass, Rad, Vrot, colors, max_rad, sub_ring, plot_ax)
+                        set_done, Current_Galaxy.Mass, Rad, Vrot, colors, max_rad, sub_ring, plot_ax,font_file=cfg.general.font_file)
                     rc_counter += 1
     if rc_counter > 0:
         plt.figure(59)
@@ -2451,7 +2452,8 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     cf.scrambled_initial(f"{cfg.general.main_directory}{name}/",Template)
     cf.plot_input(f"{cfg.general.main_directory}{name}/",Template, \
                 Title=f'DM Mass in = {Current_Galaxy.Mass:.2e}',RHI=Rad_HI
-                ,add_sbr=molecular_profile, WarpR=[WarpStart,WarpEnd],Distance=Distance )
+                ,add_sbr=molecular_profile, WarpR=[WarpStart,WarpEnd],Distance=Distance,\
+                font_file= cfg.general.font_file )
 
     Template.clear()
 
@@ -2490,11 +2492,16 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax):
+def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax,font_file='empty.ttf'):
     '''dd the RC to the overview plot and return updated tracker'''
     if set_done[0] == 1024:
         set_done= [Mass]
-        labelfont= {'family':'Times New Roman',
+        try:
+            mpl_fm.fontManager.addfont(font_file)
+            font_name = mpl_fm.FontProperties(fname=font_file).get_name()
+        except FileNotFoundError:
+            font_name = 'DejaVu Sans'
+        labelfont= {'family': font_name,
                  'weight':'normal',
                  'size':22}
         plt.rc('font',**labelfont)

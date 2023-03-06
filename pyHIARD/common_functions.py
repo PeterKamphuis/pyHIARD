@@ -25,6 +25,7 @@ with warnings.catch_warnings():
     import matplotlib
     matplotlib.use('pdf')
     import matplotlib.pyplot as plt
+    import matplotlib.font_manager as mpl_fm
 
 try:
     import importlib.resources as import_res
@@ -228,7 +229,7 @@ replace with:''')
                         raise  InputError(f'''You wanted variations in {var_to_check} which should have {elements[list_to_check.index(var_to_check)]} per variation.
                         Your list has {len(current)} elements and we do not know what to do with that. Note that this is a double list, i.e. [[]]''')
 
-                
+
     if cfg.roc.enable:
 
         path_to_resources = os.path.dirname(os.path.abspath(cubes.__file__))
@@ -1149,18 +1150,23 @@ load_text_model.__doc__ =f'''
  '''
 #
 
-def plot_input(directory, Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.] ,Title = 'EMPTY',WarpR=[0.,0.]):
+def plot_input(directory, Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.] \
+                ,Title = 'EMPTY',WarpR=[0.,0.], font_file = 'empty.ttf'):
     variables_to_plot = ['SBR', 'VROT','PA','INCL','SDIS','Z0']
     plots = len(variables_to_plot)
-    units = {'SBR': 'SBR (Jy km s$^{-1}$ arcsec$^-2$)' ,
+    units = {'SBR': 'SBR (Jy km s$^{-1}$ arcsec$^{-2}$)' ,
             'VROT': 'V$_{rot}$ (km s$^{-1}$)',
             'PA': 'PA ($^{\circ}$)',
             'INCL': 'INCL ($^{\circ}$)',
             'SDIS': 'Disp. (km s$^{-1}$)',
             'Z0': 'Z0 (arcsec)'}
     plt.figure(2, figsize=(8, 12), dpi=100, facecolor='w', edgecolor='k')
-
-    labelfont = {'family':'Times New Roman',
+    try:
+        mpl_fm.fontManager.addfont(font_file)
+        font_name = mpl_fm.FontProperties(fname=font_file).get_name()
+    except FileNotFoundError:
+        font_name = 'DejaVu Sans'
+    labelfont = {'family': font_name,
                 'weight': 'normal',
                 'size': 18}
     plt.rc('font', **labelfont)
@@ -1241,7 +1247,7 @@ def plot_input(directory, Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.
 plot_input.__doc__= f'''
 NAME:
     plot_input(directory,Model,add_sbr = 0, Distance= 0.,
-               RHI = [0.,0.,0.] ,Title = 'EMPTY')
+               RHI = [0.,0.,0.] ,Title = 'EMPTY', font_file='empty.ttf')
 
 PURPOSE:
     Plot the tirific template as output
@@ -1257,6 +1263,7 @@ INPUTS:
     RHI = The radius corresponding to RHI [symmetric,appr,rec]
     Warp_Start = radius corresponding to the start of the warp.
     Title = title string
+    font_file = location of the true type font to be used for plotting.
 
 OPTIONAL INPUTS:
 

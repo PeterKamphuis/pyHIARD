@@ -444,10 +444,14 @@ def check_templates(name,path_to_resources,work_dir,sofia_call='sofia2'):
 
     #First check if the main cube is there
     file_exists = os.path.isfile(f"{path_to_resources}{name}/{name}.fits")
-    if not file_exists:
+    file_exists_uni = os.path.isfile(f"{path_to_resources}{name}/{name}_uniform.def")
+    if not file_exists or not file_exists_uni:
         galaxy_module = importlib.import_module(f'pyHIARD.Resources.Cubes.{name}.{name}')
         Template_All=galaxy_module.get_data(work_dir,sofia_call)
+        if not file_exists_uni:
+            Model_Template = get_main_template(name,Template_All[0].header,galaxy_module)
         Template_All.close()
+        
     return file_exists
 check_templates.__doc__= f'''
 NAME:
@@ -475,7 +479,7 @@ PROCEDURES CALLED:
 
 NOTE:
 '''
-def create_final_cube(required_noise,main_directory,Galaxy_Template_In):
+def create_final_cube(required_noise,main_directory,Galaxy_Template_In,font_file):
     Galaxy_Template = copy.deepcopy(Galaxy_Template_In)
     # Make a new directory
     native_noise = False
@@ -574,7 +578,6 @@ We continue with the next SNR value.''')
         (-1.*final_hdr['BPA']),\
         [final_hdr['CRPIX1'],
         final_hdr['CRPIX2']],order=1)
-
     #And regrid
 
         #And remove the shift
@@ -657,9 +660,9 @@ We continue with the next SNR value.''')
     #Profiles are fitted by an exponential with scale length 0.2*RHI i.e. SigHI = C*exp(-R/(0.2*RHI)) so that weay we get the Warp end at Sigma = 0.5
     Warp = [0,np.log(0.5*np.exp(-1./0.2))*-0.2*R_HI[0]]
     cf.plot_input(galaxy_dir,Galaxy_Template['Shifted_TRM_Model']
-                ,Title=f'{Galaxy_Template["Name"]} with {Galaxy_Template["Beams"]} Beams'
-                ,Distance= Galaxy_Template['Final_Distance'],RHI=R_HI,WarpR=Warp
-                )
+                ,Title=f'{Galaxy_Template["Name"]} with {Galaxy_Template["Beams"]:.2f} Beams'
+                ,Distance= Galaxy_Template['Final_Distance'],RHI=R_HI,WarpR=Warp,
+                font_file = font_file )
     # And a file with scrambled initial estimates
     cf.scrambled_initial(galaxy_dir,Galaxy_Template['Shifted_TRM_Model'])
     return_line = f"{Galaxy_Template['Final_Distance']:.2f}|{dirstring}|Convolved_Cube_Gauss\n"
@@ -668,7 +671,7 @@ We continue with the next SNR value.''')
 
 create_final_cube.__doc__= f'''
 NAME:
-   create_final_cube(required_noise, main_directory, Galaxy_Template)
+   create_final_cube(required_noise, main_directory, Galaxy_Template,font_file = 'empty.ttf')
 
 PURPOSE:
     Add the requested noise and produce the output products
@@ -680,7 +683,7 @@ INPUTS:
     required_noise = the requested noise
     main_directory = 'The main directory to branch from'
     Galaxy_Template = dictionary as created by beam_template
-
+    font_file = location of the font to be used
 OPTIONAL INPUTS:
 
 OUTPUTS:
@@ -693,6 +696,60 @@ PROCEDURES CALLED:
 
 NOTE:
 '''
+
+def download_templates(galaxy_names,path_to_resources,mp = False, ncpu = 1,\
+                        work_dir = './',sofia2 = 'sofia2'):
+    if mp:
+        #first we check that all templates are processed
+        needed_templates = [[x,path_to_resources,work_dir,sofia2] for x in galaxy_names]
+        if len(needed_templates) < ncpu:
+            ncpu = len(needed_templates)
+        with get_context("spawn").Pool(processes=ncpu) as pool:
+            results = pool.starmap(check_templates, needed_templates)
+        del results
+    else:
+        for galaxy in galaxy_names:
+            result = check_templates(galaxy,path_to_resources,work_dir,sofia2)
+        results = []
+download_templates.__doc__= f'''
+NAME:
+   download_templates(galaxy_names,path_to_resources,mp = False, ncpu = 1,\
+                           work_dir = './',sofia2 = 'sofia2')
+PURPOSE:
+    make sure that all templates in galaxy names are present. If not download them.
+
+CATEGORY:
+   ROC
+
+INPUTS:
+    galaxy_names = names to check
+    path_to_resources = path to the pyHIARd installation
+
+OPTIONAL INPUTS:
+
+    mp = False
+    Use multiprocessing
+
+    ncpu = 1
+    number of cpus to use in multiprocessing
+
+    work_dir = './'
+    loacataion where to run sofia
+
+    sofia2 = 'sofia2'
+    command to call sofia
+
+OUTPUTS:
+    Cube, ModelInput.def, Initial Estimates and Overview plot.
+
+OPTIONAL OUTPUTS:    exit()
+
+PROCEDURES CALLED:
+   Unspecified
+
+NOTE:
+'''
+
 
 
 def extend_cube(cube_in, hdr_in, new_beam=0., Mask=[-1., -1.], rotation_pa=0.):
@@ -1118,26 +1175,21 @@ def ROC(cfg,path_to_resources):
     if len(All_Galaxies) == 0:
         print(f"Seems like the ROC has nothing to do.")
         return
+
+    templates = [x for x in All_Galaxies]
+    download_templates(templates,path_to_resources, mp = cfg.general.multiprocessing,\
+                        ncpu = cfg.general.ncpu,work_dir = cfg.general.main_directory,\
+                        sofia2 = cfg.general.sofia2)
     if cfg.general.multiprocessing:
-        #first we check that all templates are processed
-        needed_templates = [[x,path_to_resources,cfg.general.main_directory,cfg.general.sofia2] for x in All_Galaxies]
-        processes = cfg.general.ncpu
-        if len(needed_templates) < processes:
-            processes = len(needed_templates)
-        with get_context("spawn").Pool(processes=processes) as pool:
-            results = pool.starmap(check_templates, needed_templates)
-        del results
-        #calculate the amount of allowed processes
         no_template_processes,no_beam_processes,no_snr_processes = \
             calculate_processes(All_Galaxies,cfg.roc.beams,cfg.roc.snr)
         if  no_snr_processes == 1:
             # if we can not do multiple SNR processes even there is no point in MP
             cfg.general.multiprocessing =False
-            del needed_templates
+
 
     if cfg.general.multiprocessing:
         #list with templates to still process
-        templates = [x for x in All_Galaxies]
         results = []
         while len(templates) > 0:
 
@@ -1213,7 +1265,7 @@ def ROC(cfg,path_to_resources):
                 all_noise = []
                 for galaxy in All_Beam_Templates:
                     for value in galaxy['Requested_SNR']:
-                        all_noise.append((value,cfg.general.main_directory,galaxy))
+                        all_noise.append((value,cfg.general.main_directory,galaxy,cfg.general.font_file))
 
                 while len(all_noise) > 0:
                     current_noise= all_noise[:int(no_snr_processes*no_beam_processes*no_template_processes)]
@@ -1230,8 +1282,6 @@ def ROC(cfg,path_to_resources):
             templates = templates[no_template_processes:]
     else:
         #No MP processing
-        for galaxy in All_Galaxies:
-            result = check_templates(galaxy,path_to_resources,cfg.general.main_directory,cfg.general.sofia2)
         results = []
         for key in All_Galaxies:
             galaxy_template_out = galaxy_template(key,path_to_resources,cfg.general.main_directory,cfg.general.sofia2)
@@ -1270,7 +1320,7 @@ def ROC(cfg,path_to_resources):
 
                 beam_template = beam_templates(*beam_input)
                 for req_snr in beam_template['Requested_SNR']:
-                    result = create_final_cube(float(req_snr),cfg.general.main_directory,beam_template)
+                    result = create_final_cube(float(req_snr),cfg.general.main_directory,beam_template,cfg.general.font_file)
                     results.append(result)
 
 
