@@ -1047,12 +1047,18 @@ please provide one of the following types {', '.join(allowed_types)}:''')
 
     ext={'tir': 'def', 'bar': 'txt', 'rc': 'rotcur'}
     if package_file:
+
         model=__import__(
             f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename, 0)
         if float(sys.version[:3]) < 3.9:
+            model=__import__(
+                f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename, 0)
             with import_res.open_text(model, f'{filename}.{ext[type]}') as tmp:
                 unarranged = tmp.readlines()
         else:
+            print(model,filename,ext[type])
+            mod = f'pyHIARD.Resources.Cubes.{filename}'
+            import mod as model
             with import_res.files(model).joinpath(f'{filename}.{ext[type]}').open('r') as tmp:
                 unarranged = tmp.readlines()
 
