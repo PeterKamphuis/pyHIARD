@@ -1429,7 +1429,7 @@ def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = None,
             regrid_noise = cf.regrid_array(smoothed_noise, Out_Shape=((int(hdr['NAXIS2'] /  pixel_factor),int(hdr['NAXIS1'] / pixel_factor))))
             new_noise = np.std(regrid_noise)
             del regrid_noise
-        if np.sum(Mask) != -1:
+        if Mask is not None:
             Mask_Use =  cf.regrid_array(Mask, Out_Shape=((int(hdr['NAXIS3']),
             int(hdr['NAXIS2'] /  pixel_factor),int(hdr['NAXIS1'] / pixel_factor))))
     else:
