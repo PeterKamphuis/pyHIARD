@@ -28,7 +28,7 @@ if float(sys.version[:3]) < 3.7:
     requirements.append('importlib_resources>=3.3.0')
 
 PACKAGE_NAME = 'pyHIARD'
-__version__ = '1.1.9'
+__version__ = '1.1.10'
 
 
 with open("README.md", "r") as fh:
