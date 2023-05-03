@@ -719,7 +719,8 @@ NOTE:
 '''
 
 
-def create_arms(velocity, Radii, disk_brightness, disk=1, WarpStart=-1, Bar="No_Bar"):
+def create_arms(velocity, Radii, disk_brightness, disk=1, WarpStart=-1,\
+                    Bar="No_Bar"):
     '''Create the spiral Arms'''
     if WarpStart == -1: WarpStart = Radii[-1]
     max_vrot = np.max(velocity)
@@ -965,7 +966,8 @@ NOTE:
 # Thi function creates the flarin g which is based on the rotation curve and dispersion according Puche et al. 1992
 
 
-def create_flare(Radii, velocity, dispersion, flare, Max_Rad, sub_ring, distance=1.):
+def create_flare(Radii, velocity, dispersion, flare, Max_Rad, sub_ring, \
+                    distance=1.):
     '''This function creates the scale height and  dispersion profiles according to Puche et al. 1992'''
     #make sure we have arrays so we can do numerical operations
     Radii = np.array(Radii)
@@ -2486,7 +2488,8 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax,font_file='empty.ttf'):
+def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax,\
+                font_file='empty.ttf'):
     '''dd the RC to the overview plot and return updated tracker'''
     if set_done[0] == 1024:
         set_done= [Mass]

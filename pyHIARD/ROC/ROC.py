@@ -194,7 +194,8 @@ NOTE:
 '''
 
 
-def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_directory):
+def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,\
+                        main_directory):
     Galaxy_Template = copy.deepcopy(Galaxy_Template_In)
     # first we need to calculate the shift to  apply
     print(f"We are processing the template {Galaxy_Template['Name']} with {beam_req} beams across the major axis.")
@@ -757,7 +758,9 @@ NOTE:
 
 
 
-def extend_cube(cube_in, hdr_in, new_beam=0., Mask=[-1., -1.], rotation_pa=0.):
+def extend_cube(cube_in, hdr_in, new_beam=0., Mask=None, rotation_pa=0.):
+    if Mask is None:
+         Mask=[-1., -1.]
     cube = copy.deepcopy(cube_in)
     hdr = copy.deepcopy(hdr_in)
     Mask_Use = copy.deepcopy(Mask)
@@ -1367,10 +1370,11 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = [-1], regrid = True, track_noise = None):
+def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = None,\
+                        regrid = True, track_noise = None):
     Cube=copy.deepcopy(Cube_In)
     hdr=copy.deepcopy(hdr_In)
-    if np.sum(Mask) != -1:
+    if Mask is not None:
         Mask_Use = copy.deepcopy(Mask)
     #first calculate the required beams
     new_beam = []

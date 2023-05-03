@@ -318,7 +318,10 @@ check_input.__doc__ = f'''
 '''
 
 
-def unused_columndensity(levels, systemic=100., beam=[1., 1.], channel_width=1., column=False, arcsquare=False, solar_mass=False):
+def unused_columndensity(levels, systemic=100., beam=None, channel_width=1., \
+                column=False, arcsquare=False, solar_mass=False):
+    if beam is None:
+        beam=[1., 1.]
     #set solar_mass to indicate the output should be M_solar/pc**2 or if column = True the input is
     f0 = 1.420405751786E9  # Hz rest freq
     c = 299792.458  # light speed in km / s
@@ -412,7 +415,8 @@ def convertRADEC(RA, DEC, invert=False, colon=False):
 
 # function for converting kpc to arcsec and vice versa
 
-def convertskyangle(angle, distance=1., unit='arcsec', distance_unit='Mpc', physical=False):
+def convertskyangle(angle, distance=1., unit='arcsec', distance_unit='Mpc', \
+                        physical=False):
     try:
         _ = (e for e in angle)
     except TypeError:
@@ -843,8 +847,9 @@ find_program.__doc__=f'''
 '''
 
 
-def get_beam_area_in_pixels(Template_Header, beam= [-1,-1.]):
-    if np.sum(beam) == -2.:
+def get_beam_area_in_pixels(Template_Header, beam= None):
+
+    if beam is None:
         beam = [Template_Header["BMAJ"],Template_Header["BMIN"]]
     #  https://science.nrao.edu/facilities/vla/proposing/TBconv
     beamarea=(np.pi*abs((beam[0]*beam[1])))/(4.*np.log(2.))
@@ -983,12 +988,12 @@ def get_mask(Cube_In, factor = 5.2):
     Mask = np.array(Mask,dtype=int)
     return Mask
 
-def get_mean_flux(Cube_In,Mask=[-1]):
+def get_mean_flux(Cube_In,Mask = None):
 
     #As python is really the dumbest language ever invented there is different behaviour for passing np.arrays and lists
     Cube=copy.deepcopy(Cube_In)
     # To calculate the mean of all values in the mask is too sensitive to very small variations in the mask
-    if np.sum(Mask) != -1:
+    if Mask is not None:
         Cube[Mask < 0.5] = 0.
     # First we need to get a maximum flux value.
     Top_Cube = Cube[Cube > 0.9*np.max(Cube)]
@@ -1027,9 +1032,14 @@ def limit_memory(maxsize):
     soft, hard=resource.getrlimit(resource.RLIMIT_AS)
     resource.setrlimit(resource.RLIMIT_AS, (maxsize, hard))
 
-def load_text_model(filename, type = 'Tirific',  Variables = ['BMIN', 'BMAJ', 'BPA', 'RMS', 'DISTANCE', 'NUR', 'RADI', 'VROT',
-                 'Z0', 'SBR', 'INCL', 'PA', 'XPOS', 'YPOS', 'VSYS', 'SDIS', 'VROT_2',  'Z0_2', 'SBR_2',
-                 'INCL_2', 'PA_2', 'XPOS_2', 'YPOS_2', 'VSYS_2', 'SDIS_2', 'CONDISP', 'CFLUX', 'CFLUX_2'], package_file = True):
+def load_text_model(filename, type = 'Tirific', Variables = None ,\
+                        package_file = True):
+    if Variables is None:
+        Variables = ['BMIN', 'BMAJ', 'BPA', 'RMS', 'DISTANCE', 'NUR', 'RADI', \
+            'VROT','Z0', 'SBR', 'INCL', 'PA', 'XPOS', 'YPOS', 'VSYS', 'SDIS', \
+            'VROT_2',  'Z0_2', 'SBR_2','INCL_2', 'PA_2', 'XPOS_2', 'YPOS_2', \
+            'VSYS_2', 'SDIS_2', 'CONDISP', 'CFLUX', 'CFLUX_2']
+
     #First check that we have a proper type
     allowed_types=['tir', 'rc', 'bar', 'tirific', 'rotcur', 'barolo', 'fat']
     while type.lower() not in allowed_types:
@@ -1175,8 +1185,15 @@ load_text_model.__doc__ =f'''
  '''
 #
 
-def plot_input(directory, Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.] \
-                ,Title = 'EMPTY',WarpR=[0.,0.], font_file = 'empty.ttf'):
+def plot_input(directory, Model,add_sbr = None, Distance= 0., RHI = None \
+                ,Title = 'EMPTY',WarpR=None, font_file = 'empty.ttf'):
+
+    if add_sbr is None:
+        add_sbr = [0.,0.]
+    if RHI is None:
+        RHI = [0.,0.,0.]
+    if WarpR is None:
+        WarpR=[0.,0.]
     variables_to_plot = ['SBR', 'VROT','PA','INCL','SDIS','Z0']
     plots = len(variables_to_plot)
     units = {'SBR': 'SBR (Jy km s$^{-1}$ arcsec$^{-2}$)' ,
