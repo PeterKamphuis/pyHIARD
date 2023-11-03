@@ -1,8 +1,8 @@
 Setting your fit preferences through a yaml file.
-=================================
+=================================================
 
 Introduction
---------
+-------------
 
 Within pyHIARD it is possible to completely setup your own artificial input galaxy and to build variations on top of that. In principle any type of artificial galaxy can be build based on a set of input parameters.
 In principle it is also possible to add any galaxy to the real galaxies although for now any addition on the available galaxies requires hard coding the package.
@@ -15,7 +15,8 @@ All these options can also be called directly from the command line when calling
 
 
 Individual Keywords
---------
+-------------------
+
 *No specifier*
 
   **print_examples**:
@@ -39,7 +40,8 @@ Individual Keywords
 
 
 General Settings
---------
+-----------------
+
 *Specified with general*
 
   **main_directory**:
@@ -88,7 +90,7 @@ General Settings
 
 
 The Artificial Galaxy Catalogue (AGC) keywords
---------
+-----------------------------------------------
 *Specified with agc*
 
   **enable**:
@@ -217,7 +219,8 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
 
 The Real Observations Catalogue (ROC) keywords
---------
+----------------------------------------------
+
 *Specified with roc*
 
   **enable**:
