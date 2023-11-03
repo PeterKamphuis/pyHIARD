@@ -228,7 +228,8 @@ README.md~
 __pycache__
 
 # microsoft visual studio project files
-.vscode
+*.vscode
+*.code-workspace
 # kdevelop project files
 *.kdev4
 

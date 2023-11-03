@@ -7,7 +7,7 @@ Contents
 --------
 .. toctree::
 
-  Introduction, Installation & Easy use <README.rst>
+  Introduction, Installation & Easy use <README.md>
   The Configuration File <configuration.rst>
   Advanced Settings <advanced.rst>
-  Copyright <copyright.rst>
+  Copyright <license.rst>

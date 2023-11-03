@@ -1451,7 +1451,7 @@ def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = None,
     del smoothed_cube
 
     return_list  = [regrid_cube,hdr]
-    if np.sum(Mask) != -1:
+    if Mask is not None:
         return_list.append(Mask_Use)
     if track_noise != None:
         return_list.append(track_noise*new_noise/initial_noise)
