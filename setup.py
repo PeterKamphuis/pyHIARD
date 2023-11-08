@@ -18,7 +18,7 @@ requirements = [
     'future-fstrings',
     'importlib_metadata',
 ]
-__casa_max__ = 3.10.12
+__casa_max__ = 3.10
 
 if 3.6 <= float(sys.version[:3]) <= __casa_max__:
     requirements.append('casatasks')
