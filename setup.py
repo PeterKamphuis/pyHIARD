@@ -16,8 +16,9 @@ requirements = [
     'psutil',
     'matplotlib',
     'future-fstrings',
+    'importlib_metadata',
 ]
-__casa_max__ = 3.8
+__casa_max__ = 3.10.12
 
 if 3.6 <= float(sys.version[:3]) <= __casa_max__:
     requirements.append('casatasks')
