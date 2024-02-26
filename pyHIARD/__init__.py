@@ -1,6 +1,7 @@
 # -*- coding: future_fstrings -*-
 try:
     from importlib.metadata import version
+    from importlib.util import find_spec
 except ImportError:
     # Try backported to PY<37 `importlib_resources`.
     # For Py<3.9 files is not available
@@ -42,9 +43,15 @@ def report_version():
 
 __version__ = report_version()
 
-packages = [x.project_name for x in pkg_resources.require("pyHIARD")]
+try:
+    if find_spec('casatasks') is not None:
+        __casa_max__ =  'OK'
+    else:
+        __casa_max__ =  'Smaller'
+except:
+    try:
+        import casatasks
+        __casa_max__ =  'OK'
+    except:
+        __casa_max__ =  'Smaller'
 
-if 'casatasks' in packages:
-    __casa_max__ =  'OK'
-else:
-    __casa_max__ =  'Smaller'

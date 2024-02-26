@@ -96,15 +96,15 @@ def AGC(cfg):
     if 'SNR' in cfg.agc.variables_to_vary:
         print(
             f"Varying the signal to noise ratio with: {','.join([str(e) for e in cfg.agc.snr])}.\n")
-    if 'Warp' in cfg.agc.variables_to_vary:
+    if 'Warp' in cfg.agc.variables_to_vary: 
         print(
-            f"Varying the theta angle of the angular momentum vector with: {','.join([str(e) for e in cfg.agc.warp[:][0]])}.\n")
+            f"Varying the theta angle of the angular momentum vector with: {','.join([str(e[0]) for e in cfg.agc.warp])}.\n")
         print(
-            f"Varying the phi angle of the angular momentum vector with: {','.join([str(e) for e in cfg.agc.warp[:][1]])}.\n")
+            f"Varying the phi angle of the angular momentum vector with: {','.join([str(e[1]) for e in cfg.agc.warp])}.\n")
     if 'Beam_Size' in cfg.agc.variables_to_vary:
         print(
             f"Varying the beam size with: {','.join([str(e) for e in cfg.agc.beam_size])}.\n")
-
+   
     # Let's just make 1 catalogue with everything we need and adjust
     # the fitting program to have this one catalogue as input
 
@@ -210,17 +210,24 @@ def AGC(cfg):
                     Current_Galaxy = Base_Galaxy(cfg.agc.base_galaxies[base])
                 if cfg.agc.variables_to_vary[ix] == 'Inclination':
                     Current_Galaxy.Inclination = cfg.agc.inclination[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'PA': Current_Galaxy.PA = cfg.agc.pa[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'PA': 
+                    Current_Galaxy.PA = cfg.agc.pa[jx]
                 elif cfg.agc.variables_to_vary[ix] == 'Flare':
                     if Current_Galaxy.Flare == 'Flare':
                         Current_Galaxy.Flare = "No_Flare"
                     else:
                         Current_Galaxy.Flare = "Flare"
-                elif cfg.agc.variables_to_vary[ix] == 'Warp': Current_Galaxy.Warp = [cfg.agc.warp[jx][0], cfg.agc.warp[jx][1]]
-                elif cfg.agc.variables_to_vary[ix] == 'Beams': Current_Galaxy.Beams = cfg.agc.beams[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'SNR': Current_Galaxy.SNR = cfg.agc.snr[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Channelwidth': Current_Galaxy.Channelwidth = cfg.agc.channelwidth[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Beam_Size': Current_Galaxy.Res_Beam = [cfg.agc.beam_size[jx][0], cfg.agc.beam_size[jx][1], cfg.agc.beam_size[jx][2]]
+                elif cfg.agc.variables_to_vary[ix] == 'Warp': 
+                    Current_Galaxy.Warp = [cfg.agc.warp[jx][0], cfg.agc.warp[jx][1]]
+                elif cfg.agc.variables_to_vary[ix] == 'Beams': 
+                    Current_Galaxy.Beams = cfg.agc.beams[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'SNR': 
+                    Current_Galaxy.SNR = cfg.agc.snr[jx]
+                    
+                elif cfg.agc.variables_to_vary[ix] == 'Channelwidth': 
+                    Current_Galaxy.Channelwidth = cfg.agc.channelwidth[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Beam_Size': 
+                    Current_Galaxy.Res_Beam = [cfg.agc.beam_size[jx][0], cfg.agc.beam_size[jx][1], cfg.agc.beam_size[jx][2]]
                 elif cfg.agc.variables_to_vary[ix] == 'Arms':
                     if Current_Galaxy.Arms == 'Arms':
                         Current_Galaxy.Arms = "No_Arms"
@@ -231,10 +238,14 @@ def AGC(cfg):
                         Current_Galaxy.Bar = "No_Bar"
                     else:
                         Current_Galaxy.Bar = "Bar"
-                elif cfg.agc.variables_to_vary[ix] == 'Radial_Motions': Current_Galaxy.Radial_Motions = cfg.agc.radial_motions[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Dispersion': Current_Galaxy.Dispersion = cfg.agc.dispersion[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Mass': Current_Galaxy.Mass = cfg.agc.masses[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Base': pass
+                elif cfg.agc.variables_to_vary[ix] == 'Radial_Motions':
+                    Current_Galaxy.Radial_Motions = cfg.agc.radial_motions[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Dispersion': 
+                    Current_Galaxy.Dispersion = cfg.agc.dispersion[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Mass': 
+                    Current_Galaxy.Mass = cfg.agc.masses[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Base': 
+                    pass
                 else: print("This is not a supported parameter")
                 Current_Galaxy.Res_Beam[0:1] = np.sort(
                     Current_Galaxy.Res_Beam[0:1])
@@ -247,9 +258,10 @@ def AGC(cfg):
                     and (int(number_models/5.) == number_models/5.)) \
                     or (cfg.agc.corruption_method == 'Casa_Sim'):
                         setattr(Current_Galaxy, "Corruption", "Casa_Sim")
-                elif cfg.agc.corruption_method == 'No_Corrupt' or \
-                    (cfg.agc.corruption_method == 'Tres'
-                    and int((number_models+1)/5.) == (number_models+1.)/5.):
+                elif (cfg.agc.corruption_method == 'No_Corrupt' or \
+                    (cfg.agc.corruption_method == 'Tres' \
+                    and int((number_models+1)/5.) == (number_models+1.)/5.)) \
+                    and not (cfg.agc.variables_to_vary[ix] == 'SNR'):
                         setattr(Current_Galaxy, "Corruption", "No_Corrupt")
                 else:
                     setattr(Current_Galaxy, "Corruption", "Gaussian")

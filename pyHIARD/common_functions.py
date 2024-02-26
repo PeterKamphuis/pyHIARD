@@ -28,11 +28,12 @@ with warnings.catch_warnings():
     matplotlib.use('pdf')
     import matplotlib.pyplot as plt
     import matplotlib.font_manager as mpl_fm
-if float(sys.version[:3]) < 3.7:
-    import importlib_resources as import_res
-else:
-    import importlib.resources as import_res
 
+try:
+    import importlib.resources as import_res
+except ImportError:
+    import importlib_resources as import_res
+ 
 
 
 class SofiaFaintError(Exception):
@@ -1057,9 +1058,9 @@ please provide one of the following types {', '.join(allowed_types)}:''')
 
     ext={'tir': 'def', 'bar': 'txt', 'rc': 'rotcur'}
     if package_file:
-
-
-        if float(sys.version[:3]) < 3.9:
+        python_version = sys.version_info
+        if python_version[0] < 3. or \
+            (python_version[0] == 3. and python_version[1] < 9.):
             model=__import__(
                 f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename, 0)
             with import_res.open_text(model, f'{filename}.{ext[type]}') as tmp:
