@@ -265,7 +265,7 @@ def AGC(cfg):
                         setattr(Current_Galaxy, "Corruption", "No_Corrupt")
                 else:
                     setattr(Current_Galaxy, "Corruption", "Gaussian")
-
+                
                 Achieved = copy.deepcopy(Current_Galaxy)
                 #Check if galaxy already exists
                 name = set_name(Current_Galaxy)
@@ -2584,7 +2584,7 @@ def set_name(Current_Galaxy):
     #name=""
     #for key,value in Current_Galaxy.items:
     name=f"Mass{float(Current_Galaxy.Mass):.1e}-i{Current_Galaxy.Inclination:.1f}d{Current_Galaxy.Dispersion[0]:.1f}-{Current_Galaxy.Dispersion[1]:.1f}"
-    name=f"{name}pa{Current_Galaxy.PA:.1f}w{Current_Galaxy.Warp[0]:.1f}-{Current_Galaxy.Warp[1]:.1f}-"
+    name=f"{name}pa{Current_Galaxy.PA:.1f}w{Current_Galaxy.Warp[0]:.2f}-{Current_Galaxy.Warp[1]:.2f}-"
     name=f"{name}{Current_Galaxy.Flare}-ba{Current_Galaxy.Beams:.1f}SNR{Current_Galaxy.SNR:.1f}"
     name=f"{name}bm{Current_Galaxy.Res_Beam[0]:.1f}-{Current_Galaxy.Res_Beam[1]:.1f}ch{Current_Galaxy.Channelwidth:.1f}"
     name=f"{name}-{Current_Galaxy.Arms}-{Current_Galaxy.Bar}-rm{Current_Galaxy.Radial_Motions:.1f}"

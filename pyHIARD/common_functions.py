@@ -72,7 +72,36 @@ class Proper_Dictionary(OrderedDict):
         if not done:
             print("----!!!!!!!!We were unable to add your key!!!!!!---------")
 #Function to convert column densities
+def ask_main_directory(current_directory,input_directory = 'NonE'):
+    while not os.path.isdir(input_directory):
+        if not input_directory == 'NonE':
+                print(f'''The directory {input_directory} does not exist.
+Please provide the correct directory''')
+        input_directory =  input(\
+            f'''Please provide the directory where to create the database.
+(default = {current_directory}):''')
+        if input_directory == '':
+            input_directory = current_directory
+    return input_directory
 
+def check_main_directory(cfg):
+    current_directory = os.getcwd()
+    if cfg.general.main_directory != current_directory:
+        correct_directory = get_bool(f'''!!! Your creation directory is not directory from which you started pyHIARD.
+Are you sure you want to create the database in:
+{cfg.general.main_directory}?   !!!!!!
+Please type yes or no (default = yes) ''',default = True)
+        if not correct_directory:
+            cfg.general.main_directory = ask_main_directory(current_directory)
+   
+    #Check the main directory exists
+    while not os.path.isdir(cfg.general.main_directory):
+        cfg.general.main_directory = ask_main_directory(current_directory,\
+                                        input_directory=cfg.general.main_directory )
+        #if we want the full database default we check that the user wants this
+    if cfg.general.main_directory[-1] != '/':
+        cfg.general.main_directory = f"{cfg.general.main_directory}/"
+    return cfg
 
 def create_directory(directory, base_directory, debug=False):
     split_directory = [x for x in directory.split('/') if x]
@@ -123,15 +152,8 @@ create_directory.__doc__ = f'''
 
 
 def check_input(cfg):
-    #Check the main directory exists
-    while not os.path.isdir(cfg.general.main_directory):
-        print(
-            f'The directory {cfg.general.main_directory} does not exist please provide the correct directory')
-        cfg.general.main_directory = input(
-            "Please provide the directory where to create the database :")
-    #if we want the full database default we check that the user wants this
-    if cfg.general.main_directory[-1] != '/':
-        cfg.general.main_directory = f"{cfg.general.main_directory}/"
+    cfg = check_main_directory(cfg)
+
     # if we only have a single cpu turn multiprocessing of
     if cfg.general.ncpu == 1:
         cfg.general.multiprocessing = False
@@ -683,7 +705,7 @@ def cut_input_cube(file_in, sizes, name='EMPTY', debug=False):
     hdr['CRPIX2'] = hdr['CRPIX2']-sizes[1][0]
     hdr['CRPIX3'] = hdr['CRPIX3']-sizes[0][0]
     try:
-        del Mask_Outer[0].header['HISTORY']
+        del hdr['HISTORY']
     except:
         pass
     if hdr['BITPIX'] < -32:
