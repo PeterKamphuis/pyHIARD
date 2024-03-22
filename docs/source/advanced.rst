@@ -137,7 +137,7 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
         -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned. Cubes names will end in '_CS'.
 
-        -Tres: Mix the the three corruption methods. If set pyHIARD produces three Gaussian corrupted galaxies, one uncorrupted, and one Casa corrupted galaxy.
+        -Tres: Mix the the three corruption methods. If set pyHIARD produces x Gaussian corrupted galaxies, one uncorrupted, and one Casa corrupted galaxy. Here x is a random number between 5-10 to avoid synchronising with a specific type of galaxy. The uncorrupted galaxies will skip galaxies with variations in SNR until a galaxy without SNR variation is produced.
 
         -Casa_5: As CASA's simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
 
