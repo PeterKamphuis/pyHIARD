@@ -211,6 +211,7 @@ Please choose from {','.join([x for x in channel_options])}:''')
 
         if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5', 'tres']:
             try:
+                from casaconfig import AutoUpdatesNotAllowed
                 import casatasks
             except ModuleNotFoundError:
                 if pyHIARD.__casa_max__ != 'OK':
@@ -221,8 +222,15 @@ As such you can not run the corrupt casa method''')
                     raise CasaInstallError(f'''Your modular casa is not installed.
 We do not know the reason for this but it means you cannot run the casa corrupt method.
 ''')
+            except AutoUpdatesNotAllowed:
+                raise CasaInstallError(f'''Since Casa 6.6.6 Casa wants to update its data in ~/.casa/data
+that directory does not exist. Please create it or see the Casa website for other options.
+Alternatively you can run pyHIARD agc.corruption_method = No_Corrupt or Gauss
+''')
 
-        question_variations = False
+              
+
+        #question_variations = False
         changes_poss = ['Inclination', 'PA', 'Beams', 'Radial_Motions', 'Flare', 'Arms',
             'Dispersion', 'Bar', 'Channelwidth', 'SNR', 'Warp', 'Mass', 'Beam_Size', 'Base']
         changes_poss_lower = [x.lower() for x in changes_poss]
@@ -1343,7 +1351,10 @@ PROCEDURES CALLED:
 NOTE:
 '''
 def print_base_galaxy(Galaxy):
-    RAhr, DEChr= convertRADEC(Galaxy.Coord[0], Galaxy.Coord[1])
+    try:
+        RAhr, DEChr= convertRADEC(Galaxy.Coord[0], Galaxy.Coord[1])
+    except AttributeError:
+        RAhr, DEChr= 'Random', 'Random'
     print(f'''The galaxy has the central coordinates RA= {RAhr}, DEC={DEChr}
 {'Inclination':15s} = {Galaxy.Inclination:<10.1f}, {'Dispersion':15s} = {Galaxy.Dispersion}
 {'Mass':15s} = {Galaxy.Mass:<10.2e}, {'PA':15s} = {Galaxy.PA}

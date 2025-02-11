@@ -22,14 +22,14 @@ classifiers = [
 ]
 dependencies = [ 'numpy>=1.14',
     'omegaconf>=2.2.2',
-    'scipy',
+    'scipy>1.6.0',
     'matplotlib',
     'psutil',
     'astropy',
     'future-fstrings',
     'importlib_metadata',
-    'casatasks; python_version > "3.6"',
-    'casadata; python_version > "3.6"',
+    'casatasks; python_version > "3.10"',
+    'casadata; python_version > "3.10"',
     'importlib_resources>=3.3.0; python_version < "3.7"',
 ]
 

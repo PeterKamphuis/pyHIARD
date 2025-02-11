@@ -15,7 +15,6 @@ def main():
     cfg,path_to_resources = setup_conf()
     if cfg.agc.enable:
         AGC(cfg)
-
     if cfg.roc.enable:
         ROC(cfg,path_to_resources)
     Catalogue = f'{cfg.general.main_directory}/Output_Summary.txt'
