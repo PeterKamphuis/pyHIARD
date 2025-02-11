@@ -6,8 +6,8 @@ project = 'pyHIARD'
 copyright = '2021, P. Kamphuis'
 author = 'P. Kamphuis'
 
-release = '1.1'
-version = '1.1.10'
+release = '1.2.0'
+version = '1.2.0'
 
 # -- General configuration
 

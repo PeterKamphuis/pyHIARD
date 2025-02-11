@@ -2,7 +2,7 @@
 #This program is a python script to create a data base of real observations at different resolutions.
 # It take 6 publicly available well resolved galaxy data cubes and smooths them to 3,4,5,6,7,8,10,12,16 beams across the major axis based on the extend of the best fit model.
 # The galaxies used are
-from pyHIARD.Resources import Cubes as cubes
+
 from pyHIARD.constants import c_kms, H_0, G_agc
 from pyHIARD import Templates as templates
 from multiprocessing import Pool, get_context
@@ -16,7 +16,6 @@ import psutil
 import pyHIARD.common_functions as cf
 import scipy.ndimage
 import sys
-import re
 import warnings
 
 # be explicit

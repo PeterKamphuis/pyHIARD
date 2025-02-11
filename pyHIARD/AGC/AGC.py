@@ -10,7 +10,6 @@ from scipy.ndimage import gaussian_filter
 from scipy import integrate
 from scipy import interpolate
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
-from astropy.io.fits.verify import VerifyWarning
 from astropy.io import fits
 
 import copy
