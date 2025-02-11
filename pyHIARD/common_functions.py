@@ -686,7 +686,7 @@ calculate_pixel_noise.__doc__ = f'''
 
 
 
-def cut_input_cube(file_in, sizes, name='EMPTY', debug=False):
+def cut_input_cube(file_in, sizes, debug=False):
     cube = fits.open(file_in, uint=False,
                      do_not_scale_image_data=True, ignore_blank=True)
     hdr = cube[0].header
@@ -717,16 +717,14 @@ def cut_input_cube(file_in, sizes, name='EMPTY', debug=False):
     except:
         pass
     if hdr['BITPIX'] < -32:
-        print(hdr['BITPIX'])
-        exit()
+        hdr['BITPIX'] = -32
+        #print(hdr['BITPIX'])
+        #exit()
     elif hdr['BITPIX'] > -32:
         hdr['BITPIX'] = 32
     # Do not regid the original cubes if we do this we do this then we mess up the barollo and rc files
-
-
-
     cube[0].header=hdr
-    cube[0].data=np.array(new_data, dtype = float)
+    cube[0].data=np.array(new_data, dtype = np.float32)
     return cube
 cut_input_cube.__doc__=f'''
  NAME:
