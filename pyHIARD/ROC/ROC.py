@@ -20,11 +20,10 @@ import re
 import warnings
 
 # be explicit
-if float(sys.version[:3]) < 3.7:
-    import importlib_resources as import_res
-else:
+try:
     import importlib.resources as import_res
-
+except ImportError:
+    import importlib_resources as import_res
 
 class ProgramError(Exception):
     pass
@@ -124,12 +123,14 @@ def add_template(cfg, path_to_resources, existing_galaxies):
 
     #galaxy_parameters = {'Galaxy': 'New_Galaxy', 'DHIkpc': '9.6', 'Distance': '4.1', 'Original_Model': 'Tir', 'RMS': '0.00038', 'MHI': '0.54e9'}
     #read or template and modify it
-    if float(sys.version[:3]) < 3.9:
+    '''    
+    if sys.version_info[0][:3]) < 3.9:
         with import_res.open_text(templates, 'roc_galaxy_template.py') as tmp:
             module_template = tmp.readlines()
     else:
-        with import_res.files(templates).joinpath('roc_galaxy_template.py').open('r') as tmp:
-            module_template = tmp.readlines()
+    '''    
+    with import_res.files(templates).joinpath('roc_galaxy_template.py').open('r') as tmp:
+        module_template = tmp.readlines()
 
     galaxy_line = "galaxy_parameters = {"
     for key in galaxy_parameters:
@@ -194,7 +195,8 @@ NOTE:
 '''
 
 
-def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,main_directory):
+def beam_templates(beam_req, Galaxy_Template_In, max_degradation_factor,\
+                        main_directory):
     Galaxy_Template = copy.deepcopy(Galaxy_Template_In)
     # first we need to calculate the shift to  apply
     print(f"We are processing the template {Galaxy_Template['Name']} with {beam_req} beams across the major axis.")
@@ -757,7 +759,9 @@ NOTE:
 
 
 
-def extend_cube(cube_in, hdr_in, new_beam=0., Mask=[-1., -1.], rotation_pa=0.):
+def extend_cube(cube_in, hdr_in, new_beam=0., Mask=None, rotation_pa=0.):
+    if Mask is None:
+         Mask=[-1., -1.]
     cube = copy.deepcopy(cube_in)
     hdr = copy.deepcopy(hdr_in)
     Mask_Use = copy.deepcopy(Mask)
@@ -1367,10 +1371,11 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = [-1], regrid = True, track_noise = None):
+def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = None,\
+                        regrid = True, track_noise = None):
     Cube=copy.deepcopy(Cube_In)
     hdr=copy.deepcopy(hdr_In)
-    if np.sum(Mask) != -1:
+    if Mask is not None:
         Mask_Use = copy.deepcopy(Mask)
     #first calculate the required beams
     new_beam = []
@@ -1425,7 +1430,7 @@ def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = [-1],
             regrid_noise = cf.regrid_array(smoothed_noise, Out_Shape=((int(hdr['NAXIS2'] /  pixel_factor),int(hdr['NAXIS1'] / pixel_factor))))
             new_noise = np.std(regrid_noise)
             del regrid_noise
-        if np.sum(Mask) != -1:
+        if Mask is not None:
             Mask_Use =  cf.regrid_array(Mask, Out_Shape=((int(hdr['NAXIS3']),
             int(hdr['NAXIS2'] /  pixel_factor),int(hdr['NAXIS1'] / pixel_factor))))
     else:
@@ -1447,7 +1452,7 @@ def smooth_and_regrid(Cube_In,hdr_In,factor=1.5,update_header=True, Mask = [-1],
     del smoothed_cube
 
     return_list  = [regrid_cube,hdr]
-    if np.sum(Mask) != -1:
+    if Mask is not None:
         return_list.append(Mask_Use)
     if track_noise != None:
         return_list.append(track_noise*new_noise/initial_noise)

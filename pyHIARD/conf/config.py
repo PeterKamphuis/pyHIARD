@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-from multiprocessing import cpu_count
-import omegaconf
+#from multiprocessing import cpu_count
+import psutil
 from omegaconf import MISSING
 from typing import List, Optional
 from datetime import datetime
@@ -73,11 +73,15 @@ class ROC:
 
 @dataclass
 class General:
-    ncpu: int = cpu_count()-1
+    try:
+        ncpu: int = len(psutil.Process().cpu_affinity())
+    except AttributeError:
+        ncpu: int = psutil.cpu_count()
     main_directory: str = os.getcwd()
     tirific: str = "tirific"  # Command to call tirific
     sofia2: str = "sofia2"  # Command to call sofia 2
     multiprocessing: bool = True
+    debug: bool = False
     font_file: str = "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf"
 
 @dataclass

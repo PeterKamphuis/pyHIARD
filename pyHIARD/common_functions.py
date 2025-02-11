@@ -28,11 +28,12 @@ with warnings.catch_warnings():
     matplotlib.use('pdf')
     import matplotlib.pyplot as plt
     import matplotlib.font_manager as mpl_fm
-if float(sys.version[:3]) < 3.7:
-    import importlib_resources as import_res
-else:
-    import importlib.resources as import_res
 
+try:
+    import importlib.resources as import_res
+except ImportError:
+    import importlib_resources as import_res
+ 
 
 
 class SofiaFaintError(Exception):
@@ -71,7 +72,36 @@ class Proper_Dictionary(OrderedDict):
         if not done:
             print("----!!!!!!!!We were unable to add your key!!!!!!---------")
 #Function to convert column densities
+def ask_main_directory(current_directory,input_directory = 'NonE'):
+    while not os.path.isdir(input_directory):
+        if not input_directory == 'NonE':
+                print(f'''The directory {input_directory} does not exist.
+Please provide the correct directory''')
+        input_directory =  input(\
+            f'''Please provide the directory where to create the database.
+(default = {current_directory}):''')
+        if input_directory == '':
+            input_directory = current_directory
+    return input_directory
 
+def check_main_directory(cfg):
+    current_directory = os.getcwd()
+    if cfg.general.main_directory != current_directory:
+        correct_directory = get_bool(f'''!!! Your creation directory is not directory from which you started pyHIARD.
+Are you sure you want to create the database in:
+{cfg.general.main_directory}?   !!!!!!
+Please type yes or no (default = yes) ''',default = True)
+        if not correct_directory:
+            cfg.general.main_directory = ask_main_directory(current_directory)
+   
+    #Check the main directory exists
+    while not os.path.isdir(cfg.general.main_directory):
+        cfg.general.main_directory = ask_main_directory(current_directory,\
+                                        input_directory=cfg.general.main_directory )
+        #if we want the full database default we check that the user wants this
+    if cfg.general.main_directory[-1] != '/':
+        cfg.general.main_directory = f"{cfg.general.main_directory}/"
+    return cfg
 
 def create_directory(directory, base_directory, debug=False):
     split_directory = [x for x in directory.split('/') if x]
@@ -122,15 +152,8 @@ create_directory.__doc__ = f'''
 
 
 def check_input(cfg):
-    #Check the main directory exists
-    while not os.path.isdir(cfg.general.main_directory):
-        print(
-            f'The directory {cfg.general.main_directory} does not exist please provide the correct directory')
-        cfg.general.main_directory = input(
-            "Please provide the directory where to create the database :")
-    #if we want the full database default we check that the user wants this
-    if cfg.general.main_directory[-1] != '/':
-        cfg.general.main_directory = f"{cfg.general.main_directory}/"
+    cfg = check_main_directory(cfg)
+
     # if we only have a single cpu turn multiprocessing of
     if cfg.general.ncpu == 1:
         cfg.general.multiprocessing = False
@@ -318,7 +341,10 @@ check_input.__doc__ = f'''
 '''
 
 
-def unused_columndensity(levels, systemic=100., beam=[1., 1.], channel_width=1., column=False, arcsquare=False, solar_mass=False):
+def unused_columndensity(levels, systemic=100., beam=None, channel_width=1., \
+                column=False, arcsquare=False, solar_mass=False):
+    if beam is None:
+        beam=[1., 1.]
     #set solar_mass to indicate the output should be M_solar/pc**2 or if column = True the input is
     f0 = 1.420405751786E9  # Hz rest freq
     c = 299792.458  # light speed in km / s
@@ -412,7 +438,8 @@ def convertRADEC(RA, DEC, invert=False, colon=False):
 
 # function for converting kpc to arcsec and vice versa
 
-def convertskyangle(angle, distance=1., unit='arcsec', distance_unit='Mpc', physical=False):
+def convertskyangle(angle, distance=1., unit='arcsec', distance_unit='Mpc', \
+                        physical=False):
     try:
         _ = (e for e in angle)
     except TypeError:
@@ -678,7 +705,7 @@ def cut_input_cube(file_in, sizes, name='EMPTY', debug=False):
     hdr['CRPIX2'] = hdr['CRPIX2']-sizes[1][0]
     hdr['CRPIX3'] = hdr['CRPIX3']-sizes[0][0]
     try:
-        del Mask_Outer[0].header['HISTORY']
+        del hdr['HISTORY']
     except:
         pass
     if hdr['BITPIX'] < -32:
@@ -843,8 +870,9 @@ find_program.__doc__=f'''
 '''
 
 
-def get_beam_area_in_pixels(Template_Header, beam= [-1,-1.]):
-    if np.sum(beam) == -2.:
+def get_beam_area_in_pixels(Template_Header, beam= None):
+
+    if beam is None:
         beam = [Template_Header["BMAJ"],Template_Header["BMIN"]]
     #  https://science.nrao.edu/facilities/vla/proposing/TBconv
     beamarea=(np.pi*abs((beam[0]*beam[1])))/(4.*np.log(2.))
@@ -983,12 +1011,12 @@ def get_mask(Cube_In, factor = 5.2):
     Mask = np.array(Mask,dtype=int)
     return Mask
 
-def get_mean_flux(Cube_In,Mask=[-1]):
+def get_mean_flux(Cube_In,Mask = None):
 
     #As python is really the dumbest language ever invented there is different behaviour for passing np.arrays and lists
     Cube=copy.deepcopy(Cube_In)
     # To calculate the mean of all values in the mask is too sensitive to very small variations in the mask
-    if np.sum(Mask) != -1:
+    if Mask is not None:
         Cube[Mask < 0.5] = 0.
     # First we need to get a maximum flux value.
     Top_Cube = Cube[Cube > 0.9*np.max(Cube)]
@@ -1027,9 +1055,14 @@ def limit_memory(maxsize):
     soft, hard=resource.getrlimit(resource.RLIMIT_AS)
     resource.setrlimit(resource.RLIMIT_AS, (maxsize, hard))
 
-def load_text_model(filename, type = 'Tirific',  Variables = ['BMIN', 'BMAJ', 'BPA', 'RMS', 'DISTANCE', 'NUR', 'RADI', 'VROT',
-                 'Z0', 'SBR', 'INCL', 'PA', 'XPOS', 'YPOS', 'VSYS', 'SDIS', 'VROT_2',  'Z0_2', 'SBR_2',
-                 'INCL_2', 'PA_2', 'XPOS_2', 'YPOS_2', 'VSYS_2', 'SDIS_2', 'CONDISP', 'CFLUX', 'CFLUX_2'], package_file = True):
+def load_text_model(filename, type = 'Tirific', Variables = None ,\
+                        package_file = True):
+    if Variables is None:
+        Variables = ['BMIN', 'BMAJ', 'BPA', 'RMS', 'DISTANCE', 'NUR', 'RADI', \
+            'VROT','Z0', 'SBR', 'INCL', 'PA', 'XPOS', 'YPOS', 'VSYS', 'SDIS', \
+            'VROT_2',  'Z0_2', 'SBR_2','INCL_2', 'PA_2', 'XPOS_2', 'YPOS_2', \
+            'VSYS_2', 'SDIS_2', 'CONDISP', 'CFLUX', 'CFLUX_2']
+
     #First check that we have a proper type
     allowed_types=['tir', 'rc', 'bar', 'tirific', 'rotcur', 'barolo', 'fat']
     while type.lower() not in allowed_types:
@@ -1047,9 +1080,9 @@ please provide one of the following types {', '.join(allowed_types)}:''')
 
     ext={'tir': 'def', 'bar': 'txt', 'rc': 'rotcur'}
     if package_file:
-
-
-        if float(sys.version[:3]) < 3.9:
+        python_version = sys.version_info
+        if python_version[0] < 3. or \
+            (python_version[0] == 3. and python_version[1] < 9.):
             model=__import__(
                 f'pyHIARD.Resources.Cubes.{filename}', globals(), locals(), filename, 0)
             with import_res.open_text(model, f'{filename}.{ext[type]}') as tmp:
@@ -1175,8 +1208,15 @@ load_text_model.__doc__ =f'''
  '''
 #
 
-def plot_input(directory, Model,add_sbr = [0.,0.], Distance= 0., RHI = [0.,0.,0.] \
-                ,Title = 'EMPTY',WarpR=[0.,0.], font_file = 'empty.ttf'):
+def plot_input(directory, Model,add_sbr = None, Distance= 0., RHI = None \
+                ,Title = 'EMPTY',WarpR=None, font_file = 'empty.ttf'):
+
+    if add_sbr is None:
+        add_sbr = [0.,0.]
+    if RHI is None:
+        RHI = [0.,0.,0.]
+    if WarpR is None:
+        WarpR=[0.,0.]
     variables_to_plot = ['SBR', 'VROT','PA','INCL','SDIS','Z0']
     plots = len(variables_to_plot)
     units = {'SBR': 'SBR (Jy km s$^{-1}$ arcsec$^{-2}$)' ,

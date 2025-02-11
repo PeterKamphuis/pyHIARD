@@ -5,7 +5,7 @@
 # once a numerical list is set in length we can convert it to a numpy array in order to do operations faster.
 # first we import numpy
 from pyHIARD.constants import G_agc, H_0, c_kms, HI_rest_freq, c
-from multiprocessing import Pool, get_context,Process
+from multiprocessing import get_context
 from scipy.ndimage import gaussian_filter
 from scipy import integrate
 from scipy import interpolate
@@ -14,13 +14,10 @@ from astropy.io.fits.verify import VerifyWarning
 from astropy.io import fits
 
 import copy
-import gc
 import numpy as np
 import os
 import shutil
-import psutil
 import pyHIARD.common_functions as cf
-import resource
 import subprocess
 import sys
 import time
@@ -40,6 +37,8 @@ class TirificRunError(Exception):
     pass
 #Some errors
 
+class InputError(Exception):
+    pass
 
 class RunningError(Exception):
     pass
@@ -96,15 +95,15 @@ def AGC(cfg):
     if 'SNR' in cfg.agc.variables_to_vary:
         print(
             f"Varying the signal to noise ratio with: {','.join([str(e) for e in cfg.agc.snr])}.\n")
-    if 'Warp' in cfg.agc.variables_to_vary:
+    if 'Warp' in cfg.agc.variables_to_vary: 
         print(
-            f"Varying the theta angle of the angular momentum vector with: {','.join([str(e) for e in cfg.agc.warp[:][0]])}.\n")
+            f"Varying the theta angle of the angular momentum vector with: {','.join([str(e[0]) for e in cfg.agc.warp])}.\n")
         print(
-            f"Varying the phi angle of the angular momentum vector with: {','.join([str(e) for e in cfg.agc.warp[:][1]])}.\n")
+            f"Varying the phi angle of the angular momentum vector with: {','.join([str(e[1]) for e in cfg.agc.warp])}.\n")
     if 'Beam_Size' in cfg.agc.variables_to_vary:
         print(
             f"Varying the beam size with: {','.join([str(e) for e in cfg.agc.beam_size])}.\n")
-
+   
     # Let's just make 1 catalogue with everything we need and adjust
     # the fitting program to have this one catalogue as input
 
@@ -160,6 +159,8 @@ def AGC(cfg):
     Casa_Galaxies = []
     created = []
     rc_counter=0
+    next_ucmodel = 6
+    next_casamodel = 5
     for base in range(len(cfg.agc.base_galaxies)):
         base_defined = False
         # We want to keep the center constant per base galaxy, for easy comparison as well as to be able to investigate how center determination is affected
@@ -210,17 +211,24 @@ def AGC(cfg):
                     Current_Galaxy = Base_Galaxy(cfg.agc.base_galaxies[base])
                 if cfg.agc.variables_to_vary[ix] == 'Inclination':
                     Current_Galaxy.Inclination = cfg.agc.inclination[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'PA': Current_Galaxy.PA = cfg.agc.pa[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'PA': 
+                    Current_Galaxy.PA = cfg.agc.pa[jx]
                 elif cfg.agc.variables_to_vary[ix] == 'Flare':
                     if Current_Galaxy.Flare == 'Flare':
                         Current_Galaxy.Flare = "No_Flare"
                     else:
                         Current_Galaxy.Flare = "Flare"
-                elif cfg.agc.variables_to_vary[ix] == 'Warp': Current_Galaxy.Warp = [cfg.agc.warp[jx][0], cfg.agc.warp[jx][1]]
-                elif cfg.agc.variables_to_vary[ix] == 'Beams': Current_Galaxy.Beams = cfg.agc.beams[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'SNR': Current_Galaxy.SNR = cfg.agc.snr[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Channelwidth': Current_Galaxy.Channelwidth = cfg.agc.channelwidth[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Beam_Size': Current_Galaxy.Res_Beam = [cfg.agc.beam_size[jx][0], cfg.agc.beam_size[jx][1], cfg.agc.beam_size[jx][2]]
+                elif cfg.agc.variables_to_vary[ix] == 'Warp': 
+                    Current_Galaxy.Warp = [cfg.agc.warp[jx][0], cfg.agc.warp[jx][1]]
+                elif cfg.agc.variables_to_vary[ix] == 'Beams': 
+                    Current_Galaxy.Beams = cfg.agc.beams[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'SNR': 
+                    Current_Galaxy.SNR = cfg.agc.snr[jx]
+                    
+                elif cfg.agc.variables_to_vary[ix] == 'Channelwidth': 
+                    Current_Galaxy.Channelwidth = cfg.agc.channelwidth[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Beam_Size': 
+                    Current_Galaxy.Res_Beam = [cfg.agc.beam_size[jx][0], cfg.agc.beam_size[jx][1], cfg.agc.beam_size[jx][2]]
                 elif cfg.agc.variables_to_vary[ix] == 'Arms':
                     if Current_Galaxy.Arms == 'Arms':
                         Current_Galaxy.Arms = "No_Arms"
@@ -231,10 +239,14 @@ def AGC(cfg):
                         Current_Galaxy.Bar = "No_Bar"
                     else:
                         Current_Galaxy.Bar = "Bar"
-                elif cfg.agc.variables_to_vary[ix] == 'Radial_Motions': Current_Galaxy.Radial_Motions = cfg.agc.radial_motions[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Dispersion': Current_Galaxy.Dispersion = cfg.agc.dispersion[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Mass': Current_Galaxy.Mass = cfg.agc.masses[jx]
-                elif cfg.agc.variables_to_vary[ix] == 'Base': pass
+                elif cfg.agc.variables_to_vary[ix] == 'Radial_Motions':
+                    Current_Galaxy.Radial_Motions = cfg.agc.radial_motions[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Dispersion': 
+                    Current_Galaxy.Dispersion = cfg.agc.dispersion[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Mass': 
+                    Current_Galaxy.Mass = cfg.agc.masses[jx]
+                elif cfg.agc.variables_to_vary[ix] == 'Base': 
+                    pass
                 else: print("This is not a supported parameter")
                 Current_Galaxy.Res_Beam[0:1] = np.sort(
                     Current_Galaxy.Res_Beam[0:1])
@@ -243,17 +255,28 @@ def AGC(cfg):
 
                 number_models += 1
 
-                if ((cfg.agc.corruption_method == 'Casa_5' or cfg.agc.corruption_method == 'Tres')
-                    and (int(number_models/5.) == number_models/5.)) \
+                if (cfg.agc.corruption_method == 'Casa_5' and \
+                    int(number_models/5.) == number_models/5.) or\
+                    (cfg.agc.corruption_method == 'Tres' and \
+                    number_models == next_casamodel)\
                     or (cfg.agc.corruption_method == 'Casa_Sim'):
                         setattr(Current_Galaxy, "Corruption", "Casa_Sim")
+                        if cfg.agc.corruption_method == 'Tres':
+                            if next_ucmodel == number_models:
+                                next_ucmodel += 1
+                            next_casamodel = int(number_models+5+np.random.randint(5))
                 elif cfg.agc.corruption_method == 'No_Corrupt' or \
-                    (cfg.agc.corruption_method == 'Tres'
-                    and int((number_models+1)/5.) == (number_models+1.)/5.):
+                    (cfg.agc.corruption_method == 'Tres' \
+                    and number_models == next_ucmodel):
+                    if not (cfg.agc.variables_to_vary[ix] == 'SNR'):
                         setattr(Current_Galaxy, "Corruption", "No_Corrupt")
+                        next_ucmodel = int(number_models+5+np.random.randint(5))
+                    else:
+                        setattr(Current_Galaxy, "Corruption", "Gaussian")
+                        next_ucmodel += 1                     
                 else:
                     setattr(Current_Galaxy, "Corruption", "Gaussian")
-
+                
                 Achieved = copy.deepcopy(Current_Galaxy)
                 #Check if galaxy already exists
                 name = set_name(Current_Galaxy)
@@ -719,7 +742,8 @@ NOTE:
 '''
 
 
-def create_arms(velocity, Radii, disk_brightness, disk=1, WarpStart=-1, Bar="No_Bar"):
+def create_arms(velocity, Radii, disk_brightness, disk=1, WarpStart=-1,\
+                    Bar="No_Bar"):
     '''Create the spiral Arms'''
     if WarpStart == -1: WarpStart = Radii[-1]
     max_vrot = np.max(velocity)
@@ -965,7 +989,8 @@ NOTE:
 # Thi function creates the flarin g which is based on the rotation curve and dispersion according Puche et al. 1992
 
 
-def create_flare(Radii, velocity, dispersion, flare, Max_Rad, sub_ring, distance=1.):
+def create_flare(Radii, velocity, dispersion, flare, Max_Rad, sub_ring, \
+                    distance=1.):
     '''This function creates the scale height and  dispersion profiles according to Puche et al. 1992'''
     #make sure we have arrays so we can do numerical operations
     Radii = np.array(Radii)
@@ -1080,16 +1105,12 @@ def create_template_fits(directory):
     dummy.close()
 
 # A function for varying the PA and inclination as function of radius
-
-
-def create_warp(Radii,
-                PA,
-                inclination,
-                warp_change,
-                warp_radii,
-                sub_ring,
-                disk=1):
-    '''A function for varying the PA and inclination as function of radius'''
+def create_warp(Radii,PA,inclination,warp_change,
+                warp_radii,disk=1,debug=False):
+    if debug:
+        print(f'''We are starting create_warp.
+warp_change = {warp_change}
+warp_radii = {warp_radii}''')
     Radii = np.array(Radii)
     if ((np.sum(warp_change) != 0) and (warp_radii[0] < warp_radii[1])).all():
         # First we need to obtain the vector that constitutes the inner area
@@ -1210,9 +1231,8 @@ INPUTS:
     PA = base PA
     inclination = base inclination
     warp_change = change in the angular momentum vector
-    warp_radii = ??
-    sub_ring = the sub rings
-
+    warp_radii = start and end radius of the warp vecotor input.
+   
 OPTIONAL INPUTS:
     disk = 1
     Are we creating in the approaching (1) or receding side (2)
@@ -2122,18 +2142,10 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
         Current_Galaxy.Res_Beam[0]*Current_Galaxy.Beams/3600.)
     Distance=(Rad_HI[0]/(np.tan(Sky_Size/2.)))/1000.
 
-    #print("The Distance is {:5.2f} Mpc".format(Distance))
+  
     vsys=Distance*H_0
-    #if cfg.agc.corruption_method == 'Gaussian' or (cfg.agc.corruption_method == 'Casa_5' and (int(number_models/5.) != number_models/5.)):
-    #    RAdeg=np.random.uniform()*360
-    #    DECdeg=(np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
-    #else:
-    #    RAdeg = np.random.uniform()*360
-    #    DECdeg=-60
-    #    while DECdeg < -20.:
-    #        DECdeg = (np.arccos(2*np.random.uniform()-1)*(360./(2.*np.pi)))-90
-    RAhr, DEChr=cf.convertRADEC(*Current_Galaxy.Coord)
-    #print("It's central coordinates are RA={} DEC={} vsys={} km/s".format(RAhr,DEChr,vsys))
+    # RAhr, DEChr=cf.convertRADEC(*Current_Galaxy.Coord)
+    # print("It's central coordinates are RA={} DEC={} vsys={} km/s".format(RAhr,DEChr,vsys))
     # Write them to the template
     for ext in ['', '_2']:
         Template[f"XPOS{ext}"]=f"XPOS{ext}= {Current_Galaxy.Coord[0]}"
@@ -2153,8 +2165,12 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     # the warp should start at the edge of the optical radius which is the HI scale length/0.6
     # which are about ~ 4 * h_r
     WarpStart=4.*sclength
-    setattr(Achieved, "Warp_Radius", WarpStart)
     WarpEnd=Rad[np.where(SBRprof >= 4.98534620064e-05)[0][-1]]
+    #If we demand a Warp but it is too small to take effect we lower the start radius
+    if np.sum(Current_Galaxy.Warp) != 0. and (WarpEnd-WarpStart) < 0.1*WarpEnd:
+        WarpStart = 0.95*WarpEnd
+        WarpEnd = 1.1*WarpEnd
+    setattr(Achieved, "Warp_Radius", WarpStart)
     # Write it to the Template
     Template["VROT"]="VROT = "+" ".join(str(e) for e in Vrot)
     Template["VROT_2"]="VROT_2 = "+" ".join(str(e) for e in Vrot)
@@ -2163,15 +2179,19 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
                                    Current_Galaxy.Flare, Rad_HI[0], sub_ring, distance = Distance)
 
     # Finally we need to set the warping
-    PA, inc, phirings=create_warp(Rad, Current_Galaxy.PA, Current_Galaxy.Inclination, Current_Galaxy.Warp, [
-                                  WarpStart, WarpEnd], sub_ring)
+    PA, inc, phirings=create_warp(Rad, Current_Galaxy.PA, Current_Galaxy.Inclination,\
+                                   Current_Galaxy.Warp, [WarpStart, WarpEnd],
+                                   debug=cfg.general.debug)
     if cfg.agc.symmetric:
-        PA_2, inc_2, phirings_2=create_warp(Rad, Current_Galaxy.PA, Current_Galaxy.Inclination, Current_Galaxy.Warp, [
-                                            WarpStart, WarpEnd], sub_ring, disk = 2)
+        PA_2, inc_2, phirings_2=create_warp(Rad, Current_Galaxy.PA,\
+            Current_Galaxy.Inclination, Current_Galaxy.Warp,\
+            [WarpStart, WarpEnd], disk = 2)
     else:
         # we want an assymetric warp so we redo the PA and inc but swap the variation
-        PA_2, inc_2, phirings_2=create_warp(Rad, Current_Galaxy.PA, Current_Galaxy.Inclination, [
-                                            Current_Galaxy.Warp[0]-Current_Galaxy.Warp[1], Current_Galaxy.Warp[1]/2.+Current_Galaxy.Warp[0]/2.], [WarpStart, WarpEnd], sub_ring, disk = 2)
+        PA_2, inc_2, phirings_2=create_warp(Rad, Current_Galaxy.PA, \
+            Current_Galaxy.Inclination, [Current_Galaxy.Warp[0]-Current_Galaxy.Warp[1],\
+            Current_Galaxy.Warp[1]/2.+Current_Galaxy.Warp[0]/2.],\
+            [WarpStart, WarpEnd], disk = 2)
 
     #If we want Radial Motions then they need to be inserted
     if Current_Galaxy.Radial_Motions != 0.:
@@ -2486,7 +2506,8 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
-def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax,font_file='empty.ttf'):
+def plot_RC(set_done,Mass,Rad,Vrot,colors,max_rad,sub_ring,ax,\
+                font_file='empty.ttf'):
     '''dd the RC to the overview plot and return updated tracker'''
     if set_done[0] == 1024:
         set_done= [Mass]
@@ -2569,7 +2590,7 @@ def set_name(Current_Galaxy):
     #name=""
     #for key,value in Current_Galaxy.items:
     name=f"Mass{float(Current_Galaxy.Mass):.1e}-i{Current_Galaxy.Inclination:.1f}d{Current_Galaxy.Dispersion[0]:.1f}-{Current_Galaxy.Dispersion[1]:.1f}"
-    name=f"{name}pa{Current_Galaxy.PA:.1f}w{Current_Galaxy.Warp[0]:.1f}-{Current_Galaxy.Warp[1]:.1f}-"
+    name=f"{name}pa{Current_Galaxy.PA:.1f}w{Current_Galaxy.Warp[0]:.2f}-{Current_Galaxy.Warp[1]:.2f}-"
     name=f"{name}{Current_Galaxy.Flare}-ba{Current_Galaxy.Beams:.1f}SNR{Current_Galaxy.SNR:.1f}"
     name=f"{name}bm{Current_Galaxy.Res_Beam[0]:.1f}-{Current_Galaxy.Res_Beam[1]:.1f}ch{Current_Galaxy.Channelwidth:.1f}"
     name=f"{name}-{Current_Galaxy.Arms}-{Current_Galaxy.Bar}-rm{Current_Galaxy.Radial_Motions:.1f}"

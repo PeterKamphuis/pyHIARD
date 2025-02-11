@@ -1,14 +1,20 @@
 # -*- coding: future_fstrings -*-
+try:
+    from importlib.metadata import version
+    from importlib.util import find_spec
+except ImportError:
+    # Try backported to PY<37 `importlib_resources`.
+    # For Py<3.9 files is not available
+    from importlib_metadata import version 
 
-import pkg_resources
 import os
 import subprocess
 
 def report_version():
     # Distutils standard  way to do version numbering
     try:
-        __version__ = pkg_resources.require("pyHIARD")[0].version
-    except pkg_resources.DistributionNotFound:
+        __version__ = version("pyHIARD")
+    except:
         __version__ = "dev"
     # perhaps we are in a github with tags; in that case return describe
     path = os.path.dirname(os.path.abspath(__file__))
@@ -37,9 +43,15 @@ def report_version():
 
 __version__ = report_version()
 
-packages = [x.project_name for x in pkg_resources.require("pyHIARD")]
+try:
+    if find_spec('casatasks') is not None:
+        __casa_max__ =  'OK'
+    else:
+        __casa_max__ =  'Smaller'
+except:
+    try:
+        import casatasks
+        __casa_max__ =  'OK'
+    except:
+        __casa_max__ =  'Smaller'
 
-if 'casatasks' in packages:
-    __casa_max__ =  'OK'
-else:
-    __casa_max__ =  'Smaller'

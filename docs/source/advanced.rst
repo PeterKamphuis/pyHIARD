@@ -1,8 +1,8 @@
 Setting your fit preferences through a yaml file.
-=================================
+=================================================
 
 Introduction
---------
+-------------
 
 Within pyHIARD it is possible to completely setup your own artificial input galaxy and to build variations on top of that. In principle any type of artificial galaxy can be build based on a set of input parameters.
 In principle it is also possible to add any galaxy to the real galaxies although for now any addition on the available galaxies requires hard coding the package.
@@ -15,7 +15,8 @@ All these options can also be called directly from the command line when calling
 
 
 Individual Keywords
---------
+-------------------
+
 *No specifier*
 
   **print_examples**:
@@ -39,7 +40,8 @@ Individual Keywords
 
 
 General Settings
---------
+-----------------
+
 *Specified with general*
 
   **main_directory**:
@@ -88,7 +90,7 @@ General Settings
 
 
 The Artificial Galaxy Catalogue (AGC) keywords
---------
+-----------------------------------------------
 *Specified with agc*
 
   **enable**:
@@ -135,7 +137,7 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
         -Casa_Sim: CASA's simulation method is used to invert the initial artificial galaxy to the uv-plane and then converted back to the image plane and cleaned. Cubes names will end in '_CS'.
 
-        -Tres: Mix the the three corruption methods. If set pyHIARD produces three Gaussian corrupted galaxies, one uncorrupted, and one Casa corrupted galaxy.
+        -Tres: Mix the the three corruption methods. If set pyHIARD produces x Gaussian corrupted galaxies, one uncorrupted, and one Casa corrupted galaxy. Here x is a random number between 5-10 to avoid synchronising with a specific type of galaxy. The uncorrupted galaxies will skip galaxies with variations in SNR until a galaxy without SNR variation is produced.
 
         -Casa_5: As CASA's simulation method is is expensive this option allows the user to only simulate every fifth artificial galaxy.
 
@@ -217,7 +219,8 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
 
 The Real Observations Catalogue (ROC) keywords
---------
+----------------------------------------------
+
 *Specified with roc*
 
   **enable**:
