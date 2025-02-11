@@ -91,7 +91,7 @@ class General:
         ncpu: int = psutil.cpu_count()
     main_directory: str = os.getcwd()
     tirific: str = "tirific"  # Command to call tirific
-    sofia2: str = "sofia2"  # Command to call sofia 2
+    sofia2: str = "sofia"  # Command to call sofia 2
     multiprocessing: bool = True
     debug: bool = False
     font_file: str = "/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf"
