@@ -10,15 +10,15 @@ Support/#*
 
 # Masks #
 #########
-pyHIARD/Resources/Cubes/Circinus/*Circinus*.fits
-pyHIARD/Resources/Cubes/M_83/*M_83*.fits
-pyHIARD/Resources/Cubes/NGC_2903/*NGC_2903*.fits
-pyHIARD/Resources/Cubes/NGC_3198/*NGC_3198*.fits
-pyHIARD/Resources/Cubes/NGC_5023/*NGC_5023*.fits
-pyHIARD/Resources/Cubes/UGC_7774/*UGC_7774*.fits
-pyHIARD/Resources/Cubes/UGC_1281/*UGC_1281*.fits
-pyHIARD/Resources/Cubes/NGC_5204/*NGC_5204*.fits
-pyHIARD/Resources/Cubes/ESO_223_G009/*ESO_223_G009*.fits
+pyHIARD/Resources/Cubes/Circinus/Circinus.fits
+pyHIARD/Resources/Cubes/M_83/M_83.fits
+pyHIARD/Resources/Cubes/NGC_2903/NGC_2903.fits
+pyHIARD/Resources/Cubes/NGC_3198/NGC_3198.fits
+pyHIARD/Resources/Cubes/NGC_5023/NGC_5023.fits
+pyHIARD/Resources/Cubes/UGC_7774/UGC_7774.fits
+pyHIARD/Resources/Cubes/UGC_1281/UGC_1281.fits
+pyHIARD/Resources/Cubes/NGC_5204/NGC_5204.fits
+pyHIARD/Resources/Cubes/ESO_223_G009/ESO_223_G009.fits
 
 #Uniform Def files#
 pyHIARD/Resources/Cubes/Circinus/Circinus_uniform.def
