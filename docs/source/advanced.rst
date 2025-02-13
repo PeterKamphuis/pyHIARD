@@ -58,15 +58,9 @@ General Settings
 
   **sofia2**:
 
-    *str, optional, default = sofia2*
+    *str, optional, default = sofia*
 
     Command to call sofia 2 from the python subprocess
-
-  **tirific**:
-
-      *str, optional, default = tirific*
-
-      Command used to call tirific from the python subprocess
 
   **ncpu**:
 
