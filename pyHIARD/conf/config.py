@@ -33,7 +33,7 @@ class AGC:
     corruption_method: str = 'Tres'
     # The channel dependency
     # 'Options are independent, sinusoidal, hanning
-    channel_dependency: str = 'sinusoidal'
+    channel_dependency: str = 'independent'
     retain_unconvolved_model: bool = False
     #Produce and retain the simobserve graphics. This will crash the code when running in screen as it needs to connect to the local host
     sim_observe_graphics: bool = False
@@ -79,7 +79,7 @@ class ROC:
     minimum_degradation_factor: float = 1.25
     max_degradation_factor: float = 1.6
     # This is the maximum difference between the shifted template and the final template. If the shift factor is bigger we will smooth and regrid the template before the noise calculations.
-    #A lower number  is for speed and low memory usage, a high number provides beter integrateion between the noise and the template. If lower than minimum_degradation_factor it will be set to the minimum_degradation_factor
+    #A lower number  is for speed and low memory usage, a high number provides beter integration between the noise and the template. If lower than minimum_degradation_factor it will be set to the minimum_degradation_factor
     snr: List = field(default_factory=lambda: [0.5, 1., 3.])
 
 
