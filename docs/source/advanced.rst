@@ -58,15 +58,9 @@ General Settings
 
   **sofia2**:
 
-    *str, optional, default = sofia2*
+    *str, optional, default = sofia*
 
     Command to call sofia 2 from the python subprocess
-
-  **tirific**:
-
-      *str, optional, default = tirific*
-
-      Command used to call tirific from the python subprocess
 
   **ncpu**:
 
@@ -105,25 +99,26 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
       If true the database checks whether the base galaxies already has existing variations of the base galaxies and removes all these directories.
       If false, the code checks whether existing directories already have the final convolved cube and skips the galaxy if so.
+      In case this is set to False and a directory is found but not the final product an error will be raised.
+
 
   **base_galaxies**:
 
-      *integer List, optional, default = [1,2,3,4,5]*
+      *integer List, optional, default = [1,2,3,4,5,6]*
 
       An integer list that selectes the base for the artificial galaxies. pyHIARD has 5 standard base galaxies for the AGC. These can be listed by running pyHIARD print_bases=True.
-      Selecting 6 will allow the user to create their own base galaxy through answering questions about the input parameters.
+      Selecting any number not in the range 1-6 will allow the user to create their own base galaxy through answering questions about the input parameters.
 
   **inhomogenous**:
 
       *bool, optional, default = True*
-
       If set to True random variation on top of the cylindrically symmetric disks will be created.
 
   **symmetric**:
 
       *bool, optional, default = False*
 
-      If set to true the approaching and receding side of the galaxies will differ in their warping and surface brightness profiles
+      If set to true the approaching and receding side of the galaxies will not differ in their warping and surface brightness profiles
 
   **corruption_method**:
 
@@ -143,7 +138,7 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
   **channel_dependency**:
 
-    *str, optional, default = sinusoidal*
+    *str, optional, default = independent*
 
     How the channels of the input cubes overlap. Possible options are independent, sinusoidal, hanning.
 
@@ -211,9 +206,9 @@ The Artificial Galaxy Catalogue (AGC) keywords
 
   **beam_size**:
 
-      *float List, optional, default = [[5.,5.]]*
+      *float List, optional, default = [[5.,5.,0.]]*
 
-      List of variations of the resolution of the synthesized beam in arcsec
+      List of variations of the resolution of the synthesized beam in arcsec. Each element should be a list consisting of [major FWHM, minor FWHm, beam BPA] 
 
 
 
@@ -245,7 +240,7 @@ The Real Observations Catalogue (ROC) keywords
 
       *bool, optional, default = False*
 
-      When a template does not come with the distribution pyHIARD in principle attempts to download and store it whenever it is requested.
+      When a template is not included with the distribution pyHIARD in principle attempts to download and store it whenever it is requested.
       However for installations where the internet connection can be unstable this switch allows to download and store all missing templates.
       The code will exit once the templates are downloaded and stored.
 
@@ -254,7 +249,8 @@ The Real Observations Catalogue (ROC) keywords
       *bool, optional, default = False*
 
       If true the database checks whether the base galaxies already has existing variations of the base galaxies and removes all these directories.
-      If false, the code checks whether existing directories already have the final convolved cube and skips the galaxy if so.
+      If false, the code checks whether existing directories already have the final convolved cube and skips the galaxy if so. 
+      In case this is set to False and a directory is found but not the final product an error will be raised.
 
   **base_galaxies**:
 
@@ -280,7 +276,7 @@ The Real Observations Catalogue (ROC) keywords
 
   **snr**:
 
-      *float List, optional, default = [1.,3.]*
+      *float List, optional, default = [0.5,1.,3.]*
 
       List of variations of the base signal to noise ration. This is the average SNR over the whole galaxy. -1 indicates the original ratio.
 

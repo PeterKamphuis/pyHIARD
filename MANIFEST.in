@@ -8,10 +8,13 @@ recursive-include pyHIARD/Templates *.fits
 recursive-include pyHIARD/Templates *.def
 recursive-include pyHIARD/Resources/Cubes/Circinus/ *.py
 recursive-include pyHIARD/Resources/Cubes/Circinus/ *.rotcur
+include pyHIARD/Resources/Cubes/Circinus/Circinus_Original.fits
 recursive-include pyHIARD/Resources/Cubes/M_83/ *.py
 recursive-include pyHIARD/Resources/Cubes/M_83/ *.rotcur
+include pyHIARD/Resources/Cubes/M_83/M_83_Original.fits
 recursive-include pyHIARD/Resources/Cubes/ESO_223_G009/ *.py
 recursive-include pyHIARD/Resources/Cubes/ESO_223_G009/ *.rotcur
+include pyHIARD/Resources/Cubes/ESO_223_G009/ESO_223_G009/_Original.fits
 recursive-include pyHIARD/Resources/Cubes/NGC_2903/ *.py
 recursive-include pyHIARD/Resources/Cubes/NGC_2903/ *.def
 recursive-include pyHIARD/Resources/Cubes/NGC_3198/ *.py
