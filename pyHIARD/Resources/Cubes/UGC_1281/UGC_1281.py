@@ -1,6 +1,6 @@
 
 
-from pyHIARD.common_functions import select_emission
+from pyHIARD.common_functions import select_emission,download_cube
 from astropy.io import fits
 import os
 import copy
