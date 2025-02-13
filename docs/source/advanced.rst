@@ -245,8 +245,9 @@ The Real Observations Catalogue (ROC) keywords
 
       *bool, optional, default = False*
 
-      When a template does not come with the distribution pyHIARD in principle attempt to download and store it whenever it is requested.
+      When a template does not come with the distribution pyHIARD in principle attempts to download and store it whenever it is requested.
       However for installations where the internet connection can be unstable this switch allows to download and store all missing templates.
+      The code will exit once the templates are downloaded and stored.
 
   **delete_existing**
 

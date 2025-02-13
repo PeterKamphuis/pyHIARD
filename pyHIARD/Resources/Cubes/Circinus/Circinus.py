@@ -1,12 +1,13 @@
 
 
-from pyHIARD.common_functions import download_cube,create_masks,select_emission
+from pyHIARD.common_functions import select_emission
 from astropy.io import fits
 import os
 
 
 galaxy_parameters = {'Galaxy': 'Circinus', 'DHIkpc': 59.52 ,'Distance': 4.2, 'Original_Model': 'RC', 'RMS': 0.012 , 'MHI':  10**9.83  }
-
+class PackageError(Exception):
+    pass
 def get_data(work_dir,sofia_call='sofia2'):
     '''Download the data for this galaxy and prepare the cube for usage'''
     succes= False
@@ -14,13 +15,17 @@ def get_data(work_dir,sofia_call='sofia2'):
     try:
         Cube = fits.open(f"{outdir}/Circinus.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
     except FileNotFoundError:
-        url = 'https://www.atnf.csiro.au/research/LVHIS/data/LVHIS-cubes/LVHIS066.na.icln.fits'
+        #url = 'https://www.atnf.csiro.au/research/LVHIS/data/LVHIS-cubes/LVHIS066.na.icln.fits'
+        url = ''
         name = 'Circinus'
         sizes=[[3,96],[110,400],[140,320]]
         try:
             Cube = fits.open(f"{outdir}/{name}_Original.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
         except:
-            Cube = download_cube(f'{name}_Original',url,sizes,outdir)
+            #Cause LVHIS is somehow not available anymore
+            raise PackageError(f'''This file should been downloaded with the install.
+Please list an issue on the Github.''')
+            #Cube = download_cube(f'{name}_Original',url,sizes,outdir)
         Clean_Cube,hdr = select_emission(Cube[0].data,Cube[0].header,name,work_dir,sofia_call=sofia_call)
         fits.writeto(f"{outdir}/{name}.fits",Clean_Cube,hdr,overwrite = False)
         Cube[0].data=Clean_Cube

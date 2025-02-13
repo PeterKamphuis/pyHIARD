@@ -10,7 +10,6 @@ from scipy.ndimage import gaussian_filter
 from scipy import integrate
 from scipy import interpolate
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
-from astropy.io.fits.verify import VerifyWarning
 from astropy.io import fits
 
 import copy
@@ -652,8 +651,8 @@ def build_sbr_prof(Current_Galaxy, symmetric=False, no_template=False):
     Sigma[0:4, 0] = (Sigma[0:4, 0]+Sigma[0:4, 1])/2.
     Sigma[0:4, 1] = Sigma[0:4, 0]
     # get the HI Mass in the profile
-    OutHIMass = integrate.simps(
-        (np.pi * a) * Sigma[:, 0], a) + integrate.simps((np.pi * a) * Sigma[:, 1], a)
+    OutHIMass = integrate.simpson(
+        (np.pi * a) * Sigma[:, 0], x=a) + integrate.simpson((np.pi * a) * Sigma[:, 1], x=a)
     # And check that it matches the required HI mas within 5%
     counter = 1
     while np.absolute(MHI - OutHIMass) > MHI * 0.02:
@@ -672,8 +671,8 @@ def build_sbr_prof(Current_Galaxy, symmetric=False, no_template=False):
             Sigma[:, i] = new[i] * Sigma[:, i]
         Sigma[0:4, 0] = (Sigma[0:4, 0]+Sigma[0:4, 1])/2.
         Sigma[0:4, 1] = Sigma[0:4, 0]
-        OutHIMass = integrate.simps(
-            (np.pi * a) * Sigma[:, 0], a) + integrate.simps((np.pi * a) * Sigma[:, 1], a)
+        OutHIMass = integrate.simpson(
+            (np.pi * a) * Sigma[:, 0], x=a) + integrate.simpson((np.pi * a) * Sigma[:, 1], x=a)
         counter += 1
     #print("The requested HI mass = {:.2e} and the retrieved HI mass = {:.2e}".format(MHI, OutHIMass))
     # final HI radial distribution by renormalisation
