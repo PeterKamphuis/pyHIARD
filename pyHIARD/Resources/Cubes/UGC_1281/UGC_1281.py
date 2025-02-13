@@ -17,15 +17,16 @@ def get_data(work_dir,sofia_call='sofia2'):
     try:
         Cube = fits.open(f"{outdir}/UGC_1281.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
     except FileNotFoundError:
-        url = ''
+        url = 'https://github.com/PeterKamphuis/pyHIARD/raw/refs/heads/main/pyHIARD/Resources/Cubes/UGC_1281/UGC_1281_Original.fits'
         name = 'UGC_1281'
-        sizes=[[12,57],[180,350],[190,330]]
+        #sizes=[[12,57],[180,350],[190,330]]
+        sizes = [[0,-1],[0,-1],[0,-1]]
         try:
-            print(f"{outdir}/{name}_Original.fits")
             Cube = fits.open(f"{outdir}/{name}_Original.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
         except:
-            raise PackageError(f'''This file should been downloaded with the install.
-Please list an issue on the Github.''')
+            #raise PackageError(f'''This file should been downloaded with the install.
+#Please list an issue on the Github.''')
+            Cube = download_cube(f'{name}_Original',url,sizes,outdir)
         Clean_Cube,hdr = select_emission(Cube[0].data,Cube[0].header,name,work_dir,sofia_call=sofia_call)
         fits.writeto(f"{outdir}/{name}.fits",Clean_Cube,hdr,overwrite = False)
         Cube[0].data=Clean_Cube

@@ -1,6 +1,6 @@
 
 
-from pyHIARD.common_functions import select_emission,cut_input_cube
+from pyHIARD.common_functions import select_emission,download_cube
 from astropy.io import fits
 import os
 
@@ -15,23 +15,24 @@ def get_data(work_dir,sofia_call='sofia2'):
         Cube = fits.open(f"{outdir}/M_83.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
     except FileNotFoundError:
         #url = 'https://www.atnf.csiro.au/research/LVHIS/data/LVHIS-cubes/LVHIS053.na.icln.fits'
-        url = ''
+        url = 'https://github.com/PeterKamphuis/pyHIARD/raw/refs/heads/main/pyHIARD/Resources/Cubes/M_83/M_83_Original.fits'
         name = 'M_83'
-        sizes=[[11,104],[50,550],[50,500]]
+        #sizes=[[11,104],[50,550],[50,500]]
+        sizes = [[0,-1],[0,-1],[0,-1]]
         try:
             Cube = fits.open(f"{outdir}/{name}_Original.fits",\
                 uint = False, do_not_scale_image_data=True,ignore_blank = True)
         except:
             #Cause LVHIS is somehow not available anymore
-            raise PackageError(f'''This file should been downloaded with the install.
-Please list an issue on the Github.''')
-            #Cube = download_cube(f'{name}_Original',url,sizes,outdir)
+            #raise PackageError(f'''This file should been downloaded with the install.
+#Please list an issue on the Github.''')
+            Cube = download_cube(f'{name}_Original',url,sizes,outdir)
         Clean_Cube,hdr = select_emission(Cube[0].data,Cube[0].header,name,work_dir,sofia_call=sofia_call)
         fits.writeto(f"{outdir}/{name}.fits",Clean_Cube,hdr,overwrite = False)
         Cube[0].data=Clean_Cube
         Cube[0].header=hdr
-        if url != '':
-            os.system(f"rm -f {outdir}/{name}_Original.fits")
+        #if url != '':
+        #    os.system(f"rm -f {outdir}/{name}_Original.fits")
         del Clean_Cube
         del hdr
     #place_disclaimer(dir_to_place)
