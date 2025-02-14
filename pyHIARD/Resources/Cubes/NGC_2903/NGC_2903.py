@@ -14,7 +14,7 @@ def get_data(work_dir,sofia_call='sofia2'):
     try:
         Cube = fits.open(f"{outdir}/NGC_2903.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
     except FileNotFoundError:
-        url = 'https://github.com/PeterKamphuis/pyFAT-astro/raw/main/pyFAT_astro/Installation_Check/NGC_2903.fits'
+        url = 'https://github.com/PeterKamphuis/pyHIARD/raw/refs/heads/main/pyHIARD/Resources/Cubes/NGC_2903/NGC_2903_Original.fits'
         name = 'NGC_2903'
         sizes=[[0,-1],[0,-1],[0,-1]]
         try:
@@ -25,8 +25,8 @@ def get_data(work_dir,sofia_call='sofia2'):
         fits.writeto(f"{outdir}/{name}.fits",Clean_Cube,hdr,overwrite = False)
         Cube[0].data=Clean_Cube
         Cube[0].header=hdr
-        if url != '':
-            os.system(f"rm -f {outdir}/{name}_Original.fits")
+        #if url != '':
+        #    os.system(f"rm -f {outdir}/{name}_Original.fits")
         del Clean_Cube
         del hdr
     #place_disclaimer(dir_to_place)

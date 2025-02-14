@@ -16,23 +16,25 @@ def get_data(work_dir,sofia_call='sofia2'):
     try:
         Cube = fits.open(f"{outdir}/ESO_223_G009.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
     except FileNotFoundError:
-        #url = 'https://www.atnf.csiro.au/research/LVHIS/data/LVHIS-cubes/LVHIS071.na.icln.fits'
-        url = ''
+        #url = 'https://www.atnf.csiro.au/research/LVHIS/data/LVHIS-cubes/LVHIS071.na.icln.fits
+        url = 'https://github.com/PeterKamphuis/pyHIARD/raw/refs/heads/main/pyHIARD/Resources/Cubes/ESO_223_G009/ESO_223_G009_Original.fits'
+        #url = ''
         name = 'ESO_223_G009'
-        sizes=[[8,44],[320,720],[320,720]]
+        #sizes=[[8,44],[320,720],[320,720]]
+        sizes = [[0,-1],[0,-1],[0,-1]]
         try:
             Cube = fits.open(f"{outdir}/{name}_Original.fits",uint = False, do_not_scale_image_data=True,ignore_blank = True)
         except:
                         #Cause LVHIS is somehow not available anymore
-            raise PackageError(f'''This file should been downloaded with the install.
-Please list an issue on the Github.''')
-            #Cube = download_cube(f'{name}_Original',url,sizes,outdir)
+            #raise PackageError(f'''This file should been downloaded with the install.
+#Please list an issue on the Github.''')
+            Cube = download_cube(f'{name}_Original',url,sizes,outdir)
         Clean_Cube,hdr = select_emission(Cube[0].data,Cube[0].header,name,work_dir,sofia_call=sofia_call)
         fits.writeto(f"{outdir}/{name}.fits",Clean_Cube,hdr,overwrite = False)
         Cube[0].data=Clean_Cube
         Cube[0].header=hdr
-        if url != '':
-            os.system(f"rm -f {outdir}/{name}_Original.fits")
+        #if url != '':
+        #    os.system(f"rm -f {outdir}/{name}_Original.fits")
         del Clean_Cube
         del hdr
     #place_disclaimer(dir_to_place)

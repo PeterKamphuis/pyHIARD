@@ -687,8 +687,8 @@ calculate_pixel_noise.__doc__ = f'''
 
 
 def cut_input_cube(file_in, sizes, debug=False):
-    cube = fits.open(file_in, uint=False,
-                     do_not_scale_image_data=True, ignore_blank=True)
+    cube = fits.open(file_in)
+    #, uint=False,do_not_scale_image_data=True, ignore_blank=True)
     hdr = cube[0].header
     for i, pos in enumerate(sizes):
         if pos[1] == -1:
@@ -798,7 +798,7 @@ delete_directory.__doc__=f'''
 
 def download_cube(name, url, sizes, new_location):
     name_in=download_file(url, pkgname = 'pyHIARD', timeout = 1800)
-    cube=cut_input_cube(name_in, sizes, name = name)
+    cube=cut_input_cube(name_in, sizes)
     fits.writeto(f'{new_location}/{name}.fits', cube[0].data, cube[0].header)
     clear_download_cache(url, pkgname = 'pyHIARD')
     return cube
