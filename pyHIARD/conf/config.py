@@ -101,9 +101,9 @@ class Config:
     print_examples: bool = False
     print_bases: bool = False
     configuration_file: Optional[str] = None
-    general: General = General()
-    agc: AGC = AGC()
-    roc: ROC = ROC()
+    general: General = field(default_factory=General)
+    agc: AGC = field(default_factory=AGC)
+    roc: ROC = field(default_factory=ROC)
 def help_message():
     '''The message to be printed'''
     help_message = '''
