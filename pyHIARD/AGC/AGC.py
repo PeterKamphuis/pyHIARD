@@ -6,7 +6,7 @@
 # first we import numpy
 from pyHIARD.constants import G_agc, H_0, c_kms, HI_rest_freq, c
 from multiprocessing import get_context
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, convolve1d
 from scipy import integrate
 from scipy import interpolate
 from pyHIARD.AGC.base_galaxies import Base_Galaxy
@@ -1442,7 +1442,8 @@ def vel_to_freq(hdr):
     low_freq = central_freq-(hdr['CRPIX3']-1)*cdelt_freq
     return central_freq, cdelt_freq, top_freq, low_freq
 
-def corrupt_casa(work_dir, beam, SNR, maindir,sim_observe_graphics = 'none'):
+def corrupt_casa(work_dir, beam, SNR, maindir,
+        sim_observe_graphics = 'none', channel_dependency='independent'):
 
     # the casa tasks ooze memory so they should be  run in a subprocess
     '''Corrupt our artifical galaxy with a casa's sim observe routines'''
@@ -1559,7 +1560,7 @@ def main():
         graphics= '{sim_observe_graphics}',
         verbose=False,
         overwrite=True)  # overwrite files starting with $project
-    #There is a memeory leak in simobserve in  1109 sm.predict(imagename=newmodel,complist=complist)
+    #There is a memory leak in simobserve in  1109 sm.predict(imagename=newmodel,complist=complist)
 
     antennalist = os.path.join(ctsys.resolve("alma/simmos"), ant_list)
     ## Fictitious telescopes can be simulated by specifying x, y, z, d, an, telname, antpos.
@@ -1788,6 +1789,9 @@ if __name__ == '__main__':
 
     print(f'We scale the final cube by {mean_scale} to retain the M_HI')
     newdummy *= mean_scale
+    #and apply a spectral smoothing if  we have channel dependency
+    newdummy = cf.spectral_smooth(newdummy, channel_dependency = channel_dependency)
+
     fits.writeto(work_dir+'/Convolved_Cube.fits', newdummy,
                  dummy[0].header, overwrite=True)
     dummy[0].header['BITPIX'] = 16
@@ -1814,7 +1818,7 @@ if __name__ == '__main__':
         else:
             counter += 1
             time.sleep(1)
-        if counter in [30,60,90]:
+        if counter in [15,30,60,90]:
             #try again
             clean_up_casa(work_dir,sim_observe_graphics=sim_observe_graphics)
         if counter > 120:
@@ -1850,7 +1854,7 @@ PROCEDURES CALLED:
 NOTE: The final SNR is a guesstimate.
 '''
 
-def corrupt_gauss(work_dir, beam, SNR, no_corrupt=False):
+def corrupt_gauss(work_dir, beam, SNR, no_corrupt=False, channel_dependency='independent'):
     '''Corrupt our artifical galaxy with the correct noise cube such that the average SNR over the galaxy is the required one'''
     mean_signal, hdr, data = create_mask(work_dir, beam)
     # Calculate the area of the beam in arcsec
@@ -1863,9 +1867,14 @@ def corrupt_gauss(work_dir, beam, SNR, no_corrupt=False):
     # The noise we want is the mean signal divided by the signal to noise ratio
     # that value needs to be deconvolved so from https://en.wikipedia.org/wiki/Gaussian_blur
     # The formula is uncited but works
-    sigma = [(beam[0]/abs(hdr['CDELT1']*3600.))/(2*np.sqrt(2*np.log(2))),
+    sigma = [0, (beam[0]/abs(hdr['CDELT1']*3600.))/(2*np.sqrt(2*np.log(2))),
               (beam[1]/abs(hdr['CDELT2']*3600.))/(2*np.sqrt(2*np.log(2)))]
-    noisescl = (mean_signal/SNR*np.mean(sigma)*2*np.sqrt(np.pi))
+    requested_noise = mean_signal/SNR
+    achieved, pixel_noise = cf.calculate_pixel_noise(requested_noise,sigma,
+                                channel_dependency = channel_dependency)
+  
+    #noisescl = (mean_signal/SNR*np.mean(sigma)*2*np.sqrt(np.pi))
+    
     #print("This our mean signal {} and noise {} in Jy/pixel. ".format(mean_signal,noisescl))
 
     if beam[2] != 0.:
@@ -1880,12 +1889,15 @@ def corrupt_gauss(work_dir, beam, SNR, no_corrupt=False):
     if no_corrupt:
         noisedcube = data
     else:
-        cuberms = np.random.normal(scale=noisescl, size=np.shape(data))
+        cuberms = np.random.normal(scale=pixel_noise, size=np.shape(data))
         noisedcube = data+cuberms
     # Smooth to the requred resolution
 
     #our BPA is set to 0 which means the major axis smoothing should be in DEC axis and the minor on the RA
-    final = gaussian_filter(noisedcube, sigma=(0, sigma[0], sigma[1]), order=0)
+    final = gaussian_filter(noisedcube, sigma=sigma, order=0)
+    #adding channel dependency if requisted
+    final = cf.spectral_smooth(final, channel_dependency)
+
 
     if beam[2] != 0.:
         #rotate back
@@ -2091,6 +2103,7 @@ PROCEDURES CALLED:
 NOTE:
 '''
 
+
 def one_galaxy(cfg, Current_Galaxy, Achieved):
     # Build a name and a directory where to stor the specific output
     print(f'''This is the galaxy we are creating.''')
@@ -2202,6 +2215,8 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     # This comes from FAT. If I remember correctly this is the sine response to the channels *1.2/(2*SQRT(2*ALOG(2.))))
     # However in our input we want independent channels which means we should set this to 0.
     # Template["CONDISP"]="CONDISP = 0."
+    # The noise should also be convolved so we do this in Corrup Gaussian and Casa_Sim
+    ''''
     if cfg.agc.channel_dependency == 'sinusoidal':
         Template["CONDISP"]="CONDISP = {}".format(
             Current_Galaxy.Channelwidth*1.2/(2*np.sqrt(2*np.log(2.))))
@@ -2213,6 +2228,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
     else:
         raise InputError(
             f"{cfg.agc.channel_dependency} is not an option for the channel dependency")
+    '''
     setattr(Achieved, "Channel_Dep", cfg.agc.channel_dependency)
     # We need to set the input and output cube
     Template["INSET"] = "INSET = Input.fits"
@@ -2384,7 +2400,7 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
             with redirect_stdout(f):
                 corrupt_casa(f"{cfg.general.main_directory}{name}/",
                              Current_Galaxy.Res_Beam, Current_Galaxy.SNR, cfg.general.main_directory,
-                             sim_observe_graphics=graphs)
+                             sim_observe_graphics=graphs, channel_dependency=cfg.agc.channel_dependency)
         os.system(
             f"mv {cfg.general.main_directory}{name}/Casa_Log.txt {cfg.general.main_directory}{name}/Casa_Log/")
         fits.setval(fits_to_modify, 'CTYPE3', value = 'VELO-HEL')
@@ -2399,7 +2415,9 @@ def one_galaxy(cfg, Current_Galaxy, Achieved):
         if Current_Galaxy.Corruption == 'No_Corrupt':
             no_corrupt= True
         corrupt_gauss(f"{cfg.general.main_directory}{name}/",
-                      Current_Galaxy.Res_Beam, Current_Galaxy.SNR,no_corrupt = no_corrupt)
+                      Current_Galaxy.Res_Beam, Current_Galaxy.SNR,
+                      no_corrupt = no_corrupt, channel_dependency = 
+                      cfg.agc.channel_dependency)
         Achieved.Corruption=Current_Galaxy.Corruption
     else:
         raise RunningError(f'These boots (Corruption = {Current_Galaxy.Corruption}) are not made for running pyHIARD')
