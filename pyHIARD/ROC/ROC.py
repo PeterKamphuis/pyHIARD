@@ -962,9 +962,12 @@ def get_main_template(name,Template_Header,galaxy_module):
 
         if condisp[0] == -1.:
             condisp = [(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))]
-        if np.sum(dispersion) == -1.*len(dispersion):
+        if np.sum(dispersion) == -1.*len(dispersion) and condisp[0] > (Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.)))):
             dispersion[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
             dispersion2[:] = np.sqrt(condisp[0]**2-(Template_Header['CDELT3']*1.2/(2*np.sqrt(2*np.log(2.))))**2)
+        else:
+            dispersion[:] = 0.
+            dispersion2[:] = 0.
                 #continue
         if xpos[0] < 0.:
             xpos = [e+360. for e in xpos]

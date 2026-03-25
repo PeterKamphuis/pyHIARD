@@ -1,6 +1,6 @@
 ### ____________________________________________________________________ ###
 ###                                                                      ###
-### SoFiA 2.1.1 (default_parameters.par) - Source Finding Application    ###
+### SoFiA 2.6.55 (default_parameters.par) - Source Finding Application    ###
 ### Copyright (C) 2020 Tobias Westmeier                                  ###
 ### ____________________________________________________________________ ###
 ###                                                                      ###
@@ -79,19 +79,21 @@ threshold.enable           =  false
 
 
 # Linker
-
+linker.enable              =  true
 linker.radiusXY            =  5
 linker.radiusZ             =  5
 linker.minSizeXY           =  10
 linker.minSizeZ            =  10
 linker.maxSizeXY           =  0
 linker.maxSizeZ            =  0
-linker.keepNegative        =  false
 
 
 # Reliability
 
 reliability.enable         =  false
+
+# Filtering
+filter.discardNegative = True
 
 # Mask dilation
 
@@ -109,6 +111,7 @@ parameter.enable           =  false
 
 output.directory           =
 output.filename            =  tmp
+output.dataFormat          =  fits
 output.writeCatASCII       =  false
 output.writeCatXML         =  false
 output.writeCatSQL         =  false
@@ -119,5 +122,6 @@ output.writeMask2d         =  false
 output.writeRawMask        =  false
 output.writeMoments        =  false
 output.writeCubelets       =  false
-output.marginCubelets      =  0
+output.marginCubeletsXY    =  0
+output.marginCubeletsZ     =  0
 output.overwrite           =  true
