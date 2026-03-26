@@ -631,14 +631,17 @@ create_masks.__doc__ = f'''
 '''
 
 
-def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025):
+def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025
+            ,channel_dependency = 'independent'):
     #firt guess of the pixel noise
     pixel_noise = requested_noise *np.mean(smoothing_sigma)*2. * np.sqrt(np.pi)
     #  we need a shape for testing. something say 100 * smoothing kernel
-    test_shape= np.array([int(x*100.) for x in smoothing_sigma],dtype=int)
+  
+    test_shape= np.array([int(x*100.) if x > 0 else 50. for x in smoothing_sigma],dtype=int)
+  
     rng = np.random.default_rng()
     achieved_noise = 0.
-    while abs(achieved_noise - requested_noise) / requested_noise > 0.025:
+    while abs(achieved_noise - requested_noise) / requested_noise > tolerance:
         #If not the first run update our pixel noise
         if achieved_noise != 0:
             pixel_noise = pixel_noise*requested_noise/achieved_noise
@@ -648,6 +651,8 @@ def calculate_pixel_noise(requested_noise,smoothing_sigma,tolerance=0.025):
         # and smooth to the final beam
         test_noise_smoothed = gaussian_filter(test_noise,sigma=smoothing_sigma,\
                                 order=0)
+        if channel_dependency.lower() != 'independent':
+            test_noise_smoothed = spectral_smooth(test_noise_smoothed, channel_dependency)
         achieved_noise = np.std(test_noise_smoothed)
         #print(f"The current pixel noise estimate leads to {achieved_noise} mJy/beam (Requested = {requested_noise} mJy/beam).")
 
@@ -1214,6 +1219,33 @@ load_text_model.__doc__ =f'''
  '''
 #
 
+def obtain_spectral_kernel(n,channel_dependency):
+    print((f'we are using {channel_dependency} channel dependency and a kernel length of {n}'))
+    if channel_dependency == 'independent':
+        kernel = np.array([1]*n)
+    elif channel_dependency == 'sinusoidal':
+        from scipy.optimize import brentq
+        fwhm = 1.2
+        half = fwhm / 2.0
+        # Solve for scale s so that sinc(half / s) = 0.5
+        def f(s):
+            return np.sinc(half / s) - 0.5
+        s = brentq(f, 0.05, 10.0)
+        # n-channel span with a center sample
+        x = np.linspace(-n/2, n/2., n)
+        kernel = np.sinc(x / s)
+        kernel /= kernel.sum()
+    elif channel_dependency == 'hanning':
+        kernel = np.zeros(n)
+        nch = int((n - 1) / 2)
+        width = 5.
+        kernel[nch-int((width+1)/2):nch+int((width+1)/2)+1] = np.hanning(width+2)
+        kernel /= kernel.sum()
+    else:
+        raise ValueError(f'channel dependency {channel_dependency} not recognized. Please choose between independent, sinusoidal and hanning')
+   
+    return kernel
+
 def plot_input(directory, Model,add_sbr = None, Distance= 0., RHI = None \
                 ,Title = 'EMPTY',WarpR=None, font_file = 'empty.ttf'):
 
@@ -1586,3 +1618,12 @@ run_sofia.__doc__=f'''
 
  NOTE:
 '''
+
+def spectral_smooth(Cube, channel_dependency):
+    # We use the same kernel for all pixels so we can just do a convolution along the first axis
+    if channel_dependency == 'independent':
+        return Cube
+    else:
+        kernel = obtain_spectral_kernel(Cube.shape[0], channel_dependency)
+        smoothed_cube = np.apply_along_axis(lambda m: np.convolve(m, kernel, mode='same'), axis=0, arr=Cube)
+        return smoothed_cube
