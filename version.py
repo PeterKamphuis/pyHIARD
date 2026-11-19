@@ -2,5 +2,5 @@
 
 
 PACKAGE_NAME = 'pyHIARD'
-__version__ = '1.3.4'
+__version__ = '1.3.5'
 #__casa_max__ = {'major':3,'minor':10}
