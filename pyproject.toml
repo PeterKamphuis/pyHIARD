@@ -28,9 +28,13 @@ dependencies = [ 'numpy>=1.14',
     'astropy',
     'future-fstrings',
     'importlib_metadata',
-    'casatasks; python_version >= "3.10"',
-    'casadata; python_version >= "3.10"',
     'importlib_resources>=3.3.0; python_version < "3.7"',
+]
+
+[project.optional-dependencies]
+casa = [
+    'casatasks; python_version >= "3.12"',
+    'casadata; python_version >= "3.12"',
 ]
 
 [project.urls]

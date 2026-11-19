@@ -43,15 +43,19 @@ def report_version():
 
 __version__ = report_version()
 
+# Try to detect if casatasks/casatools are available (optional dependencies)
+__casa_available__ = False
 try:
     if find_spec('casatasks') is not None:
-        __casa_max__ =  'OK'
+        __casa_available__ = True
+        __casa_max__ = 'OK'
     else:
-        __casa_max__ =  'Smaller'
+        __casa_max__ = 'Smaller'
 except:
     try:
         import casatasks
-        __casa_max__ =  'OK'
+        __casa_available__ = True
+        __casa_max__ = 'OK'
     except:
-        __casa_max__ =  'Smaller'
+        __casa_max__ = 'Smaller'
 
