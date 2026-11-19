@@ -188,7 +188,7 @@ def check_input(cfg):
                     "\s+|\s*,\s*|\s+$", vals.strip()) if 1 <= int(x) <= 6]
                 if len(cfg.agc.base_galaxies) == 0:
                     cfg.agc.base_galaxies = [7]
-        while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian','no_corrupt', 'casa_5','tres']:
+        while cfg.agc.corruption_method.lower() not in ['casa_sim', 'gaussian','no_corrupt', 'casa_5','tres','dos']:
             cfg.agc.corruption_method = input(
                 'Your method of corruption is not acceptable please choose from Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5 (Default = Gaussian):')
             if cfg.agc.corruption_method == '':
@@ -210,16 +210,17 @@ def check_input(cfg):
 Please choose from {','.join([x for x in channel_options])}:''')
 
         if cfg.agc.corruption_method.lower() in ['casa_sim', 'casa_5', 'tres']:
+            if not pyHIARD.__casa_available__:
+                raise CasaInstallError(f'''Your modular casa/casatasks is not installed.
+Most likely because it is not available for python version {sys.version}.
+As such you cannot run the corrupt casa method.
+You can use 'Gaussian' or 'No_Corrupt' instead.
+''')
             try:
                 from casaconfig import AutoUpdatesNotAllowed
                 import casatasks
             except ModuleNotFoundError:
-                if pyHIARD.__casa_max__ != 'OK':
-                    raise CasaInstallError(f'''Your modular casa is not installed.
-Most likely because it is not available for python version {sys.version}
-As such you can not run the corrupt casa method''')
-                else:
-                    raise CasaInstallError(f'''Your modular casa is not installed.
+                raise CasaInstallError(f'''Your modular casa is not installed.
 We do not know the reason for this but it means you cannot run the casa corrupt method.
 ''')
             except AutoUpdatesNotAllowed:

@@ -266,7 +266,9 @@ def AGC(cfg):
                             next_casamodel = int(number_models+5+np.random.randint(5))
                 elif cfg.agc.corruption_method == 'No_Corrupt' or \
                     (cfg.agc.corruption_method == 'Tres' \
-                    and number_models == next_ucmodel):
+                    and number_models == next_ucmodel) \
+                        or (cfg.agc.corruption_method == 'Dos' and\
+                              number_models == next_ucmodel):
                     if not (cfg.agc.variables_to_vary[ix] == 'SNR'):
                         setattr(Current_Galaxy, "Corruption", "No_Corrupt")
                         next_ucmodel = int(number_models+5+np.random.randint(5))
@@ -279,7 +281,7 @@ def AGC(cfg):
                 Achieved = copy.deepcopy(Current_Galaxy)
                 #Check if galaxy already exists
                 name = set_name(Current_Galaxy)
-                print(f"{name} is the name we attach to the current galaxy")
+              
 
                 # Check for the existence of the directory
                 constructstring = f"mkdir {cfg.general.main_directory}{name}"
@@ -314,9 +316,11 @@ def AGC(cfg):
                             #print("Reproducing the galaxy. Be aware of Double Table entries")
                             print("This is too dangerous. Breaking the code.")
                             exit()
-                if Current_Galaxy.Corruption in ['No_Corrupt', 'Gaussian']:
+                print(f"{name} is the name we attach to the current galaxy")
+                if Current_Galaxy.Corruption in ['No_Corrupt', 'Gaussian']:                   
                     Gauss_Galaxies.append((cfg, Current_Galaxy, Achieved))
                 else:
+
                     Casa_Galaxies.append((cfg, Current_Galaxy, Achieved))
                 All_Galaxies.append(name)
                 if Current_Galaxy.Mass not in set_done:
@@ -348,6 +352,7 @@ def AGC(cfg):
             single_result = one_galaxy(*the_galaxy)
             results_casa.append(single_result)
     #Create All Uncoorupted and Gaussian Galaxies
+  
     if len(Gauss_Galaxies) > 0:
         if cfg.general.multiprocessing:
             no_process = cfg.general.ncpu
@@ -1447,6 +1452,13 @@ def corrupt_casa(work_dir, beam, SNR, maindir,
 
     # the casa tasks ooze memory so they should be  run in a subprocess
     '''Corrupt our artifical galaxy with a casa's sim observe routines'''
+    
+    import pyHIARD
+    if not pyHIARD.__casa_available__:
+        raise cf.CasaInstallError(
+            "casatools and casatasks are not installed. Cannot run corrupt_casa. "
+            "Please install them or use 'Gaussian' or 'No_Corrupt' corruption methods instead."
+        )
 
     mean_signal, hdr, data = create_mask(work_dir, beam, casa=True)
     #This next line should be commented as it is merely for testing

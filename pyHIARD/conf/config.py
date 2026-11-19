@@ -29,7 +29,7 @@ class AGC:
         default_factory=lambda: [1, 2, 3, 4, 5, 6])
     inhomogenous: bool = True  # Add homogenieties?
     symmetric: bool = False  # Keep galaxies symmetric
-    # options are Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5
+    # options are Casa_Sim, Gaussian, No_Corrupt, Tres, Casa_5, Dos (Gaussian, No Corrupt)
     corruption_method: str = 'Tres'
     # The channel dependency
     # 'Options are independent, sinusoidal, hanning
